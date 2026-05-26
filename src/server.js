@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./db/mongoose');
 const { PORT, FRONTEND_URL, NODE_ENV } = require('./config/env');
 
@@ -25,16 +26,10 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Awinbire Enterprise API is running',
-    version: '1.0.0',
-    environment: NODE_ENV,
-  });
-});
+// Serve frontend
+app.use(express.static(path.join(__dirname, '../public')));
 
+// Health check (JSON, for uptime monitors)
 app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
 // API Routes
@@ -45,9 +40,14 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-// 404
-app.use((req, res) => {
+// API 404 — only for /api/* paths
+app.use('/api', (req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found.` });
+});
+
+// SPA fallback — serve index.html for all other routes
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // Global error handler
