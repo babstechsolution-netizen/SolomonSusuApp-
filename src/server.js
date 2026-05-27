@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const mongoose = require('mongoose');
 const connectDB = require('./db/mongoose');
 const { PORT, FRONTEND_URL, NODE_ENV } = require('./config/env');
 
@@ -29,8 +30,15 @@ app.use(express.urlencoded({ extended: true }));
 // Serve frontend
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Health check (JSON, for uptime monitors)
-app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
+// Health check (JSON, for uptime monitors and login page diagnostics)
+app.get('/health', (req, res) => {
+  const dbState = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    db: dbState[mongoose.connection.readyState] || 'unknown',
+  });
+});
 
 // API Routes
 app.use('/api/auth', authRoutes);
