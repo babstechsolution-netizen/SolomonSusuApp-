@@ -129,22 +129,6 @@ const weeklyChartData = [
   { day: 'Sun', deposits: 2100, withdrawals: 400 },
 ];
 
-const monthlyChartData = [
-  { month: 'Jan', deposits: 125000, withdrawals: 42000 },
-  { month: 'Feb', deposits: 138000, withdrawals: 51000 },
-  { month: 'Mar', deposits: 152000, withdrawals: 48000 },
-  { month: 'Apr', deposits: 141000, withdrawals: 55000 },
-  { month: 'May', deposits: 168000, withdrawals: 62000 },
-  { month: 'Jun', deposits: 175000, withdrawals: 58000 },
-];
-
-const yearlyChartData = [
-  { year: '2022', deposits: 850000, withdrawals: 310000 },
-  { year: '2023', deposits: 1250000, withdrawals: 480000 },
-  { year: '2024', deposits: 1680000, withdrawals: 620000 },
-  { year: '2025', deposits: 1920000, withdrawals: 750000 },
-  { year: '2026', deposits: 900000, withdrawals: 316000 },
-];
 
 const notifications = [
   { id: 1, type: 'withdrawal', message: 'Withdrawal of GH₵2,000 processed for Grace Addo by Kofi Boateng', time: '2 min ago', read: false },
@@ -583,6 +567,31 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     });
     return Object.values(accum).sort(function(a,b){return b.value-a.value;});
   }, [transactions, employees]);
+
+  const monthlyChartData = _react.useMemo.call(void 0, function() {
+    var months = {};
+    transactions.forEach(function(t) {
+      if (!t.date) return;
+      var key = t.date.substring(0, 7);
+      var label = new Date(t.date + 'T12:00:00').toLocaleString('en-US', { month: 'short', year: '2-digit' });
+      if (!months[key]) months[key] = { month: label, key: key, deposits: 0, withdrawals: 0 };
+      if (t.type === 'deposit' && t.status === 'approved') months[key].deposits += t.amount;
+      if (t.type === 'withdrawal' && t.status === 'approved') months[key].withdrawals += t.amount;
+    });
+    return Object.values(months).sort(function(a, b) { return a.key.localeCompare(b.key); });
+  }, [transactions]);
+
+  const yearlyChartData = _react.useMemo.call(void 0, function() {
+    var years = {};
+    transactions.forEach(function(t) {
+      if (!t.date) return;
+      var year = t.date.substring(0, 4);
+      if (!years[year]) years[year] = { year: year, deposits: 0, withdrawals: 0 };
+      if (t.type === 'deposit' && t.status === 'approved') years[year].deposits += t.amount;
+      if (t.type === 'withdrawal' && t.status === 'approved') years[year].withdrawals += t.amount;
+    });
+    return Object.values(years).sort(function(a, b) { return a.year.localeCompare(b.year); });
+  }, [transactions]);
 
   // Live clock
   _react.useEffect.call(void 0, () => {
@@ -1829,29 +1838,39 @@ async function shareAsPDF(){
       _react2.default.createElement('div', { className: "grid grid-cols-1 lg:grid-cols-2 gap-4" },
         _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}` },
           _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3` }, "Yearly Overview"),
-          _react2.default.createElement(_recharts.ResponsiveContainer, { width: "100%", height: 200 },
-            _react2.default.createElement(_recharts.BarChart, { data: yearlyChartData },
-              _react2.default.createElement(_recharts.CartesianGrid, { strokeDasharray: "3 3", stroke: darkMode ? '#374151' : '#e5e7eb' }),
-              _react2.default.createElement(_recharts.XAxis, { dataKey: "year", fontSize: 12 }),
-              _react2.default.createElement(_recharts.YAxis, { fontSize: 12 }),
-              _react2.default.createElement(_recharts.Tooltip, null ),
-              _react2.default.createElement(_recharts.Bar, { dataKey: "deposits", fill: "#10b981", name: "Deposits", radius: [3, 3, 0, 0] }),
-              _react2.default.createElement(_recharts.Bar, { dataKey: "withdrawals", fill: "#ef4444", name: "Withdrawals", radius: [3, 3, 0, 0] })
-            )
-          )
+          yearlyChartData.length > 0
+            ? _react2.default.createElement(_recharts.ResponsiveContainer, { width: "100%", height: 200 },
+                _react2.default.createElement(_recharts.BarChart, { data: yearlyChartData },
+                  _react2.default.createElement(_recharts.CartesianGrid, { strokeDasharray: "3 3", stroke: darkMode ? '#374151' : '#e5e7eb' }),
+                  _react2.default.createElement(_recharts.XAxis, { dataKey: "year", fontSize: 12 }),
+                  _react2.default.createElement(_recharts.YAxis, { fontSize: 12 }),
+                  _react2.default.createElement(_recharts.Tooltip, null),
+                  _react2.default.createElement(_recharts.Bar, { dataKey: "deposits", fill: "#10b981", name: "Deposits", radius: [3, 3, 0, 0] }),
+                  _react2.default.createElement(_recharts.Bar, { dataKey: "withdrawals", fill: "#ef4444", name: "Withdrawals", radius: [3, 3, 0, 0] })
+                )
+              )
+            : _react2.default.createElement('div', { className: "flex flex-col items-center justify-center h-48 text-center" },
+                _react2.default.createElement(_lucidereact.BarChart2, { size: 32, className: "text-gray-300 mb-2" }),
+                _react2.default.createElement('p', { className: `text-sm ${textSecondary}` }, "No transaction data yet")
+              )
         ),
         _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}` },
           _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3` }, "Monthly Trends"),
-          _react2.default.createElement(_recharts.ResponsiveContainer, { width: "100%", height: 200 },
-            _react2.default.createElement(_recharts.LineChart, { data: monthlyChartData },
-              _react2.default.createElement(_recharts.CartesianGrid, { strokeDasharray: "3 3", stroke: darkMode ? '#374151' : '#e5e7eb' }),
-              _react2.default.createElement(_recharts.XAxis, { dataKey: "month", fontSize: 12 }),
-              _react2.default.createElement(_recharts.YAxis, { fontSize: 12 }),
-              _react2.default.createElement(_recharts.Tooltip, null ),
-              _react2.default.createElement(_recharts.Line, { type: "monotone", dataKey: "deposits", stroke: "#10b981", strokeWidth: 2, name: "Deposits" }),
-              _react2.default.createElement(_recharts.Line, { type: "monotone", dataKey: "withdrawals", stroke: "#ef4444", strokeWidth: 2, name: "Withdrawals" })
-            )
-          )
+          monthlyChartData.length > 0
+            ? _react2.default.createElement(_recharts.ResponsiveContainer, { width: "100%", height: 200 },
+                _react2.default.createElement(_recharts.LineChart, { data: monthlyChartData },
+                  _react2.default.createElement(_recharts.CartesianGrid, { strokeDasharray: "3 3", stroke: darkMode ? '#374151' : '#e5e7eb' }),
+                  _react2.default.createElement(_recharts.XAxis, { dataKey: "month", fontSize: 12 }),
+                  _react2.default.createElement(_recharts.YAxis, { fontSize: 12 }),
+                  _react2.default.createElement(_recharts.Tooltip, null),
+                  _react2.default.createElement(_recharts.Line, { type: "monotone", dataKey: "deposits", stroke: "#10b981", strokeWidth: 2, name: "Deposits" }),
+                  _react2.default.createElement(_recharts.Line, { type: "monotone", dataKey: "withdrawals", stroke: "#ef4444", strokeWidth: 2, name: "Withdrawals" })
+                )
+              )
+            : _react2.default.createElement('div', { className: "flex flex-col items-center justify-center h-48 text-center" },
+                _react2.default.createElement(_lucidereact.TrendingUp, { size: 32, className: "text-gray-300 mb-2" }),
+                _react2.default.createElement('p', { className: `text-sm ${textSecondary}` }, "No transaction data yet")
+              )
         ),
         _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}` },
           _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3` }, "Deposits by Zone"),
@@ -1963,20 +1982,6 @@ async function shareAsPDF(){
             , _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Change your account password")
           )
           , _react2.default.createElement('button', { onClick: () => { setShowChangePassword(true); setChangePasswordForm({ current: '', newPass: '', confirm: '' }); setChangePasswordError(''); }, className: "px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700",}, "Change Password")
-        )
-        , (_optionalChain([currentUser, 'optionalAccess', _sec1 => _sec1.role]) === 'Super Admin') && (
-          _react2.default.createElement('div', { className: "mt-3 pt-3 border-t",  style: { borderColor: darkMode ? '#374151' : '#e5e7eb' },}
-            , _react2.default.createElement('p', { className: `text-xs font-semibold ${textSecondary} mb-2`,}, "Admin: Reset User Password")
-            , _react2.default.createElement('div', { className: "grid grid-cols-2 gap-2",}
-              , Object.entries(userCredentials).map(function(entry) {
-                var rk = entry[0]; var cred = entry[1];
-                return _react2.default.createElement('button', { key: rk, onClick: () => { setShowResetPassword(rk); setResetPasswordForm({ newPass: '', confirm: '' }); setChangePasswordError(''); }, className: `p-2 rounded-lg text-xs font-medium text-left border ${borderColor} hover:border-green-400 transition-colors ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`,}
-                  , _react2.default.createElement('p', { className: textPrimary,}, cred.name)
-                  , _react2.default.createElement('p', { className: "text-green-600 mt-0.5",}, cred.role)
-                );
-              })
-            )
-          )
         )
       )
       , (_optionalChain([currentUser, 'optionalAccess', _dz => _dz.role]) === 'Super Admin') && (
