@@ -106,6 +106,16 @@ router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager', 'Accoun
   }
 });
 
+// DELETE /api/transactions  — wipe all (Super Admin only)
+router.delete('/', requireRole('Super Admin'), async (req, res) => {
+  try {
+    await Transaction.deleteMany({});
+    res.json({ success: true, message: 'All transactions deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // GET /api/transactions/summary
 router.get('/summary', async (req, res) => {
   try {

@@ -19,6 +19,16 @@ router.get('/', async (req, res) => {
   }
 });
 
+// DELETE /api/loans  — wipe all (Super Admin only)
+router.delete('/', requireRole('Super Admin'), async (req, res) => {
+  try {
+    await Loan.deleteMany({});
+    res.json({ success: true, message: 'All loans deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // POST /api/loans
 router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
   try {

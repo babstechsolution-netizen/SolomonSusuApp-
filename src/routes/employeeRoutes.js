@@ -59,6 +59,16 @@ router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager'), async 
   }
 });
 
+// DELETE /api/employees  — wipe all (Super Admin only)
+router.delete('/', requireRole('Super Admin'), async (req, res) => {
+  try {
+    await Employee.deleteMany({});
+    res.json({ success: true, message: 'All employees deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // DELETE /api/employees/:id
 router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
   try {

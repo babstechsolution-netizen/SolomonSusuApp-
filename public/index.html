@@ -199,11 +199,11 @@ const customerSavingsData = {
 };
 
 const userCredentials = {
-  superadmin: { email: 'superadmin@fieldcollect.gh', password: 'admin123', name: 'Nana Kweku Mensah', role: 'Super Admin', avatar: 'NK', color: '#dc2626', photo: null },
-  admin: { email: 'admin@fieldcollect.gh', password: 'admin123', name: 'Abena Serwaa', role: 'Branch Manager', avatar: 'AS', color: '#2563eb', photo: null },
-  employee: { email: 'kwame@fieldcollect.gh', password: 'emp123', name: 'Kwame Asante', role: 'Field Collector', avatar: 'KA', color: '#16a34a', employeeId: 1, photo: null },
-  customer: { email: 'abena@gmail.com', password: 'cust123', name: 'Abena Pokua', role: 'Customer', avatar: 'AP', color: '#9333ea', customerId: 1, photo: null },
-  accountant: { email: 'accountant@fieldcollect.gh', password: 'acc123', name: 'Efua Adjei', role: 'Accountant', avatar: 'EA', color: '#ea580c', photo: null },
+  superadmin: { email: 'admin@awinbire.gh', password: 'admin123', name: 'Super Admin', role: 'Super Admin', avatar: 'SA', color: '#dc2626', photo: null },
+  admin: { email: 'manager@awinbire.gh', password: 'admin123', name: 'Branch Manager', role: 'Branch Manager', avatar: 'BM', color: '#2563eb', photo: null },
+  employee: { email: 'collector@awinbire.gh', password: 'emp123', name: 'Field Collector', role: 'Field Collector', avatar: 'FC', color: '#16a34a', employeeId: null, photo: null },
+  customer: { email: 'customer@awinbire.gh', password: 'cust123', name: 'Customer', role: 'Customer', avatar: 'CU', color: '#9333ea', customerId: null, photo: null },
+  accountant: { email: 'accountant@awinbire.gh', password: 'acc123', name: 'Accountant', role: 'Accountant', avatar: 'AC', color: '#ea580c', photo: null },
 };
 
 const QRCodeSVG = ({ data, size = 120, customerName = '', svgId = '' }) => {
@@ -451,9 +451,9 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [collectionNotes, setCollectionNotes] = _react.useState.call(void 0, '');
   const [collectionSuccess, setCollectionSuccess] = _react.useState.call(void 0, false);
   const [transactionType, setTransactionType] = _react.useState.call(void 0, 'deposit');
-  const [customers, setCustomers] = _react.useState.call(void 0, customersData);
-  const [transactions, setTransactions] = _react.useState.call(void 0, transactionsData);
-  const [employees, setEmployees] = _react.useState.call(void 0, initialEmployeesData);
+  const [customers, setCustomers] = _react.useState.call(void 0, []);
+  const [transactions, setTransactions] = _react.useState.call(void 0, []);
+  const [employees, setEmployees] = _react.useState.call(void 0, []);
   const [showAssignModal, setShowAssignModal] = _react.useState.call(void 0, null);
   const [selectedNewEmployee, setSelectedNewEmployee] = _react.useState.call(void 0, '');
   const [timePeriodFilter, setTimePeriodFilter] = _react.useState.call(void 0, 'today');
@@ -467,13 +467,14 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [userPhotos, setUserPhotos] = _react.useState.call(void 0, {});
   const [toasts, setToasts] = _react.useState.call(void 0, []);
   const [currentTime, setCurrentTime] = _react.useState.call(void 0, new Date());
-  const [loans, setLoans] = _react.useState.call(void 0, loansData);
+  const [loans, setLoans] = _react.useState.call(void 0, []);
   const [showScanQR, setShowScanQR] = _react.useState.call(void 0, false);
   const [scanQRInput, setScanQRInput] = _react.useState.call(void 0, '');
   const [showEditProfile, setShowEditProfile] = _react.useState.call(void 0, null);
   const [editProfileForm, setEditProfileForm] = _react.useState.call(void 0, {});
   const [lastTransaction, setLastTransaction] = _react.useState.call(void 0, null);
   const [userPasswords, setUserPasswords] = _react.useState.call(void 0, { superadmin: 'admin123', admin: 'admin123', employee: 'emp123', customer: 'cust123', accountant: 'acc123' });
+  const [authToken, setAuthToken] = _react.useState.call(void 0, typeof localStorage !== 'undefined' ? localStorage.getItem('susu_token') : null);
   const [showAddEmployee, setShowAddEmployee] = _react.useState.call(void 0, false);
   const [addEmployeeForm, setAddEmployeeForm] = _react.useState.call(void 0, { name: '', phone: '', zone: '', role: 'field_collector' });
   const [showChangePassword, setShowChangePassword] = _react.useState.call(void 0, false);
@@ -483,6 +484,8 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [resetPasswordForm, setResetPasswordForm] = _react.useState.call(void 0, { newPass: '', confirm: '' });
   const [showClearDataConfirm, setShowClearDataConfirm] = _react.useState.call(void 0, false);
   const [clearDataInput, setClearDataInput] = _react.useState.call(void 0, '');
+  const [editAccountMode, setEditAccountMode] = _react.useState.call(void 0, false);
+  const [editAccountForm, setEditAccountForm] = _react.useState.call(void 0, {});
 
   // Pagination states
   const [customerPage, setCustomerPage] = _react.useState.call(void 0, 1);
@@ -494,6 +497,46 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
 
   const otpRefs = _react.useRef.call(void 0, []);
   const fileInputRef = _react.useRef.call(void 0, null);
+
+  // ── API helper ──────────────────────────────────────────────
+  const apiCall = function(path, opts) {
+    opts = opts || {};
+    var token = (typeof localStorage !== 'undefined' ? localStorage.getItem('susu_token') : null) || authToken;
+    var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    return fetch(path, Object.assign({}, opts, { headers: headers })).then(function(res) {
+      return res.json().then(function(json) {
+        if (!res.ok) throw new Error(json.message || json.error || 'Request failed');
+        return json;
+      });
+    });
+  };
+
+  // ── Data shape mappers ───────────────────────────────────────
+  const mapEmp = function(e) { return { id: e._id || e.id, name: e.name, phone: e.phone || '', zone: e.zone || '', status: e.status || 'active', role: e.role || 'field_collector', privileges: e.privileges || [], collections: e.collections || 0, withdrawals: e.withdrawals || 0, customers: e.customers || 0, performance: e.performance || 80, color: e.color || '#16a34a', photo: e.photo || null }; };
+  const mapCust = function(c) { return { id: c._id || c.id, accountNumber: c.qrCode || ('FC-' + String(c._id || c.id).slice(-6).toUpperCase()), name: c.name, business: c.business || '', phone: c.phone || '', location: c.location || '', balance: c.balance || 0, totalDeposits: c.totalDeposits || 0, totalWithdrawals: c.totalWithdrawals || 0, status: c.status || 'active', trustScore: 80, assignedEmployee: (c.assignedEmployee && (c.assignedEmployee._id || c.assignedEmployee)) || null, color: c.color || '#16a34a' }; };
+  const mapTx = function(t) { return { id: t._id || t.id, customer: t.customerName || (t.customer && t.customer.name) || '', customerId: (t.customer && (t.customer._id || t.customer)) || null, employee: t.employeeName || (t.employee && t.employee.name) || '', employeeId: (t.employee && (t.employee._id || t.employee)) || null, amount: t.amount, type: t.type, method: t.method || 'Cash', status: t.status || 'approved', time: t.time || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''), date: t.date || (t.createdAt ? t.createdAt.substring(0, 10) : new Date().toISOString().substring(0, 10)) }; };
+  const mapLoan = function(l) { return { id: l._id || l.id, customerId: (l.customer && (l.customer._id || l.customer)) || null, customerName: l.customerName || (l.customer && l.customer.name) || '', amount: l.amount || 0, outstanding: l.outstanding || 0, monthlyPayment: l.monthlyPayment || 0, nextPaymentDate: l.nextPaymentDate || l.dueDate || null, disbursedDate: l.disbursedDate || (l.createdAt ? l.createdAt.substring(0, 10) : null), status: l.status || 'active', interestRate: l.interestRate || 0, purpose: l.purpose || '', officer: l.officer || '' }; };
+
+  // ── Load data after login ────────────────────────────────────
+  _react.useEffect.call(void 0, function() {
+    if (!isAuthenticated) return;
+    Promise.all([
+      apiCall('/api/employees'),
+      apiCall('/api/customers'),
+      apiCall('/api/transactions?limit=200')
+    ]).then(function(results) {
+      var eRes = results[0]; var cRes = results[1]; var tRes = results[2];
+      if (eRes.data) setEmployees(eRes.data.map(mapEmp));
+      if (cRes.data) setCustomers(cRes.data.map(mapCust));
+      if (tRes.data) setTransactions(tRes.data.map(mapTx));
+      return apiCall('/api/loans');
+    }).then(function(lRes) {
+      if (lRes && lRes.data) setLoans(lRes.data.map(mapLoan));
+    }).catch(function(err) {
+      console.error('Data load error:', err.message);
+    });
+  }, [isAuthenticated]);
 
   const bg = darkMode ? 'bg-gray-900' : 'bg-gray-50';
   const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
@@ -519,6 +562,18 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   _react.useEffect.call(void 0, () => { setCustomerPage(1); }, [searchTerm]);
   _react.useEffect.call(void 0, () => { setTransactionPage(1); }, [searchTerm, transactionTypeFilter, timePeriodFilter]);
 
+  // Deposits by zone — computed from real transaction + employee data
+  const depositsByZoneData = _react.useMemo.call(void 0, function() {
+    var accum = {};
+    transactions.filter(function(t){ return t.type==='deposit'&&t.status==='approved'; }).forEach(function(t){
+      var emp = employees.find(function(e){ return e.id===t.employeeId; });
+      var zone = (emp&&emp.zone) ? emp.zone : 'Other';
+      if(!accum[zone]) accum[zone]={name:zone,value:0};
+      accum[zone].value+=t.amount;
+    });
+    return Object.values(accum).sort(function(a,b){return b.value-a.value;});
+  }, [transactions, employees]);
+
   // Live clock
   _react.useEffect.call(void 0, () => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -529,10 +584,11 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     let filtered = [...transactions];
     if (customerId) filtered = filtered.filter(t => t.customerId === customerId);
     if (employeeId) filtered = filtered.filter(t => t.employeeId === employeeId);
-    const today = new Date('2026-05-15');
-    if (filter === 'today') filtered = filtered.filter(t => t.date === '2026-05-15');
-    else if (filter === 'week') { const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7); filtered = filtered.filter(t => new Date(t.date) >= weekAgo); }
-    else if (filter === 'month') { filtered = filtered.filter(t => t.date.startsWith('2026-05')); }
+    const todayStr = new Date().toISOString().substring(0, 10);
+    const today = new Date(todayStr);
+    if (filter === 'today') filtered = filtered.filter(t => t.date === todayStr);
+    else if (filter === 'week') { const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7); filtered = filtered.filter(t => t.date && new Date(t.date) >= weekAgo); }
+    else if (filter === 'month') { const ym = todayStr.substring(0, 7); filtered = filtered.filter(t => t.date && t.date.startsWith(ym)); }
     const deposits = filtered.filter(t => t.type === 'deposit' && t.status === 'approved');
     const withdrawals = filtered.filter(t => t.type === 'withdrawal' && t.status === 'approved');
     return { totalDeposits: deposits.reduce((s, t) => s + t.amount, 0), totalWithdrawals: withdrawals.reduce((s, t) => s + t.amount, 0), depositCount: deposits.length, withdrawalCount: withdrawals.length, transactions: filtered };
@@ -592,16 +648,32 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = function() {
     setLoginError('');
     setLoginLoading(true);
-    setTimeout(() => {
-      const cred = userCredentials[loginForm.role];
-      if (loginForm.email === cred.email && loginForm.password === (userPasswords[loginForm.role] || cred.password)) {
-        setLoginLoading(false);
-        setShow2FA(true);
-      } else { setLoginError('Invalid email or password.'); setLoginLoading(false); }
-    }, 1000);
+    fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: loginForm.email, password: loginForm.password })
+    }).then(function(res) {
+      return res.json().then(function(data) {
+        if (!res.ok) throw new Error(data.message || 'Login failed');
+        return data;
+      });
+    }).then(function(data) {
+      setAuthToken(data.token);
+      if (typeof localStorage !== 'undefined') localStorage.setItem('susu_token', data.token);
+      var u = data.user;
+      var colorMap = { superadmin: '#dc2626', admin: '#2563eb', employee: '#16a34a', customer: '#9333ea', accountant: '#ea580c' };
+      var avatarLetters = (u.name || '').split(' ').map(function(n){return n[0]||'';}).join('').substring(0,2).toUpperCase();
+      setCurrentUser({ name: u.name, email: u.email, role: u.role, phone: u.phone || '', avatar: avatarLetters, color: colorMap[u.roleKey || loginForm.role] || '#3b82f6', roleKey: u.roleKey || loginForm.role, photo: u.photo || null, employeeId: u.employeeId || null });
+      setIsAuthenticated(true);
+      setCurrentPage('dashboard');
+      setLoginLoading(false);
+    }).catch(function(err) {
+      setLoginError(err.message || 'Login failed');
+      setLoginLoading(false);
+    });
   };
 
   const handle2FAVerify = () => {
@@ -628,8 +700,11 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     if (e.key === 'Backspace' && !twoFACode[index] && index > 0) _optionalChain([otpRefs, 'access', _5 => _5.current, 'access', _6 => _6[index - 1], 'optionalAccess', _7 => _7.focus, 'call', _8 => _8()]);
   };
 
-  const handleLogout = () => {
+  const handleLogout = function() {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('susu_token');
+    setAuthToken(null);
     setIsAuthenticated(false); setCurrentUser(null); setCurrentPage('dashboard');
+    setEmployees([]); setCustomers([]); setTransactions([]); setLoans([]);
     setLoginForm({ email: '', password: '', role: 'superadmin' }); setSidebarOpen(false);
     setShow2FA(false); setTwoFACode(['', '', '', '', '', '']);
   };
@@ -639,34 +714,52 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     setLoginForm({ email: cred.email, password: cred.password, role }); setLoginError('');
   };
 
-  const handleAddEmployee = () => {
+  const handleAddEmployee = function() {
     if (!addEmployeeForm.name.trim() || !addEmployeeForm.phone.trim() || !addEmployeeForm.zone.trim()) return;
-    const colors = ['#16a34a', '#2563eb', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
-    const newEmp = {
-      id: Date.now(), name: addEmployeeForm.name.trim(), phone: addEmployeeForm.phone.trim(),
-      zone: addEmployeeForm.zone.trim(), status: 'active', collections: 0, withdrawals: 0,
-      customers: 0, performance: 80, color: colors[employees.length % colors.length],
-      role: addEmployeeForm.role, privileges: defaultRolePrivileges[addEmployeeForm.role] || [], photo: null,
+    var colors = ['#16a34a', '#2563eb', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
+    var payload = {
+      name: addEmployeeForm.name.trim(), phone: addEmployeeForm.phone.trim(),
+      zone: addEmployeeForm.zone.trim(), role: addEmployeeForm.role,
+      privileges: defaultRolePrivileges[addEmployeeForm.role] || [],
+      color: colors[employees.length % colors.length],
     };
-    setEmployees([...employees, newEmp]);
-    setShowAddEmployee(false); setAddEmployeeForm({ name: '', phone: '', zone: '', role: 'field_collector' });
-    addToast('Employee added successfully', 'success');
+    apiCall('/api/employees', { method: 'POST', body: JSON.stringify(payload) }).then(function(res) {
+      setEmployees(function(prev) { return [...prev, mapEmp(res.data)]; });
+      setShowAddEmployee(false);
+      setAddEmployeeForm({ name: '', phone: '', zone: '', role: 'field_collector' });
+      addToast('Employee added successfully', 'success');
+    }).catch(function(err) {
+      addToast('Failed to add employee: ' + err.message, 'error');
+    });
   };
 
-  const toggleEmployeeStatus = (empId) => {
-    setEmployees(employees.map(e => e.id === empId ? { ...e, status: e.status === 'active' ? 'suspended' : 'active' } : e));
-    setShowProfileModal(null); addToast('Employee status updated', 'success');
+  const toggleEmployeeStatus = function(empId) {
+    var emp = employees.find(function(e) { return e.id === empId; });
+    if (!emp) return;
+    var newStatus = emp.status === 'active' ? 'suspended' : 'active';
+    apiCall('/api/employees/' + empId + '/status', { method: 'PATCH', body: JSON.stringify({ status: newStatus }) }).then(function(res) {
+      setEmployees(function(prev) { return prev.map(function(e) { return e.id === empId ? mapEmp(res.data) : e; }); });
+      setShowProfileModal(null);
+      addToast('Employee status updated', 'success');
+    }).catch(function(err) {
+      addToast('Failed to update status: ' + err.message, 'error');
+    });
   };
 
-  const handleChangePassword = () => {
-    const roleKey = (currentUser && currentUser.roleKey) || loginForm.role;
-    const currentPwd = userPasswords[roleKey] || (userCredentials[roleKey] && userCredentials[roleKey].password) || '';
-    if (changePasswordForm.current !== currentPwd) { setChangePasswordError('Current password is incorrect'); return; }
+  const handleChangePassword = function() {
     if (changePasswordForm.newPass.length < 6) { setChangePasswordError('Password must be at least 6 characters'); return; }
     if (changePasswordForm.newPass !== changePasswordForm.confirm) { setChangePasswordError('Passwords do not match'); return; }
-    setUserPasswords({ ...userPasswords, [roleKey]: changePasswordForm.newPass });
-    setShowChangePassword(false); setChangePasswordForm({ current: '', newPass: '', confirm: '' }); setChangePasswordError('');
-    addToast('Password changed successfully', 'success');
+    apiCall('/api/auth/change-password', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword: changePasswordForm.current, newPassword: changePasswordForm.newPass })
+    }).then(function() {
+      setShowChangePassword(false);
+      setChangePasswordForm({ current: '', newPass: '', confirm: '' });
+      setChangePasswordError('');
+      addToast('Password changed successfully', 'success');
+    }).catch(function(err) {
+      setChangePasswordError(err.message || 'Failed to change password');
+    });
   };
 
   const handleResetPassword = (targetRoleKey) => {
@@ -713,54 +806,72 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     setShowModal('newTransaction');
   };
 
-  const submitTransaction = () => {
-    if (selectedCustomerForCollection && collectionAmount) {
-      const canApprove = _optionalChain([currentUser, 'optionalAccess', _ap => _ap.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _ap2 => _ap2.role]) === 'Admin' || _optionalChain([currentUser, 'optionalAccess', _ap3 => _ap3.role]) === 'Accountant' || (_optionalChain([currentUser, 'optionalAccess', _ap4 => _ap4.privileges]) || []).includes('approve_transactions');
-      const isWithdrawal = transactionType === 'withdrawal';
-      const txStatus = isWithdrawal && !canApprove ? 'pending' : 'approved';
-      const amt = Number(collectionAmount);
-      const newTx = {
-        id: transactions.length + 1, customer: selectedCustomerForCollection.name, customerId: selectedCustomerForCollection.id,
-        employee: _optionalChain([currentUser, 'optionalAccess', _tx1 => _tx1.name]) || 'Staff', employeeId: _optionalChain([currentUser, 'optionalAccess', _tx2 => _tx2.employeeId]) || 1, amount: amt,
-        type: transactionType, method: collectionMethod, status: txStatus,
-        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), date: '2026-05-15',
-      };
-      setTransactions([newTx, ...transactions]);
+  const submitTransaction = function() {
+    if (!selectedCustomerForCollection || !collectionAmount) return;
+    var amt = Number(collectionAmount);
+    var isWithdrawal = transactionType === 'withdrawal';
+    apiCall('/api/transactions', {
+      method: 'POST',
+      body: JSON.stringify({ customerId: selectedCustomerForCollection.id, amount: amt, type: transactionType, method: collectionMethod, notes: collectionNotes })
+    }).then(function(res) {
+      var newTx = mapTx(res.data);
+      setTransactions(function(prev) { return [newTx, ...prev]; });
       setLastTransaction(newTx);
-      if (txStatus === 'approved') {
-        setCustomers(customers.map(c => c.id === selectedCustomerForCollection.id ? { ...c, balance: isWithdrawal ? c.balance - amt : c.balance + amt, totalDeposits: isWithdrawal ? c.totalDeposits : c.totalDeposits + amt, totalWithdrawals: isWithdrawal ? c.totalWithdrawals + amt : c.totalWithdrawals } : c));
-      }
-      if (isWithdrawal) { setWithdrawalSuccess(true); addToast(txStatus === 'pending' ? `Withdrawal of GH₵${amt.toLocaleString()} submitted — awaiting admin approval` : `Withdrawal of GH₵${amt.toLocaleString()} approved for ${selectedCustomerForCollection.name}`, txStatus === 'pending' ? 'warning' : 'success'); } else { setCollectionSuccess(true); addToast(`GH₵${amt.toLocaleString()} deposited for ${selectedCustomerForCollection.name}`, 'success'); }
-    }
+      setCustomers(function(prev) { return prev.map(function(c) {
+        if (c.id !== selectedCustomerForCollection.id) return c;
+        return Object.assign({}, c, { balance: isWithdrawal ? c.balance - amt : c.balance + amt, totalDeposits: isWithdrawal ? c.totalDeposits : c.totalDeposits + amt, totalWithdrawals: isWithdrawal ? c.totalWithdrawals + amt : c.totalWithdrawals });
+      }); });
+      if (isWithdrawal) { setWithdrawalSuccess(true); addToast('Withdrawal of GH₵' + amt.toLocaleString() + ' approved for ' + selectedCustomerForCollection.name, 'success'); }
+      else { setCollectionSuccess(true); addToast('GH₵' + amt.toLocaleString() + ' deposited for ' + selectedCustomerForCollection.name, 'success'); }
+    }).catch(function(err) {
+      addToast('Transaction failed: ' + err.message, 'error');
+    });
   };
 
-  const handleReassignCustomer = () => {
-    if (showAssignModal && selectedNewEmployee) {
-      setCustomers(customers.map(c => c.id === showAssignModal.id ? { ...c, assignedEmployee: Number(selectedNewEmployee) } : c));
+  const handleReassignCustomer = function() {
+    if (!showAssignModal || !selectedNewEmployee) return;
+    apiCall('/api/customers/' + showAssignModal.id + '/assign', { method: 'PATCH', body: JSON.stringify({ employeeId: selectedNewEmployee }) }).then(function(res) {
+      setCustomers(function(prev) { return prev.map(function(c) { return c.id === showAssignModal.id ? mapCust(res.data) : c; }); });
       setShowAssignModal(null); setSelectedNewEmployee('');
-    }
+    }).catch(function(err) {
+      addToast('Reassign failed: ' + err.message, 'error');
+    });
   };
 
-  const approveTransaction = (txId) => {
-    const tx = transactions.find(t => t.id === txId);
+  const approveTransaction = function(txId) {
+    var tx = transactions.find(function(t) { return t.id === txId; });
     if (!tx) return;
-    const approved = { ...tx, status: 'approved' };
-    const amt = tx.amount;
-    setTransactions(transactions.map(t => t.id === txId ? approved : t));
-    setCustomers(customers.map(c => c.id === tx.customerId ? { ...c, balance: tx.type === 'withdrawal' ? c.balance - amt : c.balance + amt, totalDeposits: tx.type === 'deposit' ? c.totalDeposits + amt : c.totalDeposits, totalWithdrawals: tx.type === 'withdrawal' ? c.totalWithdrawals + amt : c.totalWithdrawals } : c));
-    addToast(`Transaction approved for ${tx.customer}`, 'success');
-    openReceipt(approved);
+    apiCall('/api/transactions/' + txId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'approved' }) }).then(function(res) {
+      var approved = mapTx(res.data);
+      var amt = tx.amount;
+      setTransactions(function(prev) { return prev.map(function(t) { return t.id === txId ? approved : t; }); });
+      setCustomers(function(prev) { return prev.map(function(c) {
+        if (c.id !== tx.customerId) return c;
+        return Object.assign({}, c, { balance: tx.type === 'withdrawal' ? c.balance - amt : c.balance + amt, totalDeposits: tx.type === 'deposit' ? c.totalDeposits + amt : c.totalDeposits, totalWithdrawals: tx.type === 'withdrawal' ? c.totalWithdrawals + amt : c.totalWithdrawals });
+      }); });
+      addToast('Transaction approved for ' + tx.customer, 'success');
+      openReceipt(approved);
+    }).catch(function(err) {
+      addToast('Approval failed: ' + err.message, 'error');
+    });
   };
 
-  const handleClearAllData = () => {
-    setTransactions([]);
-    setCustomers([]);
-    setEmployees([]);
-    setLoans([]);
-    setShowClearDataConfirm(false);
-    setClearDataInput('');
-    setCurrentPage('dashboard');
-    addToast('All demo data cleared. System ready for live use.', 'success');
+  const handleClearAllData = function() {
+    Promise.allSettled([
+      apiCall('/api/transactions', { method: 'DELETE' }),
+      apiCall('/api/customers', { method: 'DELETE' }),
+      apiCall('/api/loans', { method: 'DELETE' }),
+      apiCall('/api/employees', { method: 'DELETE' })
+    ]).then(function() {
+      setTransactions([]);
+      setCustomers([]);
+      setLoans([]);
+      setEmployees([]);
+      setShowClearDataConfirm(false);
+      setClearDataInput('');
+      setCurrentPage('dashboard');
+      addToast('All demo data cleared from database. System ready for live use.', 'success');
+    });
   };
 
   const openRoleModal = (emp) => {
@@ -991,11 +1102,26 @@ async function shareAsPDF(){
 </body></html>`;
   };
 
-  const saveEditedProfile = () => {
+  const saveEditedProfile = function() {
     if (!showEditProfile) return;
-    setEmployees(employees.map(emp => emp.id === showEditProfile.id ? { ...emp, ...editProfileForm } : emp));
-    setShowEditProfile(null);
-    addToast('Profile updated successfully', 'success');
+    apiCall('/api/employees/' + showEditProfile.id, { method: 'PATCH', body: JSON.stringify(editProfileForm) }).then(function(res) {
+      setEmployees(function(prev) { return prev.map(function(emp) { return emp.id === showEditProfile.id ? mapEmp(res.data) : emp; }); });
+      setShowEditProfile(null);
+      addToast('Profile updated successfully', 'success');
+    }).catch(function(err) {
+      addToast('Failed to update profile: ' + err.message, 'error');
+    });
+  };
+
+  const saveAccountProfile = function() {
+    if (!editAccountForm.name || !editAccountForm.name.trim()) { addToast('Name cannot be empty', 'error'); return; }
+    apiCall('/api/auth/me', { method: 'PATCH', body: JSON.stringify({ name: editAccountForm.name.trim(), phone: editAccountForm.phone || '' }) }).then(function(res) {
+      setCurrentUser(function(prev) { return Object.assign({}, prev, { name: res.user.name, phone: res.user.phone || '' }); });
+      setEditAccountMode(false);
+      addToast('Profile updated successfully', 'success');
+    }).catch(function(err) {
+      addToast('Failed to update profile: ' + err.message, 'error');
+    });
   };
 
   const addToast = (message, type = 'success') => {
@@ -1240,33 +1366,16 @@ async function shareAsPDF(){
                   , loginError
                 )
                 , _react2.default.createElement('button', { onClick: handleLogin, disabled: loginLoading || !loginForm.email || !loginForm.password, className: "w-full py-3.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl text-sm font-bold hover:from-green-700 hover:to-green-800 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg transition-all",}
-                  , loginLoading ? _react2.default.createElement(_react2.default.Fragment, null, _react2.default.createElement(_lucidereact.RefreshCw, { size: 16, className: "animate-spin",}), " Verifying...") : _react2.default.createElement(_react2.default.Fragment, null, _react2.default.createElement(_lucidereact.LogIn, { size: 16,}), " Sign In to Awinbire")
+                  , loginLoading ? _react2.default.createElement(_react2.default.Fragment, null, _react2.default.createElement(_lucidereact.RefreshCw, { size: 16, className: "animate-spin",}), " Signing in...") : _react2.default.createElement(_react2.default.Fragment, null, _react2.default.createElement(_lucidereact.LogIn, { size: 16,}), " Sign In to Awinbire")
+                )
+                , _react2.default.createElement('button', { type: "button", onClick: function() {
+                    fetch('/api/auth/seed-admin', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                      .then(function(r) { return r.json(); })
+                      .then(function(d) { if(d.success){alert('Admin account created!\nEmail: admin@awinbire.gh\nPassword: admin123\n\nPlease sign in and change your password immediately.');setLoginError('');}else{setLoginError(d.message||'Setup failed');} })
+                      .catch(function() { setLoginError('Setup request failed'); });
+                  }, className: `w-full py-2 text-xs ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'} text-center underline`,}, "First time? Create default admin account"
                 )
 
-              )
-            )
-          )
-        )
-        , _react2.default.createElement(_framermotion.AnimatePresence, null
-          , show2FA && (
-            _react2.default.createElement(_framermotion.motion.div, { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, className: "fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4",}
-              , _react2.default.createElement(_framermotion.motion.div, { initial: { scale: 0.9, y: 20 }, animate: { scale: 1, y: 0 }, className: `${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl w-full max-w-sm p-6 shadow-2xl`,}
-                , _react2.default.createElement('div', { className: "text-center mb-5",}
-                  , _react2.default.createElement('div', { className: "w-16 h-16 bg-gradient-to-br from-green-500 to-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg",}
-                    , _react2.default.createElement(_lucidereact.Shield, { size: 30, className: "text-white",})
-                  )
-                  , _react2.default.createElement('h3', { className: `font-extrabold text-lg ${textPrimary}`,}, "OTP Verification")
-                  , _react2.default.createElement('p', { className: `text-sm ${textSecondary} mt-1`,}, "Enter any 6-digit code to continue")
-                )
-                , _react2.default.createElement('div', { className: "flex justify-center gap-2 mb-5",}
-                  , [0, 1, 2, 3, 4, 5].map((i) => (
-                    _react2.default.createElement('input', { key: i, ref: (el) => otpRefs.current[i] = el, type: "text", inputMode: "numeric", maxLength: 1, value: twoFACode[i], onChange: (e) => handleOTPChange(i, e.target.value.replace(/\D/g, '')), onKeyDown: (e) => handleOTPKeyDown(i, e), className: `w-11 h-14 text-center text-xl font-bold rounded-xl border-2 ${twoFACode[i] ? 'border-green-500 bg-green-50' : (darkMode ? 'border-gray-600' : 'border-gray-300')} ${textPrimary} focus:border-green-500 outline-none transition-all`,})
-                  ))
-                )
-                , _react2.default.createElement('button', { onClick: handle2FAVerify, disabled: twoFACode.join('').length < 6, className: "w-full py-3.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg",}
-                  , _react2.default.createElement(_lucidereact.ShieldCheck, { size: 16,}), " Verify & Enter"
-                )
-                , _react2.default.createElement('button', { onClick: () => { setShow2FA(false); setTwoFACode(['', '', '', '', '', '']); }, className: `w-full mt-3 py-2 text-sm ${textSecondary} hover:underline`,}, "← Back to Login")
               )
             )
           )
@@ -1339,11 +1448,11 @@ async function shareAsPDF(){
           )
           , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}`,}
             , _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3`,}, "Quick Actions" )
-            , _react2.default.createElement('div', { className: "space-y-2",}
-              , _react2.default.createElement('button', { onClick: () => openTransaction('deposit'), className: "w-full py-3 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 flex items-center justify-center gap-2"           ,}, _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 16,} ), " Record Deposit"  )
-              , _react2.default.createElement('button', { onClick: () => openTransaction('withdrawal'), className: "w-full py-3 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 flex items-center justify-center gap-2"           ,}, _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 16,} ), " Process Withdrawal"  )
-              , _react2.default.createElement('button', { onClick: () => setCurrentPage('assignments'), className: "w-full py-3 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 flex items-center justify-center gap-2"           ,}, _react2.default.createElement(_lucidereact.UserCog, { size: 16,} ), " Manage Assignments"  )
-              , _optionalChain([currentUser, 'optionalAccess', _17 => _17.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setCurrentPage('roles'), className: "w-full py-3 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 flex items-center justify-center gap-2"           ,}, _react2.default.createElement(_lucidereact.Crown, { size: 16,} ), " Roles & Privileges"   )
+            , _react2.default.createElement('div', { className: "grid grid-cols-2 gap-2",}
+              , _react2.default.createElement('button', { onClick: () => openTransaction('deposit'), className: "py-2.5 bg-green-600 text-white rounded-xl text-xs font-medium hover:bg-green-700 flex items-center justify-center gap-1.5"           ,}, _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 14,} ), " Deposit"  )
+              , _react2.default.createElement('button', { onClick: () => openTransaction('withdrawal'), className: "py-2.5 bg-red-600 text-white rounded-xl text-xs font-medium hover:bg-red-700 flex items-center justify-center gap-1.5"           ,}, _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 14,} ), " Withdraw"  )
+              , _react2.default.createElement('button', { onClick: () => setCurrentPage('assignments'), className: "py-2.5 bg-blue-600 text-white rounded-xl text-xs font-medium hover:bg-blue-700 flex items-center justify-center gap-1.5"           ,}, _react2.default.createElement(_lucidereact.UserCog, { size: 14,} ), " Assign"  )
+              , _optionalChain([currentUser, 'optionalAccess', _17 => _17.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setCurrentPage('roles'), className: "py-2.5 bg-purple-600 text-white rounded-xl text-xs font-medium hover:bg-purple-700 flex items-center justify-center gap-1.5"           ,}, _react2.default.createElement(_lucidereact.Crown, { size: 14,} ), " Roles"   )
             )
           )
         )
@@ -1724,21 +1833,27 @@ async function shareAsPDF(){
           _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3` }, "Deposits by Zone"),
           _react2.default.createElement(_recharts.ResponsiveContainer, { width: "100%", height: 220 },
             _react2.default.createElement(_recharts.PieChart, null,
-              _react2.default.createElement(_recharts.Pie, { data: depositsByZone, cx: "50%", cy: "50%", innerRadius: 50, outerRadius: 80, paddingAngle: 3, dataKey: "value", nameKey: "name", label: function(entry) { return entry.name.split(' ')[0]; }, labelLine: false },
-                depositsByZone.map((entry, index) => _react2.default.createElement(_recharts.Cell, { key: `cell-${index}`, fill: COLORS[index % COLORS.length] }))
-              ),
+              depositsByZoneData.length > 0
+                ? _react2.default.createElement(_recharts.Pie, { data: depositsByZoneData, cx: "50%", cy: "50%", innerRadius: 50, outerRadius: 80, paddingAngle: 3, dataKey: "value", nameKey: "name", label: function(entry) { return entry.name.split(' ')[0]; }, labelLine: false },
+                    depositsByZoneData.map(function(entry, index) { return _react2.default.createElement(_recharts.Cell, { key: 'cell-'+index, fill: COLORS[index % COLORS.length] }); })
+                  )
+                : _react2.default.createElement(_recharts.Pie, { data: [{name:'No data',value:1}], cx: "50%", cy: "50%", innerRadius: 50, outerRadius: 80, dataKey: "value" },
+                    _react2.default.createElement(_recharts.Cell, { fill: '#e5e7eb' })
+                  ),
               _react2.default.createElement(_recharts.Tooltip, { formatter: function(value) { return ['GH₵' + value.toLocaleString(), 'Deposits']; } })
             )
           ),
-          _react2.default.createElement('div', { className: "grid grid-cols-2 gap-2 mt-2" },
-            depositsByZone.map((zone, idx) => (
-              _react2.default.createElement('div', { key: zone.name, className: "flex items-center gap-2" },
-                _react2.default.createElement('div', { className: "w-3 h-3 rounded-full flex-shrink-0", style: { backgroundColor: COLORS[idx % COLORS.length] } }),
-                _react2.default.createElement('span', { className: `text-xs ${textSecondary} truncate` }, zone.name),
-                _react2.default.createElement('span', { className: `text-xs font-medium ${textPrimary} ml-auto` }, 'GH₵' + (zone.value / 1000).toFixed(0) + 'k')
+          depositsByZoneData.length > 0
+            ? _react2.default.createElement('div', { className: "grid grid-cols-2 gap-2 mt-2" },
+                depositsByZoneData.map(function(zone, idx) {
+                  return _react2.default.createElement('div', { key: zone.name, className: "flex items-center gap-2" },
+                    _react2.default.createElement('div', { className: "w-3 h-3 rounded-full flex-shrink-0", style: { backgroundColor: COLORS[idx % COLORS.length] } }),
+                    _react2.default.createElement('span', { className: `text-xs ${textSecondary} truncate` }, zone.name),
+                    _react2.default.createElement('span', { className: `text-xs font-medium ${textPrimary} ml-auto` }, 'GH₵' + (zone.value / 1000).toFixed(0) + 'k')
+                  );
+                })
               )
-            ))
-          )
+            : _react2.default.createElement('p', { className: `text-xs ${textSecondary} text-center mt-2` }, "No deposit data available")
         ),
         _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}` },
           _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3` }, "Employee Performance"),
@@ -1788,12 +1903,19 @@ async function shareAsPDF(){
         )
       )
       , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-6 shadow-sm border ${borderColor}`,}
-        , _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-4`,}, "Account Information" )
-        , _react2.default.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-2 gap-4"   ,}
-          , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Full Name" ), _react2.default.createElement('input', { type: "text", value: _optionalChain([currentUser, 'optionalAccess', _54 => _54.name]) || '', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`,} ))
-          , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Email"), _react2.default.createElement('input', { type: "text", value: loginForm.email || '', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`,} ))
-          , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Role"), _react2.default.createElement('input', { type: "text", value: _optionalChain([currentUser, 'optionalAccess', _55 => _55.role]) || '', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`,} ))
-          , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Status"), _react2.default.createElement('input', { type: "text", value: "Active", readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`,} ))
+        , _react2.default.createElement('div', { className: "flex items-center justify-between mb-4",}
+          , _react2.default.createElement('h3', { className: `font-semibold ${textPrimary}`,}, "Account Information")
+          , !editAccountMode && _react2.default.createElement('button', { onClick: function(){ setEditAccountMode(true); setEditAccountForm({ name: (currentUser&&currentUser.name)||'', phone: (currentUser&&currentUser.phone)||'' }); }, className: "px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700",}, "Edit")
+        )
+        , _react2.default.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-2 gap-4",}
+          , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Full Name"), editAccountMode ? _react2.default.createElement('input', { type: "text", value: editAccountForm.name||'', onChange: function(e){ setEditAccountForm(function(p){ return Object.assign({},p,{name:e.target.value}); }); }, className: `w-full mt-1 px-4 py-3 rounded-xl border border-green-400 ${darkMode?'bg-gray-700':'bg-white'} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-green-500`,}) : _react2.default.createElement('input', { type: "text", value: (currentUser&&currentUser.name)||'', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}))
+          , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Phone"), editAccountMode ? _react2.default.createElement('input', { type: "tel", value: editAccountForm.phone||'', onChange: function(e){ setEditAccountForm(function(p){ return Object.assign({},p,{phone:e.target.value}); }); }, className: `w-full mt-1 px-4 py-3 rounded-xl border border-green-400 ${darkMode?'bg-gray-700':'bg-white'} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-green-500`,}) : _react2.default.createElement('input', { type: "text", value: (currentUser&&currentUser.phone)||'', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}))
+          , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Email"), _react2.default.createElement('input', { type: "text", value: (currentUser&&currentUser.email)||loginForm.email||'', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}))
+          , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Role"), _react2.default.createElement('input', { type: "text", value: (currentUser&&currentUser.role)||'', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}))
+        )
+        , editAccountMode && _react2.default.createElement('div', { className: "flex gap-2 mt-4",}
+          , _react2.default.createElement('button', { onClick: function(){ setEditAccountMode(false); }, className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
+          , _react2.default.createElement('button', { onClick: saveAccountProfile, className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700",}, "Save Changes")
         )
       )
       , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-6 shadow-sm border ${borderColor}`,}

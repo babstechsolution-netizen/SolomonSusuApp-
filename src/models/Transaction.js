@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const transactionSchema = new mongoose.Schema({
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
   customerName: { type: String },
-  employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+  employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
   employeeName: { type: String },
   amount: { type: Number, required: true, min: 0.01 },
   type: { type: String, enum: ['deposit', 'withdrawal'], required: true },

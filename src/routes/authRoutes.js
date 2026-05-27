@@ -55,6 +55,20 @@ router.patch('/change-password', protect, async (req, res) => {
   }
 });
 
+// PATCH /api/auth/me  — update own profile (name, phone)
+router.patch('/me', protect, async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+    const updates = {};
+    if (name && name.trim()) updates.name = name.trim();
+    if (phone !== undefined) updates.phone = phone;
+    const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true });
+    res.json({ success: true, user: user.toPublic() });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
 // POST /api/auth/seed-admin  (run once to create the first super admin)
 router.post('/seed-admin', async (req, res) => {
   try {
