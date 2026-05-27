@@ -11,12 +11,12 @@ const signToken = (id) => jwt.sign({ id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password required.' });
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ success: false, message: 'Username and password required.' });
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ username: username.toLowerCase().trim() });
     if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+      return res.status(401).json({ success: false, message: 'Invalid username or password.' });
     }
     if (user.status !== 'active') {
       return res.status(403).json({ success: false, message: 'Account suspended. Contact admin.' });
@@ -55,13 +55,14 @@ router.patch('/change-password', protect, async (req, res) => {
   }
 });
 
-// PATCH /api/auth/me  — update own profile (name, phone)
+// PATCH /api/auth/me  — update own profile (name, phone, username)
 router.patch('/me', protect, async (req, res) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, username } = req.body;
     const updates = {};
     if (name && name.trim()) updates.name = name.trim();
     if (phone !== undefined) updates.phone = phone;
+    if (username && username.trim()) updates.username = username.toLowerCase().trim();
     const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true });
     res.json({ success: true, user: user.toPublic() });
   } catch (err) {
@@ -72,12 +73,20 @@ router.patch('/me', protect, async (req, res) => {
 // POST /api/auth/seed-admin  (run once to create the first super admin)
 router.post('/seed-admin', async (req, res) => {
   try {
-    const exists = await User.findOne({ role: 'Super Admin' });
-    if (exists) return res.status(400).json({ success: false, message: 'Admin already exists.' });
+    // If an existing Super Admin has no username yet, add it
+    const existingAdmin = await User.findOne({ role: 'Super Admin' });
+    if (existingAdmin && !existingAdmin.username) {
+      existingAdmin.username = 'admin';
+      await existingAdmin.save({ validateModifiedOnly: true });
+      return res.json({ success: true, message: 'Admin updated with username.', user: existingAdmin.toPublic() });
+    }
+    if (existingAdmin) {
+      return res.status(400).json({ success: false, message: 'Admin already exists.' });
+    }
 
     const admin = await User.create({
       name: 'Super Admin',
-      email: 'admin@awinbire.gh',
+      username: 'admin',
       password: 'admin123',
       role: 'Super Admin',
       roleKey: 'superadmin',

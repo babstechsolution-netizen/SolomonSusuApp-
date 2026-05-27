@@ -416,7 +416,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [currentPage, setCurrentPage] = _react.useState.call(void 0, 'dashboard');
   const [isAuthenticated, setIsAuthenticated] = _react.useState.call(void 0, false);
   const [currentUser, setCurrentUser] = _react.useState.call(void 0, null);
-  const [loginForm, setLoginForm] = _react.useState.call(void 0, { email: '', password: '' });
+  const [loginForm, setLoginForm] = _react.useState.call(void 0, { username: '', password: '' });
   const [loginError, setLoginError] = _react.useState.call(void 0, '');
   const [showPassword, setShowPassword] = _react.useState.call(void 0, false);
   const [loginLoading, setLoginLoading] = _react.useState.call(void 0, false);
@@ -673,7 +673,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: loginForm.email, password: loginForm.password })
+      body: JSON.stringify({ username: loginForm.username, password: loginForm.password })
     }).then(function(res) {
       return res.json().then(function(data) {
         if (!res.ok) throw new Error(data.message || 'Login failed');
@@ -685,7 +685,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
       var u = data.user;
       var colorMap = { superadmin: '#dc2626', admin: '#2563eb', employee: '#16a34a', customer: '#9333ea', accountant: '#ea580c' };
       var avatarLetters = (u.name || '').split(' ').map(function(n){return n[0]||'';}).join('').substring(0,2).toUpperCase();
-      setCurrentUser({ name: u.name, email: u.email, role: u.role, phone: u.phone || '', avatar: avatarLetters, color: colorMap[u.roleKey] || '#3b82f6', roleKey: u.roleKey, photo: u.photo || null, employeeId: u.employeeId || null });
+      setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: avatarLetters, color: colorMap[u.roleKey] || '#3b82f6', roleKey: u.roleKey, photo: u.photo || null, employeeId: u.employeeId || null });
       setIsAuthenticated(true);
       setCurrentPage('dashboard');
       setLoginLoading(false);
@@ -729,7 +729,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     setAuthToken(null);
     setIsAuthenticated(false); setCurrentUser(null); setCurrentPage('dashboard');
     setEmployees([]); setCustomers([]); setTransactions([]); setLoans([]);
-    setLoginForm({ email: '', password: '' }); setSidebarOpen(false);
+    setLoginForm({ username: '', password: '' }); setSidebarOpen(false);
     setShow2FA(false); setTwoFACode(['', '', '', '', '', '']);
   };
 
@@ -1371,8 +1371,8 @@ async function shareAsPDF(){
               )
               , _react2.default.createElement('div', { className: "px-6 pb-6 pt-5 space-y-3",}
                 , _react2.default.createElement('div', { className: "relative",}
-                  , _react2.default.createElement(_lucidereact.Mail, { size: 15, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400",})
-                  , _react2.default.createElement('input', { type: "email", value: loginForm.email, onChange: (e) => setLoginForm({ ...loginForm, email: e.target.value }), onKeyDown: (e) => e.key === 'Enter' && handleLogin(), placeholder: "Email address", className: `w-full pl-10 pr-4 py-3 rounded-xl border ${darkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'} ${textPrimary} text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`,})
+                  , _react2.default.createElement(_lucidereact.User, { size: 15, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400",})
+                  , _react2.default.createElement('input', { type: "text", value: loginForm.username, onChange: (e) => setLoginForm({ ...loginForm, username: e.target.value }), onKeyDown: (e) => e.key === 'Enter' && handleLogin(), placeholder: "Username", autoComplete: "username", className: `w-full pl-10 pr-4 py-3 rounded-xl border ${darkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'} ${textPrimary} text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`,})
                 )
                 , _react2.default.createElement('div', { className: "relative",}
                   , _react2.default.createElement(_lucidereact.Lock, { size: 15, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400",})
@@ -1385,7 +1385,7 @@ async function shareAsPDF(){
                   , _react2.default.createElement(_lucidereact.AlertTriangle, { size: 13,})
                   , loginError
                 )
-                , _react2.default.createElement('button', { onClick: handleLogin, disabled: loginLoading || !loginForm.email || !loginForm.password, className: "w-full py-3.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl text-sm font-bold hover:from-green-700 hover:to-green-800 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg transition-all",}
+                , _react2.default.createElement('button', { onClick: handleLogin, disabled: loginLoading || !loginForm.username || !loginForm.password, className: "w-full py-3.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl text-sm font-bold hover:from-green-700 hover:to-green-800 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg transition-all",}
                   , loginLoading ? _react2.default.createElement(_react2.default.Fragment, null, _react2.default.createElement(_lucidereact.RefreshCw, { size: 16, className: "animate-spin",}), " Signing in...") : _react2.default.createElement(_react2.default.Fragment, null, _react2.default.createElement(_lucidereact.LogIn, { size: 16,}), " Sign In to Awinbire")
                 )
                 , (serverStatus === 'unreachable' || serverStatus === 'db_error') && _react2.default.createElement('div', { className: "text-xs bg-red-50 border border-red-200 text-red-700 rounded-xl p-3",}
@@ -1398,7 +1398,7 @@ async function shareAsPDF(){
                       .then(function(r) { return r.json(); })
                       .then(function(d) {
                         if (d.success) {
-                          setLoginForm({ email: 'admin@awinbire.gh', password: 'admin123' });
+                          setLoginForm({ username: 'admin', password: 'admin123' });
                           setLoginError('');
                           addToast('Default admin created. Credentials filled — click Sign In.', 'success');
                         } else {
@@ -1953,7 +1953,7 @@ async function shareAsPDF(){
         , _react2.default.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-2 gap-4",}
           , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Full Name"), editAccountMode ? _react2.default.createElement('input', { type: "text", value: editAccountForm.name||'', onChange: function(e){ setEditAccountForm(function(p){ return Object.assign({},p,{name:e.target.value}); }); }, className: `w-full mt-1 px-4 py-3 rounded-xl border border-green-400 ${darkMode?'bg-gray-700':'bg-white'} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-green-500`,}) : _react2.default.createElement('input', { type: "text", value: (currentUser&&currentUser.name)||'', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}))
           , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Phone"), editAccountMode ? _react2.default.createElement('input', { type: "tel", value: editAccountForm.phone||'', onChange: function(e){ setEditAccountForm(function(p){ return Object.assign({},p,{phone:e.target.value}); }); }, className: `w-full mt-1 px-4 py-3 rounded-xl border border-green-400 ${darkMode?'bg-gray-700':'bg-white'} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-green-500`,}) : _react2.default.createElement('input', { type: "text", value: (currentUser&&currentUser.phone)||'', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}))
-          , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Email"), _react2.default.createElement('input', { type: "text", value: (currentUser&&currentUser.email)||loginForm.email||'', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}))
+          , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Username"), _react2.default.createElement('input', { type: "text", value: (currentUser&&currentUser.username)||'', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}))
           , _react2.default.createElement('div', null, _react2.default.createElement('label', { className: `text-xs font-medium ${textSecondary}`,}, "Role"), _react2.default.createElement('input', { type: "text", value: (currentUser&&currentUser.role)||'', readOnly: true, className: `w-full mt-1 px-4 py-3 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}))
         )
         , editAccountMode && _react2.default.createElement('div', { className: "flex gap-2 mt-4",}
