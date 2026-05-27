@@ -130,13 +130,7 @@ const weeklyChartData = [
 ];
 
 
-const notifications = [
-  { id: 1, type: 'withdrawal', message: 'Withdrawal of GH₵2,000 processed for Grace Addo by Kofi Boateng', time: '2 min ago', read: false },
-  { id: 2, type: 'alert', message: 'Suspicious duplicate entry detected for Grace Addo', time: '15 min ago', read: false },
-  { id: 3, type: 'approval', message: 'Collection #4521 approved successfully', time: '30 min ago', read: true },
-  { id: 4, type: 'assignment', message: 'Customer Mercy Agyemang reassigned to Yaw Owusu', time: '1 hr ago', read: true },
-  { id: 5, type: 'withdrawal', message: 'Large withdrawal request: GH₵5,000 by Emmanuel Kwei', time: '2 hrs ago', read: true },
-];
+const notifications = [];
 
 const loansData = [
   { id: 1, customerId: 4, customerName: 'Emmanuel Kwei', amount: 5000, outstanding: 3500, monthlyPayment: 583, nextPaymentDate: '2026-06-01', disbursedDate: '2026-01-15', status: 'active', interestRate: 5, purpose: 'Stock purchase', officer: 'Kofi Boateng' },
@@ -146,22 +140,7 @@ const loansData = [
   { id: 5, customerId: 16, customerName: 'Michael Osei', amount: 10000, outstanding: 8500, monthlyPayment: 900, nextPaymentDate: '2026-06-10', disbursedDate: '2026-03-01', status: 'active', interestRate: 4, purpose: 'Vehicle purchase', officer: 'Kofi Boateng' },
 ];
 
-const activityLogData = [
-  { id: 1, type: 'deposit', actor: 'Kwame Asante', action: 'Recorded deposit of GH₵500 for Abena Pokua', time: '09:30 AM', date: '2026-05-17' },
-  { id: 2, type: 'withdrawal', actor: 'Kofi Boateng', action: 'Processed withdrawal of GH₵2,000 for Grace Addo', time: '10:15 AM', date: '2026-05-17' },
-  { id: 3, type: 'alert', actor: 'System', action: 'Suspicious duplicate entry detected for Grace Addo', time: '10:20 AM', date: '2026-05-17' },
-  { id: 4, type: 'login', actor: 'Ama Mensah', action: 'Logged in from mobile device', time: '08:00 AM', date: '2026-05-17' },
-  { id: 5, type: 'assignment', actor: 'Nana Kweku Mensah', action: 'Reassigned Mercy Agyemang from Akua Darko to Yaw Owusu', time: '02:00 PM', date: '2026-05-16' },
-  { id: 6, type: 'role', actor: 'Nana Kweku Mensah', action: "Updated Akua Darko's role to Field Collector (Suspended)", time: '01:30 PM', date: '2026-05-16' },
-  { id: 7, type: 'loan', actor: 'Nana Kweku Mensah', action: 'Approved loan of GH₵10,000 for Michael Osei', time: '11:00 AM', date: '2026-05-16' },
-  { id: 8, type: 'deposit', actor: 'Ama Mensah', action: 'Recorded deposit of GH₵1,200 for Samuel Tetteh', time: '09:00 AM', date: '2026-05-12' },
-  { id: 9, type: 'withdrawal', actor: 'Kwame Asante', action: 'Processed large withdrawal of GH₵5,000 for Emmanuel Kwei', time: '10:00 AM', date: '2026-05-10' },
-  { id: 10, type: 'login', actor: 'Nana Kweku Mensah', action: 'Admin login from new IP address (197.255.x.x)', time: '07:45 AM', date: '2026-05-10' },
-  { id: 11, type: 'alert', actor: 'System', action: 'Akua Darko (Madina Market) missed 3 collection targets', time: '05:00 PM', date: '2026-05-09' },
-  { id: 12, type: 'role', actor: 'Nana Kweku Mensah', action: 'Added privilege "Generate Receipts" to Kofi Boateng', time: '03:00 PM', date: '2026-05-08' },
-  { id: 13, type: 'loan', actor: 'Nana Kweku Mensah', action: 'Loan payment of GH₵700 received from Joseph Antwi', time: '11:30 AM', date: '2026-05-08' },
-  { id: 14, type: 'assignment', actor: 'Abena Serwaa', action: 'Assigned 3 new customers to Kwame Asante (Makola Market)', time: '09:15 AM', date: '2026-05-07' },
-];
+const activityLogData = [];
 
 const depositsByZone = [
   { name: 'Osu Oxford St', value: 152000 },
@@ -419,6 +398,9 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [loginForm, setLoginForm] = _react.useState.call(void 0, { username: '', password: '' });
   const [loginError, setLoginError] = _react.useState.call(void 0, '');
   const [showPassword, setShowPassword] = _react.useState.call(void 0, false);
+  const [showCurrPass, setShowCurrPass] = _react.useState.call(void 0, false);
+  const [showNewPass, setShowNewPass] = _react.useState.call(void 0, false);
+  const [showConfirmPass, setShowConfirmPass] = _react.useState.call(void 0, false);
   const [loginLoading, setLoginLoading] = _react.useState.call(void 0, false);
   const [serverStatus, setServerStatus] = _react.useState.call(void 0, 'checking');
   const [showNotifications, setShowNotifications] = _react.useState.call(void 0, false);
@@ -462,6 +444,10 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [authToken, setAuthToken] = _react.useState.call(void 0, typeof localStorage !== 'undefined' ? localStorage.getItem('susu_token') : null);
   const [showAddEmployee, setShowAddEmployee] = _react.useState.call(void 0, false);
   const [addEmployeeForm, setAddEmployeeForm] = _react.useState.call(void 0, { name: '', phone: '', zone: '', role: 'field_collector' });
+  const [showAddCustomer, setShowAddCustomer] = _react.useState.call(void 0, false);
+  const [addCustomerForm, setAddCustomerForm] = _react.useState.call(void 0, { name: '', phone: '', business: '', location: '' });
+  const [addCustomerLoading, setAddCustomerLoading] = _react.useState.call(void 0, false);
+  const [addCustomerError, setAddCustomerError] = _react.useState.call(void 0, '');
   const [showChangePassword, setShowChangePassword] = _react.useState.call(void 0, false);
   const [changePasswordForm, setChangePasswordForm] = _react.useState.call(void 0, { current: '', newPass: '', confirm: '' });
   const [changePasswordError, setChangePasswordError] = _react.useState.call(void 0, '');
@@ -754,6 +740,34 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
       addToast('Employee added successfully', 'success');
     }).catch(function(err) {
       addToast('Failed to add employee: ' + err.message, 'error');
+    });
+  };
+
+  const handleSaveNewCustomer = function() {
+    if (!addCustomerForm.name.trim() || !addCustomerForm.phone.trim()) {
+      setAddCustomerError('Name and phone are required.');
+      return;
+    }
+    setAddCustomerLoading(true);
+    setAddCustomerError('');
+    var colors = ['#16a34a', '#2563eb', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#ec4899', '#14b8a6'];
+    var payload = {
+      name: addCustomerForm.name.trim(),
+      phone: addCustomerForm.phone.trim(),
+      business: addCustomerForm.business.trim(),
+      location: addCustomerForm.location.trim(),
+      color: colors[customers.length % colors.length],
+      status: 'active',
+    };
+    apiCall('/api/customers', { method: 'POST', body: JSON.stringify(payload) }).then(function(res) {
+      setCustomers(function(prev) { return [...prev, mapCust(res.data)]; });
+      setShowAddCustomer(false);
+      setAddCustomerForm({ name: '', phone: '', business: '', location: '' });
+      setAddCustomerLoading(false);
+      addToast('Customer registered successfully', 'success');
+    }).catch(function(err) {
+      setAddCustomerError(err.message || 'Failed to register customer');
+      setAddCustomerLoading(false);
     });
   };
 
@@ -1704,7 +1718,7 @@ async function shareAsPDF(){
       _react2.default.createElement('div', { className: "space-y-4",}
         , _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"     ,}
           , _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}`,}, _optionalChain([currentUser, 'optionalAccess', _43 => _43.role]) === 'Field Collector' ? 'My Customers' : 'Customers', " (" , displayCustomers.length, ")")
-          , _optionalChain([currentUser, 'optionalAccess', _44 => _44.role]) !== 'Field Collector' && _react2.default.createElement('button', { className: "bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"         ,}, _react2.default.createElement(_lucidereact.Plus, { size: 16,} ), " Register" )
+          , _optionalChain([currentUser, 'optionalAccess', _44 => _44.role]) !== 'Field Collector' && _react2.default.createElement('button', { onClick: () => { setAddCustomerForm({ name: '', phone: '', business: '', location: '' }); setAddCustomerError(''); setShowAddCustomer(true); }, className: "bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" }, _react2.default.createElement(_lucidereact.Plus, { size: 16 }), " Register Customer")
         )
         , _react2.default.createElement('div', { className: "relative",}, _react2.default.createElement(_lucidereact.Search, { size: 16, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"    ,} ), _react2.default.createElement('input', { type: "text", value: searchTerm, onChange: (e) => { setSearchTerm(e.target.value); setCustomerPage(1); }, placeholder: "Search by name, business, or location..."     , className: `w-full pl-9 pr-4 py-2 rounded-lg border ${borderColor} ${cardBg} ${textPrimary} text-sm`,} ))
         , _react2.default.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"    ,}
@@ -1907,7 +1921,32 @@ async function shareAsPDF(){
   );
 
   const renderNotificationsPage = () => (
-    _react2.default.createElement('div', { className: "space-y-4",}, _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}`,}, "Notifications"), _react2.default.createElement('div', { className: "space-y-2",}, notifications.map((n) => (_react2.default.createElement('div', { key: n.id, className: `${cardBg} rounded-xl p-4 shadow-sm border ${!n.read ? 'border-l-4 border-l-blue-500' : ''} ${borderColor}`,}, _react2.default.createElement('div', { className: "flex items-start gap-3"  ,}, _react2.default.createElement('div', { className: `p-2 rounded-full ${n.type === 'withdrawal' ? 'bg-red-100' : n.type === 'alert' ? 'bg-yellow-100' : 'bg-blue-100'}`,}, n.type === 'withdrawal' ? _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 16, className: "text-red-600",} ) : n.type === 'alert' ? _react2.default.createElement(_lucidereact.AlertTriangle, { size: 16, className: "text-yellow-600",} ) : _react2.default.createElement(_lucidereact.Bell, { size: 16, className: "text-blue-600",} )), _react2.default.createElement('div', null, _react2.default.createElement('p', { className: `text-sm ${textPrimary}`,}, n.message), _react2.default.createElement('p', { className: `text-xs ${textSecondary} mt-1`,}, n.time))))))))
+    _react2.default.createElement('div', { className: "space-y-4" },
+      _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}` }, "Notifications"),
+      notifications.length === 0
+        ? _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-10 text-center border ${borderColor}` },
+            _react2.default.createElement(_lucidereact.Bell, { size: 40, className: "text-gray-300 mx-auto mb-3" }),
+            _react2.default.createElement('p', { className: `font-medium ${textSecondary}` }, "No notifications yet"),
+            _react2.default.createElement('p', { className: `text-xs ${textSecondary} mt-1` }, "System notifications will appear here")
+          )
+        : _react2.default.createElement('div', { className: "space-y-2" },
+            notifications.map((n) => (
+              _react2.default.createElement('div', { key: n.id, className: `${cardBg} rounded-xl p-4 shadow-sm border ${!n.read ? 'border-l-4 border-l-blue-500' : ''} ${borderColor}` },
+                _react2.default.createElement('div', { className: "flex items-start gap-3" },
+                  _react2.default.createElement('div', { className: `p-2 rounded-full ${n.type === 'withdrawal' ? 'bg-red-100' : n.type === 'alert' ? 'bg-yellow-100' : 'bg-blue-100'}` },
+                    n.type === 'withdrawal' ? _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 16, className: "text-red-600" }) :
+                    n.type === 'alert' ? _react2.default.createElement(_lucidereact.AlertTriangle, { size: 16, className: "text-yellow-600" }) :
+                    _react2.default.createElement(_lucidereact.Bell, { size: 16, className: "text-blue-600" })
+                  ),
+                  _react2.default.createElement('div', null,
+                    _react2.default.createElement('p', { className: `text-sm ${textPrimary}` }, n.message),
+                    _react2.default.createElement('p', { className: `text-xs ${textSecondary} mt-1` }, n.time)
+                  )
+                )
+              )
+            ))
+          )
+    )
   );
 
   // SETTINGS PAGE
@@ -2102,7 +2141,13 @@ async function shareAsPDF(){
         )
       ),
       _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}` },
-        _react2.default.createElement('div', { className: "space-y-2" },
+        activityLogData.length === 0
+          ? _react2.default.createElement('div', { className: "py-10 text-center" },
+              _react2.default.createElement(_lucidereact.Clock, { size: 40, className: "text-gray-300 mx-auto mb-3" }),
+              _react2.default.createElement('p', { className: `font-medium ${textSecondary}` }, "No activity recorded yet"),
+              _react2.default.createElement('p', { className: `text-xs ${textSecondary} mt-1` }, "Actions taken in the system will appear here")
+            )
+          : _react2.default.createElement('div', { className: "space-y-2" },
           activityLogData.map(log => (
             _react2.default.createElement('div', { key: log.id, className: `flex items-start gap-3 p-3 rounded-xl border ${borderColor} hover:bg-gray-50 transition-colors` },
               _react2.default.createElement('div', { className: `p-2 rounded-full flex-shrink-0 ${log.type === 'deposit' ? 'bg-green-100' : log.type === 'withdrawal' ? 'bg-red-100' : log.type === 'alert' ? 'bg-yellow-100' : log.type === 'loan' ? 'bg-blue-100' : log.type === 'role' ? 'bg-purple-100' : log.type === 'assignment' ? 'bg-indigo-100' : 'bg-gray-100'}` },
@@ -2729,16 +2774,25 @@ async function shareAsPDF(){
             , _react2.default.createElement('div', { className: "p-5 space-y-3",}
               , changePasswordError && _react2.default.createElement('div', { className: "p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600",}, changePasswordError)
               , _react2.default.createElement('div', null
-                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Current Password")
-                , _react2.default.createElement('input', { type: "password", value: changePasswordForm.current, onChange: (e) => setChangePasswordForm({ ...changePasswordForm, current: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Enter current password",})
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block` }, "Current Password")
+                , _react2.default.createElement('div', { className: "relative" },
+                    _react2.default.createElement('input', { type: showCurrPass ? 'text' : 'password', value: changePasswordForm.current, onChange: (e) => setChangePasswordForm({ ...changePasswordForm, current: e.target.value }), className: `w-full px-3 pr-10 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Enter current password" }),
+                    _react2.default.createElement('button', { type: "button", onClick: () => setShowCurrPass(!showCurrPass), className: "absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" }, showCurrPass ? _react2.default.createElement(_lucidereact.EyeOff, { size: 15 }) : _react2.default.createElement(_lucidereact.Eye, { size: 15 }))
+                  )
               )
               , _react2.default.createElement('div', null
-                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "New Password")
-                , _react2.default.createElement('input', { type: "password", value: changePasswordForm.newPass, onChange: (e) => setChangePasswordForm({ ...changePasswordForm, newPass: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Min. 6 characters",})
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block` }, "New Password")
+                , _react2.default.createElement('div', { className: "relative" },
+                    _react2.default.createElement('input', { type: showNewPass ? 'text' : 'password', value: changePasswordForm.newPass, onChange: (e) => setChangePasswordForm({ ...changePasswordForm, newPass: e.target.value }), className: `w-full px-3 pr-10 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Min. 6 characters" }),
+                    _react2.default.createElement('button', { type: "button", onClick: () => setShowNewPass(!showNewPass), className: "absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" }, showNewPass ? _react2.default.createElement(_lucidereact.EyeOff, { size: 15 }) : _react2.default.createElement(_lucidereact.Eye, { size: 15 }))
+                  )
               )
               , _react2.default.createElement('div', null
-                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Confirm New Password")
-                , _react2.default.createElement('input', { type: "password", value: changePasswordForm.confirm, onChange: (e) => setChangePasswordForm({ ...changePasswordForm, confirm: e.target.value }), onKeyDown: (e) => e.key === 'Enter' && handleChangePassword(), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Repeat new password",})
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block` }, "Confirm New Password")
+                , _react2.default.createElement('div', { className: "relative" },
+                    _react2.default.createElement('input', { type: showConfirmPass ? 'text' : 'password', value: changePasswordForm.confirm, onChange: (e) => setChangePasswordForm({ ...changePasswordForm, confirm: e.target.value }), onKeyDown: (e) => e.key === 'Enter' && handleChangePassword(), className: `w-full px-3 pr-10 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Repeat new password" }),
+                    _react2.default.createElement('button', { type: "button", onClick: () => setShowConfirmPass(!showConfirmPass), className: "absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" }, showConfirmPass ? _react2.default.createElement(_lucidereact.EyeOff, { size: 15 }) : _react2.default.createElement(_lucidereact.Eye, { size: 15 }))
+                  )
               )
               , _react2.default.createElement('div', { className: "flex gap-2 pt-1",}
                 , _react2.default.createElement('button', { onClick: () => { setShowChangePassword(false); setChangePasswordError(''); }, className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
@@ -2768,12 +2822,18 @@ async function shareAsPDF(){
             , _react2.default.createElement('div', { className: "p-5 space-y-3",}
               , changePasswordError && _react2.default.createElement('div', { className: "p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600",}, changePasswordError)
               , _react2.default.createElement('div', null
-                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "New Password")
-                , _react2.default.createElement('input', { type: "password", value: resetPasswordForm.newPass, onChange: (e) => setResetPasswordForm({ ...resetPasswordForm, newPass: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Min. 6 characters",})
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block` }, "New Password")
+                , _react2.default.createElement('div', { className: "relative" },
+                    _react2.default.createElement('input', { type: showNewPass ? 'text' : 'password', value: resetPasswordForm.newPass, onChange: (e) => setResetPasswordForm({ ...resetPasswordForm, newPass: e.target.value }), className: `w-full px-3 pr-10 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Min. 6 characters" }),
+                    _react2.default.createElement('button', { type: "button", onClick: () => setShowNewPass(!showNewPass), className: "absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" }, showNewPass ? _react2.default.createElement(_lucidereact.EyeOff, { size: 15 }) : _react2.default.createElement(_lucidereact.Eye, { size: 15 }))
+                  )
               )
               , _react2.default.createElement('div', null
-                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Confirm Password")
-                , _react2.default.createElement('input', { type: "password", value: resetPasswordForm.confirm, onChange: (e) => setResetPasswordForm({ ...resetPasswordForm, confirm: e.target.value }), onKeyDown: (e) => e.key === 'Enter' && handleResetPassword(showResetPassword), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Repeat new password",})
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block` }, "Confirm Password")
+                , _react2.default.createElement('div', { className: "relative" },
+                    _react2.default.createElement('input', { type: showConfirmPass ? 'text' : 'password', value: resetPasswordForm.confirm, onChange: (e) => setResetPasswordForm({ ...resetPasswordForm, confirm: e.target.value }), onKeyDown: (e) => e.key === 'Enter' && handleResetPassword(showResetPassword), className: `w-full px-3 pr-10 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Repeat new password" }),
+                    _react2.default.createElement('button', { type: "button", onClick: () => setShowConfirmPass(!showConfirmPass), className: "absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" }, showConfirmPass ? _react2.default.createElement(_lucidereact.EyeOff, { size: 15 }) : _react2.default.createElement(_lucidereact.Eye, { size: 15 }))
+                  )
               )
               , _react2.default.createElement('div', { className: "flex gap-2 pt-1",}
                 , _react2.default.createElement('button', { onClick: () => { setShowResetPassword(null); setChangePasswordError(''); }, className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
@@ -2819,6 +2879,51 @@ async function shareAsPDF(){
               , _react2.default.createElement('div', { className: "flex gap-2 pt-1",}
                 , _react2.default.createElement('button', { onClick: () => setShowAddEmployee(false), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
                 , _react2.default.createElement('button', { onClick: handleAddEmployee, disabled: !addEmployeeForm.name.trim() || !addEmployeeForm.phone.trim() || !addEmployeeForm.zone.trim(), className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50",}, "Add Employee")
+              )
+            )
+          )
+        )
+      )
+    )
+
+    /* ── REGISTER CUSTOMER MODAL ── */
+    , _react2.default.createElement(_framermotion.AnimatePresence, null
+      , showAddCustomer && (
+        _react2.default.createElement(_framermotion.motion.div, { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, className: "fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4", onClick: () => setShowAddCustomer(false) },
+          _react2.default.createElement(_framermotion.motion.div, { initial: { scale: 0.9 }, animate: { scale: 1 }, exit: { scale: 0.9 }, className: `${cardBg} rounded-2xl w-full max-w-sm shadow-2xl`, onClick: (e) => e.stopPropagation() },
+            _react2.default.createElement('div', { className: "bg-gradient-to-r from-green-700 to-green-600 p-5 rounded-t-2xl flex items-center justify-between" },
+              _react2.default.createElement('div', { className: "flex items-center gap-2" },
+                _react2.default.createElement(_lucidereact.UserPlus, { size: 18, className: "text-white" }),
+                _react2.default.createElement('h3', { className: "font-bold text-white" }, "Register New Customer")
+              ),
+              _react2.default.createElement('button', { onClick: () => setShowAddCustomer(false) }, _react2.default.createElement(_lucidereact.X, { size: 20, className: "text-white opacity-70 hover:opacity-100" }))
+            ),
+            _react2.default.createElement('div', { className: "p-5 space-y-3" },
+              _react2.default.createElement('div', null,
+                _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block` }, "Full Name *"),
+                _react2.default.createElement('input', { type: "text", value: addCustomerForm.name, onChange: (e) => setAddCustomerForm({ ...addCustomerForm, name: e.target.value }), placeholder: "Customer full name", className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm` })
+              ),
+              _react2.default.createElement('div', null,
+                _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block` }, "Phone *"),
+                _react2.default.createElement('input', { type: "tel", value: addCustomerForm.phone, onChange: (e) => setAddCustomerForm({ ...addCustomerForm, phone: e.target.value }), placeholder: "Phone number", className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm` })
+              ),
+              _react2.default.createElement('div', null,
+                _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block` }, "Business / Occupation"),
+                _react2.default.createElement('input', { type: "text", value: addCustomerForm.business, onChange: (e) => setAddCustomerForm({ ...addCustomerForm, business: e.target.value }), placeholder: "e.g. Clothing Store", className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm` })
+              ),
+              _react2.default.createElement('div', null,
+                _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block` }, "Location / Market"),
+                _react2.default.createElement('input', { type: "text", value: addCustomerForm.location, onChange: (e) => setAddCustomerForm({ ...addCustomerForm, location: e.target.value }), placeholder: "e.g. Makola Market", className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm` })
+              ),
+              addCustomerError && _react2.default.createElement('div', { className: "flex items-center gap-2 text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200" },
+                _react2.default.createElement(_lucidereact.AlertTriangle, { size: 13 }), addCustomerError
+              ),
+              _react2.default.createElement('div', { className: "flex gap-2 pt-1" },
+                _react2.default.createElement('button', { onClick: () => setShowAddCustomer(false), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}` }, "Cancel"),
+                _react2.default.createElement('button', { onClick: handleSaveNewCustomer, disabled: addCustomerLoading || !addCustomerForm.name.trim() || !addCustomerForm.phone.trim(), className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2" },
+                  addCustomerLoading ? _react2.default.createElement(_lucidereact.RefreshCw, { size: 14, className: "animate-spin" }) : _react2.default.createElement(_lucidereact.UserPlus, { size: 14 }),
+                  addCustomerLoading ? " Saving..." : " Register"
+                )
               )
             )
           )
