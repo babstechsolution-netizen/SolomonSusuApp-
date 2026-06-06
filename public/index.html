@@ -454,6 +454,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [backupSchedule, setBackupSchedule] = _react.useState.call(void 0, { enabled: false, frequency: 'daily' });
   const [backupSettingsLoaded, setBackupSettingsLoaded] = _react.useState.call(void 0, false);
   const [showRestoreConfirm, setShowRestoreConfirm] = _react.useState.call(void 0, null);
+  const [deleteConfirm, setDeleteConfirm] = _react.useState.call(void 0, null);
   const [restoreWipe, setRestoreWipe] = _react.useState.call(void 0, false);
   const excelImportRef = _react.useRef.call(void 0, null);
   const restoreFileRef = _react.useRef.call(void 0, null);
@@ -1299,6 +1300,22 @@ async function shareAsPDF(){
       .finally(function(){ if (excelImportRef.current) excelImportRef.current.value = ''; });
   };
 
+  const handleDeleteCustomer = function(custId) {
+    apiCall('/api/customers/' + custId, { method: 'DELETE' }).then(function() {
+      setCustomers(function(prev) { return prev.filter(function(c) { return c.id !== custId; }); });
+      setDeleteConfirm(null);
+      addToast('Customer deleted.', 'success');
+    }).catch(function(err) { addToast(err.message || 'Delete failed.', 'error'); });
+  };
+
+  const handleDeleteEmployee = function(empId) {
+    apiCall('/api/employees/' + empId, { method: 'DELETE' }).then(function() {
+      setEmployees(function(prev) { return prev.filter(function(e) { return e.id !== empId; }); });
+      setDeleteConfirm(null);
+      addToast('Employee deleted.', 'success');
+    }).catch(function(err) { addToast(err.message || 'Delete failed.', 'error'); });
+  };
+
   const saveAccountProfile = function() {
     if (!editAccountForm.name || !editAccountForm.name.trim()) { addToast('Name cannot be empty', 'error'); return; }
     apiCall('/api/auth/me', { method: 'PATCH', body: JSON.stringify({ name: editAccountForm.name.trim(), phone: editAccountForm.phone || '' }) }).then(function(res) {
@@ -1844,6 +1861,7 @@ async function shareAsPDF(){
                   , _optionalChain([currentUser, 'optionalAccess', _41 => _41.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => openRoleModal(emp), className: "flex-1 text-xs py-2 bg-purple-50 text-purple-600 rounded-lg font-medium flex items-center justify-center gap-1"          ,}, _react2.default.createElement(_lucidereact.Crown, { size: 12,} ), " Role" )
                   , (_optionalChain([currentUser, 'optionalAccess', _su1 => _su1.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _su2 => _su2.role]) === 'Branch Manager') && _react2.default.createElement('button', { onClick: () => toggleEmployeeStatus(emp.id), className: `text-xs py-2 px-2.5 rounded-lg font-medium ${emp.status === 'active' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`,}, emp.status === 'active' ? 'Suspend' : 'Activate')
                   , _react2.default.createElement('button', { onClick: () => setShowQRModal(emp), className: "text-xs py-2 px-3 bg-gray-50 text-gray-600 rounded-lg font-medium"      ,}, _react2.default.createElement(_lucidereact.QrCode, { size: 12,} ))
+                  , _optionalChain([currentUser, 'optionalAccess', _del1 => _del1.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'employee', id: emp.id, name: emp.name }), className: "text-xs py-2 px-2.5 bg-red-50 text-red-500 rounded-lg font-medium hover:bg-red-100", title: "Delete employee",}, _react2.default.createElement(_lucidereact.Trash2, { size: 12,}))
                 )
               )
             );
@@ -1891,6 +1909,7 @@ async function shareAsPDF(){
                   , _react2.default.createElement('button', { onClick: () => openTransaction('withdrawal', cust), className: "flex-1 text-xs py-2 bg-red-50 text-red-600 rounded-lg font-medium"      ,}, "Withdraw")
                   , (_optionalChain([currentUser, 'optionalAccess', _45 => _45.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _46 => _46.role]) === 'Branch Manager') && _react2.default.createElement('button', { onClick: () => setShowAssignModal(cust), className: "flex-1 text-xs py-2 bg-green-50 text-green-700 rounded-lg font-medium"      ,}, "Assign")
                   , _react2.default.createElement('button', { onClick: () => setShowQRModal(cust), className: "text-xs py-2 px-2.5 bg-amber-50 text-amber-600 rounded-lg font-medium flex items-center gap-1"        ,}, _react2.default.createElement(_lucidereact.QrCode, { size: 12,} ), "QR")
+                  , _optionalChain([currentUser, 'optionalAccess', _del2 => _del2.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'customer', id: cust.id, name: cust.name }), className: "text-xs py-2 px-2.5 bg-red-50 text-red-500 rounded-lg font-medium hover:bg-red-100", title: "Delete customer",}, _react2.default.createElement(_lucidereact.Trash2, { size: 12,}))
                 )
               )
             );
@@ -3153,6 +3172,26 @@ async function shareAsPDF(){
                 , _react2.default.createElement('button', { onClick: handleAddEmployee, className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700",}, "Add Employee")
               )
             )
+          )
+        )
+      )
+    )
+
+    /* ── DELETE CONFIRM MODAL ── */
+    , deleteConfirm && (
+      _react2.default.createElement(_framermotion.motion.div, { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, className: "fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4",}
+        , _react2.default.createElement(_framermotion.motion.div, { initial: { scale: 0.9 }, animate: { scale: 1 }, className: `${cardBg} rounded-2xl w-full max-w-sm shadow-2xl p-6`, onClick: (e) => e.stopPropagation(),}
+          , _react2.default.createElement('div', { className: "flex items-center gap-3 mb-4",}
+            , _react2.default.createElement('div', { className: "p-2 bg-red-100 rounded-xl flex-shrink-0",}, _react2.default.createElement(_lucidereact.Trash2, { size: 20, className: "text-red-600",}))
+            , _react2.default.createElement('div', null
+              , _react2.default.createElement('h3', { className: `font-bold text-lg ${textPrimary}`,}, "Delete ", deleteConfirm.type === 'customer' ? 'Customer' : 'Employee', "?")
+              , _react2.default.createElement('p', { className: `text-sm ${textSecondary}`,}, deleteConfirm.name)
+            )
+          )
+          , _react2.default.createElement('p', { className: "text-sm text-red-600 bg-red-50 rounded-xl p-3 mb-5",}, "This cannot be undone. All records linked to this ", deleteConfirm.type, " may be affected.")
+          , _react2.default.createElement('div', { className: "flex gap-2",}
+            , _react2.default.createElement('button', { onClick: () => setDeleteConfirm(null), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
+            , _react2.default.createElement('button', { onClick: () => deleteConfirm.type === 'customer' ? handleDeleteCustomer(deleteConfirm.id) : handleDeleteEmployee(deleteConfirm.id), className: "flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700",}, "Yes, Delete")
           )
         )
       )

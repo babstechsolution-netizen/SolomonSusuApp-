@@ -143,6 +143,17 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/customers/:id — delete single customer (Super Admin only)
+router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
+  try {
+    const cust = await Customer.findByIdAndDelete(req.params.id);
+    if (!cust) return res.status(404).json({ success: false, message: 'Customer not found.' });
+    res.json({ success: true, message: 'Customer deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // DELETE /api/customers  — wipe all (Super Admin only)
 router.delete('/', requireRole('Super Admin'), async (req, res) => {
   try {
