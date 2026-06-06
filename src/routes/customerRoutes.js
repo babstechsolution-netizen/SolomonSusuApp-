@@ -49,31 +49,40 @@ router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.sing
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
 
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    let workbook;
+    try {
+      workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    } catch (e) {
+      return res.status(400).json({ success: false, message: 'Could not read file. Make sure it is a valid .xlsx or .xls file.' });
+    }
+
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
 
-    if (!rows.length) return res.status(400).json({ success: false, message: 'Excel file is empty.' });
+    if (!rows.length) return res.status(400).json({ success: false, message: 'Excel file is empty or has no data rows.' });
 
     const colors = ['#ec4899', '#06b6d4', '#f59e0b', '#8b5cf6', '#3b82f6', '#10b981', '#ef4444', '#14b8a6'];
     const valid = [];
     const errors = [];
+    const base = Date.now();
 
     rows.forEach((row, i) => {
-      const name = String(row.name || row.Name || row.NAME || '').trim();
-      const phone = String(row.phone || row.Phone || row.PHONE || '').trim();
+      // Accept any capitalisation of column headers
+      const name = String(row.name || row.Name || row.NAME || row['Full Name'] || row['full name'] || '').trim();
+      const phone = String(row.phone || row.Phone || row.PHONE || row['Phone Number'] || row['phone number'] || '').trim();
       if (!name || !phone) { errors.push(`Row ${i + 2}: name and phone are required`); return; }
       valid.push({
         name,
         phone,
-        business: String(row.business || row.Business || row.BUSINESS || '').trim(),
-        location: String(row.location || row.Location || row.LOCATION || '').trim(),
+        business: String(row.business || row.Business || row.BUSINESS || row['Business Name'] || '').trim(),
+        location: String(row.location || row.Location || row.LOCATION || row['Location'] || '').trim(),
         color: colors[i % colors.length],
         status: 'active',
+        qrCode: `FC-${base}${i}`,  // generate unique qrCode — pre-save hook is bypassed by insertMany
       });
     });
 
-    if (!valid.length) return res.status(400).json({ success: false, message: 'No valid rows found.', errors });
+    if (!valid.length) return res.status(400).json({ success: false, message: 'No valid rows found. Ensure columns include "name" and "phone".', errors });
 
     const created = await Customer.insertMany(valid, { ordered: false });
     res.json({ success: true, message: `${created.length} customer(s) imported.`, data: created, errors });
