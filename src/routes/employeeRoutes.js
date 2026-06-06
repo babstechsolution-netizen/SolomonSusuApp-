@@ -12,15 +12,6 @@ const ROLE_MAP = {
   team_lead: 'Field Collector',
 };
 
-async function generateUsername(name) {
-  const base = name.toLowerCase().trim().replace(/\s+/g, '.');
-  let username = base;
-  let counter = 1;
-  while (await User.findOne({ username })) {
-    username = `${base}${counter++}`;
-  }
-  return username;
-}
 
 // GET /api/employees
 router.get('/', async (req, res) => {
@@ -46,16 +37,27 @@ router.get('/:id', async (req, res) => {
 // POST /api/employees
 router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
   try {
-    const { name, phone, zone, role, privileges, color, photo, email } = req.body;
+    const { name, phone, zone, role, privileges, color, photo, email, username, password } = req.body;
 
-    const username = await generateUsername(name);
-    const defaultPassword = 'susu@1234';
+    if (!username || !username.trim()) {
+      return res.status(400).json({ success: false, message: 'Username is required.' });
+    }
+    if (!password || password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+    }
+
+    const cleanUsername = username.toLowerCase().trim();
+    const existing = await User.findOne({ username: cleanUsername });
+    if (existing) {
+      return res.status(400).json({ success: false, message: `Username "${cleanUsername}" is already taken.` });
+    }
+
     const userRole = ROLE_MAP[role] || 'Field Collector';
 
     const user = await User.create({
       name,
-      username,
-      password: defaultPassword,
+      username: cleanUsername,
+      password,
       role: userRole,
       phone,
       zone,
@@ -71,7 +73,7 @@ router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) 
     res.status(201).json({
       success: true,
       data: emp,
-      credentials: { username, password: defaultPassword },
+      credentials: { username: cleanUsername, password },
     });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

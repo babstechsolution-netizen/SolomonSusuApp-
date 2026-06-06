@@ -443,7 +443,8 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [userPasswords, setUserPasswords] = _react.useState.call(void 0, { superadmin: 'admin123', admin: 'admin123', employee: 'emp123', customer: 'cust123', accountant: 'acc123' });
   const [authToken, setAuthToken] = _react.useState.call(void 0, typeof localStorage !== 'undefined' ? localStorage.getItem('susu_token') : null);
   const [showAddEmployee, setShowAddEmployee] = _react.useState.call(void 0, false);
-  const [addEmployeeForm, setAddEmployeeForm] = _react.useState.call(void 0, { name: '', phone: '', zone: '', role: 'field_collector' });
+  const [addEmployeeForm, setAddEmployeeForm] = _react.useState.call(void 0, { name: '', phone: '', zone: '', role: 'field_collector', username: '', password: '' });
+  const [showEmpPassword, setShowEmpPassword] = _react.useState.call(void 0, false);
   const [newEmployeeCredentials, setNewEmployeeCredentials] = _react.useState.call(void 0, null);
   const [showAddCustomer, setShowAddCustomer] = _react.useState.call(void 0, false);
   const [addCustomerForm, setAddCustomerForm] = _react.useState.call(void 0, { name: '', phone: '', business: '', location: '' });
@@ -726,18 +727,21 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   };
 
   const handleAddEmployee = function() {
-    if (!addEmployeeForm.name.trim() || !addEmployeeForm.phone.trim() || !addEmployeeForm.zone.trim()) return;
+    if (!addEmployeeForm.name.trim() || !addEmployeeForm.phone.trim() || !addEmployeeForm.zone.trim() || !addEmployeeForm.username.trim() || !addEmployeeForm.password.trim()) return;
     var colors = ['#16a34a', '#2563eb', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
     var payload = {
       name: addEmployeeForm.name.trim(), phone: addEmployeeForm.phone.trim(),
       zone: addEmployeeForm.zone.trim(), role: addEmployeeForm.role,
+      username: addEmployeeForm.username.trim().toLowerCase(),
+      password: addEmployeeForm.password,
       privileges: defaultRolePrivileges[addEmployeeForm.role] || [],
       color: colors[employees.length % colors.length],
     };
     apiCall('/api/employees', { method: 'POST', body: JSON.stringify(payload) }).then(function(res) {
       setEmployees(function(prev) { return [...prev, mapEmp(res.data)]; });
       setShowAddEmployee(false);
-      setAddEmployeeForm({ name: '', phone: '', zone: '', role: 'field_collector' });
+      setAddEmployeeForm({ name: '', phone: '', zone: '', role: 'field_collector', username: '', password: '' });
+      setShowEmpPassword(false);
       if (res.credentials) {
         setNewEmployeeCredentials({ name: res.data.name, ...res.credentials });
       } else {
@@ -2881,9 +2885,25 @@ async function shareAsPDF(){
                   , availableRoles.map(function(r) { return _react2.default.createElement('option', { key: r.id, value: r.id,}, r.name); })
                 )
               )
+              , _react2.default.createElement('div', { className: `border-t ${borderColor} pt-3 mt-1`,}
+                , _react2.default.createElement('p', { className: `text-xs font-bold ${textSecondary} mb-2 uppercase tracking-wide`,}, "Login Credentials")
+                , _react2.default.createElement('div', { className: "space-y-2",}
+                  , _react2.default.createElement('div', null
+                    , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Username *")
+                    , _react2.default.createElement('input', { type: "text", value: addEmployeeForm.username, onChange: (e) => setAddEmployeeForm({ ...addEmployeeForm, username: e.target.value.toLowerCase().replace(/\s/g,'') }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "e.g. kwame.asante",})
+                  )
+                  , _react2.default.createElement('div', null
+                    , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Password *")
+                    , _react2.default.createElement('div', { className: "relative",}
+                      , _react2.default.createElement('input', { type: showEmpPassword ? "text" : "password", value: addEmployeeForm.password, onChange: (e) => setAddEmployeeForm({ ...addEmployeeForm, password: e.target.value }), className: `w-full px-3 py-2.5 pr-10 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "Min. 6 characters",})
+                      , _react2.default.createElement('button', { type: "button", onClick: () => setShowEmpPassword(!showEmpPassword), className: `absolute right-3 top-1/2 -translate-y-1/2 ${textSecondary}`,}, showEmpPassword ? _react2.default.createElement(_lucidereact.EyeOff, { size: 15,}) : _react2.default.createElement(_lucidereact.Eye, { size: 15,}))
+                    )
+                  )
+                )
+              )
               , _react2.default.createElement('div', { className: "flex gap-2 pt-1",}
                 , _react2.default.createElement('button', { onClick: () => setShowAddEmployee(false), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
-                , _react2.default.createElement('button', { onClick: handleAddEmployee, disabled: !addEmployeeForm.name.trim() || !addEmployeeForm.phone.trim() || !addEmployeeForm.zone.trim(), className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50",}, "Add Employee")
+                , _react2.default.createElement('button', { onClick: handleAddEmployee, disabled: !addEmployeeForm.name.trim() || !addEmployeeForm.phone.trim() || !addEmployeeForm.zone.trim() || !addEmployeeForm.username.trim() || !addEmployeeForm.password.trim(), className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50",}, "Add Employee")
               )
             )
           )
