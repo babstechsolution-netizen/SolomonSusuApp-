@@ -457,6 +457,11 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [deleteConfirm, setDeleteConfirm] = _react.useState.call(void 0, null);
   const [selectedCustomers, setSelectedCustomers] = _react.useState.call(void 0, new Set());
   const [custSelectMode, setCustSelectMode] = _react.useState.call(void 0, false);
+  const [showEditCustomer, setShowEditCustomer] = _react.useState.call(void 0, null);
+  const [editCustomerForm, setEditCustomerForm] = _react.useState.call(void 0, {});
+  const [editCustomerPhoto, setEditCustomerPhoto] = _react.useState.call(void 0, null);
+  const [editCustomerLoading, setEditCustomerLoading] = _react.useState.call(void 0, false);
+  const custPhotoRef = _react.useRef.call(void 0, null);
   const [showCustomerAccount, setShowCustomerAccount] = _react.useState.call(void 0, null);
   const [customerAccountTxns, setCustomerAccountTxns] = _react.useState.call(void 0, []);
   const [customerAccountLoading, setCustomerAccountLoading] = _react.useState.call(void 0, false);
@@ -514,7 +519,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
 
   // ── Data shape mappers ───────────────────────────────────────
   const mapEmp = function(e) { return { id: e._id || e.id, name: e.name, phone: e.phone || '', zone: e.zone || '', status: e.status || 'active', role: e.role || 'field_collector', privileges: e.privileges || [], collections: e.collections || 0, withdrawals: e.withdrawals || 0, customers: e.customers || 0, performance: e.performance || 80, color: e.color || '#16a34a', photo: e.photo || null }; };
-  const mapCust = function(c) { return { id: c._id || c.id, accountNumber: c.qrCode || ('FC-' + String(c._id || c.id).slice(-6).toUpperCase()), name: c.name, business: c.business || '', phone: c.phone || '', location: c.location || '', balance: c.balance || 0, totalDeposits: c.totalDeposits || 0, totalWithdrawals: c.totalWithdrawals || 0, status: c.status || 'active', trustScore: 80, assignedEmployee: (c.assignedEmployee && (c.assignedEmployee._id || c.assignedEmployee)) || null, color: c.color || '#16a34a' }; };
+  const mapCust = function(c) { return { id: c._id || c.id, accountNumber: c.qrCode || ('FC-' + String(c._id || c.id).slice(-6).toUpperCase()), name: c.name, business: c.business || '', phone: c.phone || '', location: c.location || '', balance: c.balance || 0, totalDeposits: c.totalDeposits || 0, totalWithdrawals: c.totalWithdrawals || 0, status: c.status || 'active', trustScore: 80, assignedEmployee: (c.assignedEmployee && (c.assignedEmployee._id || c.assignedEmployee)) || null, color: c.color || '#16a34a', photo: c.photo || null, savingsTarget: c.savingsTarget || 0, dailyAmount: c.dailyAmount || 0 }; };
   const mapTx = function(t) { return { id: t._id || t.id, customer: t.customerName || (t.customer && t.customer.name) || '', customerId: (t.customer && (t.customer._id || t.customer)) || null, employee: t.employeeName || (t.employee && t.employee.name) || '', employeeId: (t.employee && (t.employee._id || t.employee)) || null, amount: t.amount, type: t.type, method: t.method || 'Cash', status: t.status || 'approved', time: t.time || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''), date: t.date || (t.createdAt ? t.createdAt.substring(0, 10) : new Date().toISOString().substring(0, 10)) }; };
   const mapLoan = function(l) { return { id: l._id || l.id, customerId: (l.customer && (l.customer._id || l.customer)) || null, customerName: l.customerName || (l.customer && l.customer.name) || '', amount: l.amount || 0, outstanding: l.outstanding || 0, monthlyPayment: l.monthlyPayment || 0, nextPaymentDate: l.nextPaymentDate || l.dueDate || null, disbursedDate: l.disbursedDate || (l.createdAt ? l.createdAt.substring(0, 10) : null), status: l.status || 'active', interestRate: l.interestRate || 0, purpose: l.purpose || '', officer: l.officer || '' }; };
 
@@ -1413,6 +1418,32 @@ async function shareAsPDF(){
       }).catch(function(err) { addToast(err.message || 'Delete failed.', 'error'); });
   };
 
+  const openEditCustomer = function(cust) {
+    setShowEditCustomer(cust);
+    setEditCustomerForm({ name: cust.name, phone: cust.phone === 'N/A' ? '' : cust.phone, business: cust.business, location: cust.location, status: cust.status, savingsTarget: cust.savingsTarget || '', dailyAmount: cust.dailyAmount || '' });
+    setEditCustomerPhoto(cust.photo || null);
+  };
+
+  const handleCustPhotoChange = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) { setEditCustomerPhoto(ev.target.result); };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveCustomer = function() {
+    setEditCustomerLoading(true);
+    var payload = Object.assign({}, editCustomerForm, { photo: editCustomerPhoto });
+    apiCall('/api/customers/' + showEditCustomer.id, { method: 'PATCH', body: JSON.stringify(payload) })
+      .then(function(res) {
+        setCustomers(function(prev) { return prev.map(function(c) { return c.id === showEditCustomer.id ? mapCust(res.data) : c; }); });
+        setShowEditCustomer(null);
+        addToast('Customer profile updated.', 'success');
+      }).catch(function(err) { addToast(err.message || 'Update failed.', 'error'); })
+      .finally(function() { setEditCustomerLoading(false); });
+  };
+
   const openCustomerAccount = function(cust) {
     setShowCustomerAccount(cust);
     setCustomerAccountTxns([]);
@@ -2120,7 +2151,7 @@ async function shareAsPDF(){
                 , _react2.default.createElement('div', { className: "flex items-start justify-between mb-2"   ,}
                   , _react2.default.createElement('div', { className: "flex items-center gap-3"  ,}
                     , custSelectMode && _react2.default.createElement('input', { type: "checkbox", checked: selectedCustomers.has(cust.id), onChange: () => toggleCustomerSelect(cust.id), onClick: (e) => e.stopPropagation(), className: "w-4 h-4 accent-blue-600 flex-shrink-0",})
-                    , _react2.default.createElement(Avatar, { name: cust.name, color: cust.color, size: "md",})
+                    , _react2.default.createElement(Avatar, { name: cust.name, color: cust.color, size: "md", photo: cust.photo,})
                     , _react2.default.createElement('div', null, _react2.default.createElement('h4', { className: `font-semibold ${textPrimary}`,}, cust.name), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, cust.business))
                   )
                   , _react2.default.createElement(StatusBadge, { status: cust.status,})
@@ -2134,6 +2165,7 @@ async function shareAsPDF(){
                 , _react2.default.createElement(SavingsCycleBar, { customer: cust, textSecondary: textSecondary })
                 , _react2.default.createElement('div', { className: "flex gap-1.5 mt-3" ,}
                   , _react2.default.createElement('button', { onClick: () => openCustomerAccount(cust), className: "flex-1 text-xs py-2 bg-blue-50 text-blue-600 rounded-lg font-medium flex items-center justify-center gap-1",}, _react2.default.createElement(_lucidereact.Eye, { size: 11,}), "Account")
+                  , (_optionalChain([currentUser, 'optionalAccess', _ec => _ec.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _ec2 => _ec2.role]) === 'Branch Manager') && _react2.default.createElement('button', { onClick: () => openEditCustomer(cust), className: "flex-1 text-xs py-2 bg-amber-50 text-amber-700 rounded-lg font-medium flex items-center justify-center gap-1",}, _react2.default.createElement(_lucidereact.Pencil, { size: 11,}), "Edit")
                   , _react2.default.createElement('button', { onClick: () => openTransaction('deposit', cust), className: "flex-1 text-xs py-2 bg-green-50 text-green-600 rounded-lg font-medium"      ,}, "Deposit")
                   , _react2.default.createElement('button', { onClick: () => openTransaction('withdrawal', cust), className: "flex-1 text-xs py-2 bg-red-50 text-red-600 rounded-lg font-medium"      ,}, "Withdraw")
                   , (_optionalChain([currentUser, 'optionalAccess', _45 => _45.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _46 => _46.role]) === 'Branch Manager') && _react2.default.createElement('button', { onClick: () => setShowAssignModal(cust), className: "text-xs py-2 px-2 bg-green-50 text-green-700 rounded-lg font-medium"      ,}, "Assign")
@@ -3452,6 +3484,85 @@ async function shareAsPDF(){
                 else if (deleteConfirm.type === 'bulk-customers') handleBulkDeleteCustomers(deleteConfirm.ids);
                 else if (deleteConfirm.type === 'all-customers') handleDeleteAllCustomers();
               }, className: "flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700",}, "Yes, Delete")
+          )
+        )
+      )
+    )
+
+    /* ── EDIT CUSTOMER MODAL ── */
+    , showEditCustomer && (
+      _react2.default.createElement(_framermotion.motion.div, { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, className: "fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4", onClick: () => setShowEditCustomer(null),}
+        , _react2.default.createElement(_framermotion.motion.div, { initial: { scale: 0.95 }, animate: { scale: 1 }, className: `${cardBg} rounded-2xl w-full max-w-md shadow-2xl max-h-[92vh] flex flex-col`, onClick: (e) => e.stopPropagation(),}
+          , _react2.default.createElement('div', { className: "bg-gradient-to-br from-amber-500 to-orange-600 p-5 rounded-t-2xl flex items-center justify-between flex-shrink-0",}
+            , _react2.default.createElement('div', { className: "flex items-center gap-3",}
+              , _react2.default.createElement('div', { className: "p-2 bg-white bg-opacity-20 rounded-xl",}, _react2.default.createElement(_lucidereact.Pencil, { size: 18, className: "text-white",}))
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('h3', { className: "font-bold text-white",}, "Edit Customer Profile")
+                , _react2.default.createElement('p', { className: "text-orange-100 text-xs",}, showEditCustomer.name)
+              )
+            )
+            , _react2.default.createElement('button', { onClick: () => setShowEditCustomer(null),}, _react2.default.createElement(_lucidereact.X, { size: 20, className: "text-white opacity-70 hover:opacity-100",}))
+          )
+          , _react2.default.createElement('div', { className: "p-5 overflow-y-auto flex-1 space-y-4",}
+            , _react2.default.createElement('div', { className: "flex flex-col items-center gap-3",}
+              , _react2.default.createElement('div', { className: "relative group cursor-pointer", onClick: () => custPhotoRef.current && custPhotoRef.current.click(),}
+                , editCustomerPhoto
+                  ? _react2.default.createElement('img', { src: editCustomerPhoto, alt: "photo", className: "w-24 h-24 rounded-full object-cover ring-4 ring-amber-200 shadow-lg",})
+                  : _react2.default.createElement('div', { className: "w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-lg ring-4 ring-amber-200", style: { background: showEditCustomer.color || '#f59e0b' },}, (showEditCustomer.name || '').split(' ').map(function(n){ return n[0]; }).join('').slice(0,2).toUpperCase())
+                , _react2.default.createElement('div', { className: "absolute inset-0 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-40 flex items-center justify-center transition-all",}
+                  , _react2.default.createElement(_lucidereact.Camera, { size: 22, className: "text-white opacity-0 group-hover:opacity-100 transition-opacity",})
+                )
+              )
+              , _react2.default.createElement('input', { ref: custPhotoRef, type: "file", accept: "image/*", style: { display: 'none' }, onChange: handleCustPhotoChange,})
+              , _react2.default.createElement('div', { className: "flex gap-2",}
+                , _react2.default.createElement('button', { onClick: () => custPhotoRef.current && custPhotoRef.current.click(), className: "text-xs px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg font-medium flex items-center gap-1.5",}, _react2.default.createElement(_lucidereact.Camera, { size: 12,}), "Change Photo")
+                , editCustomerPhoto && _react2.default.createElement('button', { onClick: () => setEditCustomerPhoto(null), className: "text-xs px-3 py-1.5 bg-red-50 text-red-600 rounded-lg font-medium",}, "Remove")
+              )
+            )
+            , _react2.default.createElement('div', { className: "grid grid-cols-1 gap-3",}
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Full Name")
+                , _react2.default.createElement('input', { type: "text", value: editCustomerForm.name || '', onChange: (e) => setEditCustomerForm({ ...editCustomerForm, name: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
+              )
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Phone Number")
+                , _react2.default.createElement('input', { type: "tel", value: editCustomerForm.phone || '', onChange: (e) => setEditCustomerForm({ ...editCustomerForm, phone: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
+              )
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Business / Occupation")
+                , _react2.default.createElement('input', { type: "text", value: editCustomerForm.business || '', onChange: (e) => setEditCustomerForm({ ...editCustomerForm, business: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
+              )
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Location / Area")
+                , _react2.default.createElement('input', { type: "text", value: editCustomerForm.location || '', onChange: (e) => setEditCustomerForm({ ...editCustomerForm, location: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
+              )
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Account Status")
+                , _react2.default.createElement('select', { value: editCustomerForm.status || 'active', onChange: (e) => setEditCustomerForm({ ...editCustomerForm, status: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}
+                  , _react2.default.createElement('option', { value: "active",}, "Active")
+                  , _react2.default.createElement('option', { value: "inactive",}, "Inactive")
+                  , _react2.default.createElement('option', { value: "defaulting",}, "Defaulting")
+                  , _react2.default.createElement('option', { value: "completed",}, "Completed")
+                )
+              )
+              , _react2.default.createElement('div', { className: "grid grid-cols-2 gap-3",}
+                , _react2.default.createElement('div', null
+                  , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Daily Amount (GH₵)")
+                  , _react2.default.createElement('input', { type: "number", value: editCustomerForm.dailyAmount || '', onChange: (e) => setEditCustomerForm({ ...editCustomerForm, dailyAmount: e.target.value }), placeholder: "e.g. 50", className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
+                )
+                , _react2.default.createElement('div', null
+                  , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Savings Target (GH₵)")
+                  , _react2.default.createElement('input', { type: "number", value: editCustomerForm.savingsTarget || '', onChange: (e) => setEditCustomerForm({ ...editCustomerForm, savingsTarget: e.target.value }), placeholder: "e.g. 5000", className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
+                )
+              )
+            )
+            , _react2.default.createElement('div', { className: "flex gap-2 pt-1",}
+              , _react2.default.createElement('button', { onClick: () => setShowEditCustomer(null), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
+              , _react2.default.createElement('button', { onClick: handleSaveCustomer, disabled: editCustomerLoading, className: "flex-1 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center gap-2",}
+                , editCustomerLoading && _react2.default.createElement(_lucidereact.RefreshCw, { size: 14, className: "animate-spin",})
+                , "Save Changes"
+              )
+            )
           )
         )
       )

@@ -179,6 +179,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const cust = await Customer.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!cust) return res.status(404).json({ success: false, message: 'Customer not found.' });
+    logActivity('customer_edit', req.user.name, req.user.role, `${req.user.name} updated profile for customer ${cust.name}`, { customer: cust.name });
     res.json({ success: true, data: cust });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
