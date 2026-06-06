@@ -120,6 +120,17 @@ router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager', 'Accoun
   }
 });
 
+// DELETE /api/transactions/:id — delete single transaction (Super Admin only)
+router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
+  try {
+    const tx = await Transaction.findByIdAndDelete(req.params.id);
+    if (!tx) return res.status(404).json({ success: false, message: 'Transaction not found.' });
+    res.json({ success: true, message: 'Transaction deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // DELETE /api/transactions  — wipe all (Super Admin only)
 router.delete('/', requireRole('Super Admin'), async (req, res) => {
   try {
