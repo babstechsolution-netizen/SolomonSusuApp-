@@ -44,6 +44,19 @@ router.get('/qr/:code', async (req, res) => {
   }
 });
 
+// Flexible column finder — matches any keyword in the header (case-insensitive)
+function pickCol(row, keywords) {
+  const keys = Object.keys(row);
+  for (const kw of keywords) {
+    const found = keys.find(k => k.toLowerCase().replace(/[\s_\-]/g, '').includes(kw.replace(/[\s_\-]/g, '')));
+    if (found) {
+      const val = String(row[found] ?? '').trim();
+      if (val) return val;
+    }
+  }
+  return '';
+}
+
 // POST /api/customers/import — import from Excel file
 router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.single('file'), async (req, res) => {
   try {
@@ -67,25 +80,43 @@ router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.sing
     const base = Date.now();
 
     rows.forEach((row, i) => {
-      // Accept any capitalisation of column headers
-      const name = String(row.name || row.Name || row.NAME || row['Full Name'] || row['full name'] || '').trim();
-      const phone = String(row.phone || row.Phone || row.PHONE || row['Phone Number'] || row['phone number'] || '').trim();
-      if (!name || !phone) { errors.push(`Row ${i + 2}: name and phone are required`); return; }
+      // Detect name from any recognisable column — fall back to first column value
+      const name =
+        pickCol(row, ['name', 'fullname', 'customername', 'clientname', 'customer', 'client']) ||
+        String(Object.values(row)[0] ?? '').trim();
+
+      if (!name) { errors.push(`Row ${i + 2}: could not detect a name — row skipped`); return; }
+
+      // Phone is optional — admin can edit later
+      const phone =
+        pickCol(row, ['phone', 'mobile', 'tel', 'telephone', 'contact', 'phonenumber', 'mobilenumber', 'cell']);
+
+      const business =
+        pickCol(row, ['business', 'businessname', 'shop', 'shopname', 'company', 'trade', 'occupation', 'work']);
+
+      const location =
+        pickCol(row, ['location', 'address', 'area', 'zone', 'place', 'town', 'city', 'street', 'district', 'region']);
+
       valid.push({
         name,
-        phone,
-        business: String(row.business || row.Business || row.BUSINESS || row['Business Name'] || '').trim(),
-        location: String(row.location || row.Location || row.LOCATION || row['Location'] || '').trim(),
+        phone: phone || 'N/A',   // phone is required in schema; admin updates it later
+        business,
+        location,
         color: colors[i % colors.length],
         status: 'active',
-        qrCode: `FC-${base}${i}`,  // generate unique qrCode — pre-save hook is bypassed by insertMany
+        qrCode: `FC-${base}${i}`,
       });
     });
 
-    if (!valid.length) return res.status(400).json({ success: false, message: 'No valid rows found. Ensure columns include "name" and "phone".', errors });
+    if (!valid.length) return res.status(400).json({ success: false, message: 'No rows could be imported — every row was missing a name.', errors });
 
     const created = await Customer.insertMany(valid, { ordered: false });
-    res.json({ success: true, message: `${created.length} customer(s) imported.`, data: created, errors });
+    res.json({
+      success: true,
+      message: `${created.length} customer(s) imported successfully.`,
+      data: created,
+      errors,
+    });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
