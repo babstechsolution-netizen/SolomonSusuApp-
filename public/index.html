@@ -502,6 +502,27 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const mapLoan = function(l) { return { id: l._id || l.id, customerId: (l.customer && (l.customer._id || l.customer)) || null, customerName: l.customerName || (l.customer && l.customer.name) || '', amount: l.amount || 0, outstanding: l.outstanding || 0, monthlyPayment: l.monthlyPayment || 0, nextPaymentDate: l.nextPaymentDate || l.dueDate || null, disbursedDate: l.disbursedDate || (l.createdAt ? l.createdAt.substring(0, 10) : null), status: l.status || 'active', interestRate: l.interestRate || 0, purpose: l.purpose || '', officer: l.officer || '' }; };
 
   // ── Server health check on login screen ─────────────────────
+  // ── Restore session from stored token on page load ──────────
+  _react.useEffect.call(void 0, function() {
+    var stored = typeof localStorage !== 'undefined' ? localStorage.getItem('susu_token') : null;
+    if (!stored) return;
+    fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + stored } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success && data.user) {
+          var u = data.user;
+          var letters = (u.name || '').split(' ').map(function(n){ return n[0] || ''; }).join('').substring(0, 2).toUpperCase();
+          var colorMap = { 'Super Admin': '#dc2626', 'Branch Manager': '#2563eb', 'Field Collector': '#16a34a', 'Customer': '#9333ea', 'Accountant': '#ea580c' };
+          setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: letters, color: colorMap[u.role] || '#3b82f6', roleKey: u.roleKey || '', photo: u.photo || null, employeeId: u.employeeId || null });
+          setAuthToken(stored);
+          setIsAuthenticated(true);
+          setCurrentPage('dashboard');
+        } else {
+          localStorage.removeItem('susu_token');
+        }
+      }).catch(function() { localStorage.removeItem('susu_token'); });
+  }, []);
+
   _react.useEffect.call(void 0, function() {
     if (isAuthenticated) return;
     setServerStatus('checking');
@@ -744,7 +765,12 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   };
 
   const handleAddEmployee = function() {
-    if (!addEmployeeForm.name.trim() || !addEmployeeForm.phone.trim() || !addEmployeeForm.zone.trim() || !addEmployeeForm.username.trim() || !addEmployeeForm.password.trim()) return;
+    if (!addEmployeeForm.name.trim()) { addToast('Employee full name is required.', 'error'); return; }
+    if (!addEmployeeForm.phone.trim()) { addToast('Phone number is required.', 'error'); return; }
+    if (!addEmployeeForm.zone.trim()) { addToast('Zone / Area is required.', 'error'); return; }
+    if (!addEmployeeForm.username.trim()) { addToast('Username is required for login.', 'error'); return; }
+    if (!addEmployeeForm.password.trim()) { addToast('Password is required for login.', 'error'); return; }
+    if (addEmployeeForm.password.length < 6) { addToast('Password must be at least 6 characters.', 'error'); return; }
     var colors = ['#16a34a', '#2563eb', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
     var payload = {
       name: addEmployeeForm.name.trim(), phone: addEmployeeForm.phone.trim(),
@@ -1211,7 +1237,7 @@ async function shareAsPDF(){
   };
 
   const handleDownloadBackup = function(backupId, backupName) {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('susu_token');
     const a = document.createElement('a');
     a.href = '/api/admin/backup/' + backupId + '/download';
     a.download = backupName + '.json';
@@ -3112,7 +3138,7 @@ async function shareAsPDF(){
               )
               , _react2.default.createElement('div', { className: "flex gap-2 pt-1",}
                 , _react2.default.createElement('button', { onClick: () => setShowAddEmployee(false), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
-                , _react2.default.createElement('button', { onClick: handleAddEmployee, disabled: !addEmployeeForm.name.trim() || !addEmployeeForm.phone.trim() || !addEmployeeForm.zone.trim() || !addEmployeeForm.username.trim() || !addEmployeeForm.password.trim(), className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50",}, "Add Employee")
+                , _react2.default.createElement('button', { onClick: handleAddEmployee, className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700",}, "Add Employee")
               )
             )
           )
