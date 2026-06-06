@@ -144,7 +144,7 @@ router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.sing
         location,
         color: colors[i % colors.length],
         status: 'active',
-        qrCode: `FC-${base}${i}`,
+        qrCode: `AW-${base}${i}`,
       });
     });
 

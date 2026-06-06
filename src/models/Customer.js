@@ -24,7 +24,7 @@ const customerSchema = new mongoose.Schema({
 
 customerSchema.pre('save', function (next) {
   if (!this.qrCode) {
-    this.qrCode = 'FC-' + String(Date.now()).slice(-6);
+    this.qrCode = 'AW-' + String(Date.now()).slice(-6);
   }
   next();
 });
