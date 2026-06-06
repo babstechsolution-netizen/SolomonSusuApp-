@@ -2,6 +2,7 @@ const express = require('express');
 const Employee = require('../models/Employee');
 const User = require('../models/User');
 const { protect, requireRole } = require('../middleware/auth');
+const { logActivity } = require('../utils/activityLog');
 
 const router = express.Router();
 router.use(protect);
@@ -70,6 +71,7 @@ router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) 
       userId: user._id,
     });
 
+    logActivity('employee_add', req.user.name, req.user.role, `${req.user.name} added employee ${name} (${userRole})`, { employee: name, role: userRole });
     res.status(201).json({
       success: true,
       data: emp,
@@ -105,7 +107,7 @@ router.patch('/:id/credentials', requireRole('Super Admin', 'Branch Manager'), a
     if (!user) return res.status(404).json({ success: false, message: 'User account not found.' });
     Object.assign(user, updates);
     await user.save();
-
+    logActivity('credential_change', req.user.name, req.user.role, `${req.user.name} updated login credentials for employee ${emp.name}`, { employee: emp.name });
     res.json({ success: true, message: 'Credentials updated successfully.' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -129,6 +131,7 @@ router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager'), async 
     const { status } = req.body;
     const emp = await Employee.findByIdAndUpdate(req.params.id, { status }, { new: true });
     if (!emp) return res.status(404).json({ success: false, message: 'Employee not found.' });
+    logActivity('employee_status', req.user.name, req.user.role, `${req.user.name} ${status} employee ${emp.name}`, { employee: emp.name, status });
     res.json({ success: true, data: emp, message: `Employee ${status}.` });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -148,7 +151,8 @@ router.delete('/', requireRole('Super Admin'), async (req, res) => {
 // DELETE /api/employees/:id
 router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
   try {
-    await Employee.findByIdAndDelete(req.params.id);
+    const emp = await Employee.findByIdAndDelete(req.params.id);
+    if (emp) logActivity('employee_delete', req.user.name, req.user.role, `${req.user.name} deleted employee ${emp.name}`, { employee: emp ? emp.name : req.params.id });
     res.json({ success: true, message: 'Employee deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

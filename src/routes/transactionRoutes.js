@@ -3,6 +3,7 @@ const Transaction = require('../models/Transaction');
 const Customer = require('../models/Customer');
 const Employee = require('../models/Employee');
 const { protect, requireRole } = require('../middleware/auth');
+const { logActivity } = require('../utils/activityLog');
 
 const router = express.Router();
 router.use(protect);
@@ -98,6 +99,11 @@ router.post('/', async (req, res) => {
       }
     }
 
+    const actionDesc = isCustomer
+      ? `${customer.name} requested withdrawal of GH₵${Number(amount).toLocaleString()}`
+      : `${req.user.name} recorded ${type} of GH₵${Number(amount).toLocaleString()} for ${customer.name}`;
+    logActivity(type, req.user.name, req.user.role, actionDesc, { amount: Number(amount), customer: customer.name, status: txStatus });
+
     res.status(201).json({ success: true, data: tx });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -114,6 +120,7 @@ router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager', 'Accoun
       { new: true }
     );
     if (!tx) return res.status(404).json({ success: false, message: 'Transaction not found.' });
+    logActivity('approval', req.user.name, req.user.role, `${req.user.name} ${status} transaction #${req.params.id}`, { status });
     res.json({ success: true, data: tx });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -125,6 +132,7 @@ router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
   try {
     const tx = await Transaction.findByIdAndDelete(req.params.id);
     if (!tx) return res.status(404).json({ success: false, message: 'Transaction not found.' });
+    logActivity('transaction_delete', req.user.name, req.user.role, `${req.user.name} deleted transaction for ${tx.customerName || ''} — GH₵${tx.amount}`, { amount: tx.amount, customer: tx.customerName });
     res.json({ success: true, message: 'Transaction deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

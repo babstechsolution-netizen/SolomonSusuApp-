@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/env');
+const { logActivity } = require('../utils/activityLog');
 
 const router = express.Router();
 
@@ -24,6 +25,7 @@ router.post('/login', async (req, res) => {
 
     user.lastLogin = new Date();
     await user.save({ validateModifiedOnly: true });
+    logActivity('login', user.name, user.role, `${user.name} logged in`, { username: user.username });
 
     const pub = user.toPublic();
     // Include customerId so customer dashboard knows which profile to load

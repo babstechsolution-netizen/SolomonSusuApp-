@@ -468,6 +468,8 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [custWithdrawForm, setCustWithdrawForm] = _react.useState.call(void 0, { amount: '', notes: '', method: 'Cash' });
   const [showCustWithdraw, setShowCustWithdraw] = _react.useState.call(void 0, false);
   const [custWithdrawLoading, setCustWithdrawLoading] = _react.useState.call(void 0, false);
+  const [activityLogs, setActivityLogs] = _react.useState.call(void 0, []);
+  const [activityLoading, setActivityLoading] = _react.useState.call(void 0, false);
   const [restoreWipe, setRestoreWipe] = _react.useState.call(void 0, false);
   const excelImportRef = _react.useRef.call(void 0, null);
   const restoreFileRef = _react.useRef.call(void 0, null);
@@ -655,6 +657,16 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
       localStorage.setItem('susu_page', currentPage);
     }
   }, [currentPage, isAuthenticated]);
+
+  // Load activity logs when activitylog page opens
+  _react.useEffect.call(void 0, function() {
+    if (currentPage === 'activitylog' && _optionalChain([currentUser, 'optionalAccess', _al => _al.role]) === 'Super Admin') {
+      setActivityLoading(true);
+      apiCall('/api/activity?limit=200').then(function(res) {
+        setActivityLogs(res.data || []);
+      }).catch(function(){}).finally(function(){ setActivityLoading(false); });
+    }
+  }, [currentPage]);
 
   // Load backup settings when settings page opens (Super Admin only)
   _react.useEffect.call(void 0, function() {
@@ -2588,59 +2600,77 @@ async function shareAsPDF(){
     )
   );
 
+  const getLogIcon = (type) => {
+    if (type === 'deposit') return _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 14, className: "text-green-600" });
+    if (type === 'withdrawal') return _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 14, className: "text-red-600" });
+    if (type === 'login') return _react2.default.createElement(_lucidereact.LogIn, { size: 14, className: "text-blue-600" });
+    if (type === 'employee_add') return _react2.default.createElement(_lucidereact.UserPlus, { size: 14, className: "text-green-600" });
+    if (type === 'employee_delete') return _react2.default.createElement(_lucidereact.Trash2, { size: 14, className: "text-red-600" });
+    if (type === 'employee_status') return _react2.default.createElement(_lucidereact.RefreshCw, { size: 14, className: "text-amber-600" });
+    if (type === 'customer_add') return _react2.default.createElement(_lucidereact.UserPlus, { size: 14, className: "text-indigo-600" });
+    if (type === 'customer_delete' || type === 'customer_bulk_delete') return _react2.default.createElement(_lucidereact.Trash2, { size: 14, className: "text-red-600" });
+    if (type === 'customer_import') return _react2.default.createElement(_lucidereact.FileText, { size: 14, className: "text-blue-600" });
+    if (type === 'credential_change' || type === 'customer_login_created') return _react2.default.createElement(_lucidereact.KeyRound, { size: 14, className: "text-purple-600" });
+    if (type === 'backup' || type === 'restore') return _react2.default.createElement(_lucidereact.RefreshCw, { size: 14, className: "text-teal-600" });
+    if (type === 'approval') return _react2.default.createElement(_lucidereact.CheckCircle, { size: 14, className: "text-green-600" });
+    if (type === 'transaction_delete') return _react2.default.createElement(_lucidereact.Trash2, { size: 14, className: "text-red-600" });
+    return _react2.default.createElement(_lucidereact.Clock, { size: 14, className: "text-gray-500" });
+  };
+  const getLogBg = (type) => {
+    if (type === 'deposit' || type === 'employee_add' || type === 'customer_add' || type === 'approval') return darkMode ? 'bg-green-900' : 'bg-green-100';
+    if (type === 'withdrawal' || type.includes('delete')) return darkMode ? 'bg-red-900' : 'bg-red-100';
+    if (type === 'login') return darkMode ? 'bg-blue-900' : 'bg-blue-100';
+    if (type === 'backup' || type === 'restore') return darkMode ? 'bg-teal-900' : 'bg-teal-100';
+    if (type.includes('credential') || type.includes('login_created')) return darkMode ? 'bg-purple-900' : 'bg-purple-100';
+    if (type === 'customer_import') return darkMode ? 'bg-indigo-900' : 'bg-indigo-100';
+    return darkMode ? 'bg-gray-700' : 'bg-gray-100';
+  };
+
   const renderActivityLog = () => (
     _react2.default.createElement('div', { className: "space-y-4" },
       _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" },
         _react2.default.createElement('div', null,
           _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}` }, "Activity Log"),
-          _react2.default.createElement('p', { className: `text-sm ${textSecondary}` }, "Complete audit trail of all system activity")
+          _react2.default.createElement('p', { className: `text-sm ${textSecondary}` }, "Complete audit trail — ", activityLogs.length, " records")
         ),
-        _react2.default.createElement('button', { onClick: () => exportToCSV(activityLogData, 'activity-log.csv'), className: "bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" },
-          _react2.default.createElement(_lucidereact.Download, { size: 16 }), " Export CSV"
+        _react2.default.createElement('div', { className: "flex gap-2",}
+          , _react2.default.createElement('button', { onClick: () => { setActivityLoading(true); apiCall('/api/activity?limit=200').then(function(r){ setActivityLogs(r.data||[]); }).finally(function(){ setActivityLoading(false); }); }, className: `px-3 py-2 rounded-lg text-sm font-medium border ${borderColor} ${textSecondary} flex items-center gap-1.5`,}, _react2.default.createElement(_lucidereact.RefreshCw, { size: 14, className: activityLoading ? 'animate-spin' : '',}), "Refresh")
+          , _react2.default.createElement('button', { onClick: () => exportToCSV(activityLogs.map(function(l){ return { time: l.createdAt, actor: l.actor, role: l.actorRole, action: l.action, type: l.type }; }), 'activity-log.csv'), className: "bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5" }, _react2.default.createElement(_lucidereact.Download, { size: 14 }), "Export CSV")
         )
       ),
-      _react2.default.createElement('div', { className: "grid grid-cols-3 gap-3" },
-        _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-3 border ${borderColor} text-center` },
-          _react2.default.createElement('p', { className: "text-xl font-bold text-green-600" }, activityLogData.filter(l => l.type === 'deposit').length),
-          _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Deposits")
-        ),
-        _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-3 border ${borderColor} text-center` },
-          _react2.default.createElement('p', { className: "text-xl font-bold text-yellow-600" }, activityLogData.filter(l => l.type === 'alert').length),
-          _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Alerts")
-        ),
-        _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-3 border ${borderColor} text-center` },
-          _react2.default.createElement('p', { className: "text-xl font-bold text-blue-600" }, activityLogData.filter(l => l.type === 'login').length),
-          _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Logins")
-        )
+      _react2.default.createElement('div', { className: "grid grid-cols-2 sm:grid-cols-4 gap-3" },
+        _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-3 border ${borderColor} text-center` }, _react2.default.createElement('p', { className: "text-xl font-bold text-green-600" }, activityLogs.filter(function(l){ return l.type==='deposit'; }).length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Deposits")),
+        _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-3 border ${borderColor} text-center` }, _react2.default.createElement('p', { className: "text-xl font-bold text-red-600" }, activityLogs.filter(function(l){ return l.type==='withdrawal'; }).length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Withdrawals")),
+        _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-3 border ${borderColor} text-center` }, _react2.default.createElement('p', { className: "text-xl font-bold text-blue-600" }, activityLogs.filter(function(l){ return l.type==='login'; }).length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Logins")),
+        _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-3 border ${borderColor} text-center` }, _react2.default.createElement('p', { className: "text-xl font-bold text-purple-600" }, activityLogs.filter(function(l){ return l.type.includes('delete'); }).length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Deletions"))
       ),
-      _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}` },
-        activityLogData.length === 0
-          ? _react2.default.createElement('div', { className: "py-10 text-center" },
-              _react2.default.createElement(_lucidereact.Clock, { size: 40, className: "text-gray-300 mx-auto mb-3" }),
-              _react2.default.createElement('p', { className: `font-medium ${textSecondary}` }, "No activity recorded yet"),
-              _react2.default.createElement('p', { className: `text-xs ${textSecondary} mt-1` }, "Actions taken in the system will appear here")
-            )
-          : _react2.default.createElement('div', { className: "space-y-2" },
-          activityLogData.map(log => (
-            _react2.default.createElement('div', { key: log.id, className: `flex items-start gap-3 p-3 rounded-xl border ${borderColor} hover:bg-gray-50 transition-colors` },
-              _react2.default.createElement('div', { className: `p-2 rounded-full flex-shrink-0 ${log.type === 'deposit' ? 'bg-green-100' : log.type === 'withdrawal' ? 'bg-red-100' : log.type === 'alert' ? 'bg-yellow-100' : log.type === 'loan' ? 'bg-blue-100' : log.type === 'role' ? 'bg-purple-100' : log.type === 'assignment' ? 'bg-indigo-100' : 'bg-gray-100'}` },
-                log.type === 'deposit' ? _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 14, className: "text-green-600" }) :
-                log.type === 'withdrawal' ? _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 14, className: "text-red-600" }) :
-                log.type === 'alert' ? _react2.default.createElement(_lucidereact.AlertTriangle, { size: 14, className: "text-yellow-600" }) :
-                log.type === 'loan' ? _react2.default.createElement(_lucidereact.DollarSign, { size: 14, className: "text-blue-600" }) :
-                log.type === 'role' ? _react2.default.createElement(_lucidereact.Crown, { size: 14, className: "text-purple-600" }) :
-                log.type === 'assignment' ? _react2.default.createElement(_lucidereact.UserCog, { size: 14, className: "text-indigo-600" }) :
-                _react2.default.createElement(_lucidereact.ShieldCheck, { size: 14, className: "text-gray-600" })
-              ),
-              _react2.default.createElement('div', { className: "flex-1 min-w-0" },
-                _react2.default.createElement('p', { className: `text-sm ${textPrimary}` }, log.action),
-                _react2.default.createElement('div', { className: "flex items-center gap-2 mt-0.5" },
-                  _react2.default.createElement('span', { className: `text-xs font-medium ${textSecondary}` }, log.actor),
-                  _react2.default.createElement('span', { className: `text-xs ${textSecondary}` }, "• ", log.date, " • ", log.time)
+      _react2.default.createElement('div', { className: `${cardBg} rounded-xl shadow-sm border ${borderColor} overflow-hidden` },
+        activityLoading ? (
+          _react2.default.createElement('div', { className: "py-12 text-center" }, _react2.default.createElement(_lucidereact.RefreshCw, { size: 28, className: "animate-spin text-blue-500 mx-auto mb-2" }), _react2.default.createElement('p', { className: `text-sm ${textSecondary}` }, "Loading..."))
+        ) : activityLogs.length === 0 ? (
+          _react2.default.createElement('div', { className: "py-12 text-center" },
+            _react2.default.createElement(_lucidereact.Clock, { size: 40, className: "text-gray-300 mx-auto mb-3" }),
+            _react2.default.createElement('p', { className: `font-medium ${textSecondary}` }, "No activity recorded yet"),
+            _react2.default.createElement('p', { className: `text-xs ${textSecondary} mt-1` }, "Actions like logins, deposits, and deletions will appear here automatically")
+          )
+        ) : (
+          _react2.default.createElement('div', { className: "divide-y", style: { borderColor: darkMode ? '#374151' : '#e5e7eb' } },
+            activityLogs.map(function(log) {
+              var ts = new Date(log.createdAt);
+              var timeStr = ts.toLocaleString();
+              return _react2.default.createElement('div', { key: log._id, className: `flex items-start gap-3 px-4 py-3 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors` },
+                _react2.default.createElement('div', { className: `p-2 rounded-full flex-shrink-0 mt-0.5 ${getLogBg(log.type)}` }, getLogIcon(log.type)),
+                _react2.default.createElement('div', { className: "flex-1 min-w-0" },
+                  _react2.default.createElement('p', { className: `text-sm ${textPrimary}` }, log.action),
+                  _react2.default.createElement('div', { className: "flex flex-wrap items-center gap-2 mt-0.5" },
+                    _react2.default.createElement('span', { className: `text-xs font-semibold ${textSecondary}` }, log.actor),
+                    log.actorRole && _react2.default.createElement('span', { className: "text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600" }, log.actorRole),
+                    _react2.default.createElement('span', { className: `text-xs ${textSecondary}` }, "• ", timeStr)
+                  )
                 )
-              )
-            )
-          ))
+              );
+            })
+          )
         )
       )
     )

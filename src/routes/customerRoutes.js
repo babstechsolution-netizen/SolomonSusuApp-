@@ -4,6 +4,7 @@ const xlsx = require('xlsx');
 const Customer = require('../models/Customer');
 const User = require('../models/User');
 const { protect, requireRole } = require('../middleware/auth');
+const { logActivity } = require('../utils/activityLog');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -150,6 +151,7 @@ router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.sing
     if (!valid.length) return res.status(400).json({ success: false, message: 'No rows could be imported — every row was missing a name.', errors });
 
     const created = await Customer.insertMany(valid, { ordered: false });
+    logActivity('customer_import', req.user.name, req.user.role, `${req.user.name} imported ${created.length} customer(s) from Excel`, { count: created.length, skipped: errors.length });
     res.json({
       success: true,
       message: `${created.length} customer(s) imported successfully.`,
@@ -165,6 +167,7 @@ router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.sing
 router.post('/', requireRole('Super Admin', 'Branch Manager', 'Field Collector'), async (req, res) => {
   try {
     const cust = await Customer.create(req.body);
+    logActivity('customer_add', req.user.name, req.user.role, `${req.user.name} registered customer ${cust.name}`, { customer: cust.name, phone: cust.phone });
     res.status(201).json({ success: true, data: cust });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -188,6 +191,7 @@ router.delete('/bulk', requireRole('Super Admin'), async (req, res) => {
     const { ids } = req.body;
     if (!ids || !ids.length) return res.status(400).json({ success: false, message: 'No IDs provided.' });
     const result = await Customer.deleteMany({ _id: { $in: ids } });
+    logActivity('customer_bulk_delete', req.user.name, req.user.role, `${req.user.name} bulk-deleted ${result.deletedCount} customer(s)`, { count: result.deletedCount });
     res.json({ success: true, message: `${result.deletedCount} customer(s) deleted.` });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -199,6 +203,7 @@ router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
   try {
     const cust = await Customer.findByIdAndDelete(req.params.id);
     if (!cust) return res.status(404).json({ success: false, message: 'Customer not found.' });
+    logActivity('customer_delete', req.user.name, req.user.role, `${req.user.name} deleted customer ${cust.name}`, { customer: cust.name });
     res.json({ success: true, message: 'Customer deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -233,6 +238,7 @@ router.post('/:id/create-login', requireRole('Super Admin', 'Branch Manager'), a
     if (clash) return res.status(400).json({ success: false, message: `Username "${clean}" is already taken.` });
 
     await User.create({ name: cust.name, username: clean, password, role: 'Customer', phone: cust.phone || '', customerId: cust._id });
+    logActivity('customer_login_created', req.user.name, req.user.role, `${req.user.name} created login for customer ${cust.name} (username: ${clean})`, { customer: cust.name, username: clean });
     res.json({ success: true, message: 'Login created.', credentials: { username: clean, password } });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

@@ -12,6 +12,7 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const activityRoutes = require('./routes/activityRoutes');
 const { startBackupScheduler } = require('./scheduler');
 
 const app = express();
@@ -50,6 +51,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/activity', activityRoutes);
 
 // API 404 — only for /api/* paths
 app.use('/api', (req, res) => {

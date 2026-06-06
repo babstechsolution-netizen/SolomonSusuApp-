@@ -6,6 +6,7 @@ const Setting = require('../models/Setting');
 const { protect, requireRole } = require('../middleware/auth');
 const { createBackup, BACKUP_COLLECTIONS } = require('../utils/backup');
 const { startBackupScheduler } = require('../scheduler');
+const { logActivity } = require('../utils/activityLog');
 
 const router = express.Router();
 router.use(protect, requireRole('Super Admin'));
@@ -16,6 +17,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 
 router.post('/backup', async (req, res) => {
   try {
     const backup = await createBackup('manual', req.user.name || req.user.username);
+    logActivity('backup', req.user.name, req.user.role, `${req.user.name} created a manual backup (${(backup.sizeBytes/1024).toFixed(1)} KB)`, { name: backup.name, sizeBytes: backup.sizeBytes });
     const obj = backup.toObject();
     delete obj.data;
     res.json({ success: true, data: obj, message: 'Backup created successfully.' });
