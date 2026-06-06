@@ -1,6 +1,10 @@
 const express = require('express');
+const multer = require('multer');
+const xlsx = require('xlsx');
 const Customer = require('../models/Customer');
 const { protect, requireRole } = require('../middleware/auth');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router = express.Router();
 router.use(protect);
@@ -37,6 +41,44 @@ router.get('/qr/:code', async (req, res) => {
     res.json({ success: true, data: cust });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/customers/import — import from Excel file
+router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+
+    if (!rows.length) return res.status(400).json({ success: false, message: 'Excel file is empty.' });
+
+    const colors = ['#ec4899', '#06b6d4', '#f59e0b', '#8b5cf6', '#3b82f6', '#10b981', '#ef4444', '#14b8a6'];
+    const valid = [];
+    const errors = [];
+
+    rows.forEach((row, i) => {
+      const name = String(row.name || row.Name || row.NAME || '').trim();
+      const phone = String(row.phone || row.Phone || row.PHONE || '').trim();
+      if (!name || !phone) { errors.push(`Row ${i + 2}: name and phone are required`); return; }
+      valid.push({
+        name,
+        phone,
+        business: String(row.business || row.Business || row.BUSINESS || '').trim(),
+        location: String(row.location || row.Location || row.LOCATION || '').trim(),
+        color: colors[i % colors.length],
+        status: 'active',
+      });
+    });
+
+    if (!valid.length) return res.status(400).json({ success: false, message: 'No valid rows found.', errors });
+
+    const created = await Customer.insertMany(valid, { ordered: false });
+    res.json({ success: true, message: `${created.length} customer(s) imported.`, data: created, errors });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
   }
 });
 

@@ -80,6 +80,38 @@ router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) 
   }
 });
 
+// PATCH /api/employees/:id/credentials — change login username/password
+router.patch('/:id/credentials', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const emp = await Employee.findById(req.params.id);
+    if (!emp) return res.status(404).json({ success: false, message: 'Employee not found.' });
+    if (!emp.userId) return res.status(400).json({ success: false, message: 'No linked user account for this employee.' });
+
+    const updates = {};
+    if (username && username.trim()) {
+      const clean = username.toLowerCase().trim();
+      const clash = await User.findOne({ username: clean, _id: { $ne: emp.userId } });
+      if (clash) return res.status(400).json({ success: false, message: `Username "${clean}" is already taken.` });
+      updates.username = clean;
+    }
+    if (password) {
+      if (password.length < 6) return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+      updates.password = password;
+    }
+    if (!Object.keys(updates).length) return res.status(400).json({ success: false, message: 'Provide a username or password to update.' });
+
+    const user = await User.findById(emp.userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User account not found.' });
+    Object.assign(user, updates);
+    await user.save();
+
+    res.json({ success: true, message: 'Credentials updated successfully.' });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
 // PATCH /api/employees/:id
 router.patch('/:id', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
   try {

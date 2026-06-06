@@ -11,11 +11,13 @@ const customerRoutes = require('./routes/customerRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const { startBackupScheduler } = require('./scheduler');
 
 const app = express();
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB then start scheduler
+connectDB().then(() => startBackupScheduler().catch(() => {}));
 
 // Middleware
 app.use(cors({
@@ -47,6 +49,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/admin', adminRoutes);
 
 // API 404 — only for /api/* paths
 app.use('/api', (req, res) => {

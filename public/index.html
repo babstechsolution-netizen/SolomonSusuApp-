@@ -446,6 +446,16 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [addEmployeeForm, setAddEmployeeForm] = _react.useState.call(void 0, { name: '', phone: '', zone: '', role: 'field_collector', username: '', password: '' });
   const [showEmpPassword, setShowEmpPassword] = _react.useState.call(void 0, false);
   const [newEmployeeCredentials, setNewEmployeeCredentials] = _react.useState.call(void 0, null);
+  const [editCredForm, setEditCredForm] = _react.useState.call(void 0, { username: '', password: '' });
+  const [showEditCredPw, setShowEditCredPw] = _react.useState.call(void 0, false);
+  const [backups, setBackups] = _react.useState.call(void 0, []);
+  const [backupLoading, setBackupLoading] = _react.useState.call(void 0, false);
+  const [backupSchedule, setBackupSchedule] = _react.useState.call(void 0, { enabled: false, frequency: 'daily' });
+  const [backupSettingsLoaded, setBackupSettingsLoaded] = _react.useState.call(void 0, false);
+  const [showRestoreConfirm, setShowRestoreConfirm] = _react.useState.call(void 0, null);
+  const [restoreWipe, setRestoreWipe] = _react.useState.call(void 0, false);
+  const excelImportRef = _react.useRef.call(void 0, null);
+  const restoreFileRef = _react.useRef.call(void 0, null);
   const [showAddCustomer, setShowAddCustomer] = _react.useState.call(void 0, false);
   const [addCustomerForm, setAddCustomerForm] = _react.useState.call(void 0, { name: '', phone: '', business: '', location: '' });
   const [addCustomerLoading, setAddCustomerLoading] = _react.useState.call(void 0, false);
@@ -586,6 +596,13 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Load backup settings when settings page opens (Super Admin only)
+  _react.useEffect.call(void 0, function() {
+    if (currentPage === 'settings' && _optionalChain([currentUser, 'optionalAccess', _sc => _sc.role]) === 'Super Admin') {
+      loadBackupSettings();
+    }
+  }, [currentPage]);
 
   const getTransactionStats = (filter, customerId = null, employeeId = null) => {
     let filtered = [...transactions];
@@ -1160,6 +1177,99 @@ async function shareAsPDF(){
     });
   };
 
+  const saveEditedCredentials = function() {
+    if (!showEditProfile) return;
+    if (!editCredForm.username.trim() && !editCredForm.password.trim()) { addToast('Enter a username or password to update.', 'error'); return; }
+    apiCall('/api/employees/' + showEditProfile.id + '/credentials', { method: 'PATCH', body: JSON.stringify(editCredForm) }).then(function() {
+      setShowEditProfile(null);
+      setEditCredForm({ username: '', password: '' });
+      setShowEditCredPw(false);
+      addToast('Login credentials updated.', 'success');
+    }).catch(function(err) { addToast(err.message, 'error'); });
+  };
+
+  const loadBackups = function() {
+    setBackupLoading(true);
+    apiCall('/api/admin/backups').then(function(res) { setBackups(res.data || []); }).catch(function(){}).finally(function(){ setBackupLoading(false); });
+  };
+
+  const loadBackupSettings = function() {
+    if (backupSettingsLoaded) return;
+    apiCall('/api/admin/settings').then(function(res) {
+      if (res.data?.backupSchedule) setBackupSchedule(res.data.backupSchedule);
+      setBackupSettingsLoaded(true);
+    }).catch(function(){});
+    loadBackups();
+  };
+
+  const handleCreateBackup = function() {
+    setBackupLoading(true);
+    apiCall('/api/admin/backup', { method: 'POST' }).then(function(res) {
+      addToast(res.message || 'Backup created.', 'success');
+      loadBackups();
+    }).catch(function(err) { addToast(err.message, 'error'); setBackupLoading(false); });
+  };
+
+  const handleDownloadBackup = function(backupId, backupName) {
+    const token = localStorage.getItem('token');
+    const a = document.createElement('a');
+    a.href = '/api/admin/backup/' + backupId + '/download';
+    a.download = backupName + '.json';
+    const headers = new Headers({ Authorization: 'Bearer ' + token });
+    fetch(a.href, { headers }).then(r => r.blob()).then(blob => { a.href = URL.createObjectURL(blob); a.click(); });
+  };
+
+  const handleRestoreBackup = function(backupId, wipe) {
+    setBackupLoading(true);
+    apiCall('/api/admin/restore/' + backupId, { method: 'POST', body: JSON.stringify({ wipe }) }).then(function(res) {
+      addToast(res.message || 'Restore completed.', 'success');
+      setShowRestoreConfirm(null);
+      setRestoreWipe(false);
+    }).catch(function(err) { addToast(err.message, 'error'); }).finally(function(){ setBackupLoading(false); });
+  };
+
+  const handleDeleteBackup = function(backupId) {
+    apiCall('/api/admin/backup/' + backupId, { method: 'DELETE' }).then(function() {
+      setBackups(function(prev) { return prev.filter(function(b) { return b._id !== backupId; }); });
+      addToast('Backup deleted.', 'success');
+    }).catch(function(err) { addToast(err.message, 'error'); });
+  };
+
+  const handleRestoreFromFile = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const form = new FormData(); form.append('file', file); form.append('wipe', 'false');
+    const token = localStorage.getItem('token');
+    setBackupLoading(true);
+    fetch('/api/admin/restore/upload', { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form })
+      .then(r => r.json()).then(function(res) {
+        if (res.success) addToast(res.message || 'Restore from file completed.', 'success');
+        else addToast(res.message || 'Restore failed.', 'error');
+      }).catch(function(){ addToast('Upload failed.', 'error'); })
+      .finally(function(){ setBackupLoading(false); if (restoreFileRef.current) restoreFileRef.current.value = ''; });
+  };
+
+  const saveBackupSchedule = function() {
+    apiCall('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ backupSchedule }) }).then(function() {
+      addToast('Backup schedule saved.', 'success');
+    }).catch(function(err) { addToast(err.message, 'error'); });
+  };
+
+  const handleImportExcel = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const form = new FormData(); form.append('file', file);
+    const token = localStorage.getItem('token');
+    fetch('/api/customers/import', { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form })
+      .then(r => r.json()).then(function(res) {
+        if (res.success) {
+          setCustomers(function(prev) { return [...prev, ...(res.data || []).map(mapCust)]; });
+          addToast(res.message + (res.errors?.length ? ' (' + res.errors.length + ' skipped)' : ''), 'success');
+        } else { addToast(res.message || 'Import failed.', 'error'); }
+      }).catch(function(){ addToast('Import failed.', 'error'); })
+      .finally(function(){ if (excelImportRef.current) excelImportRef.current.value = ''; });
+  };
+
   const saveAccountProfile = function() {
     if (!editAccountForm.name || !editAccountForm.name.trim()) { addToast('Name cannot be empty', 'error'); return; }
     apiCall('/api/auth/me', { method: 'PATCH', body: JSON.stringify({ name: editAccountForm.name.trim(), phone: editAccountForm.phone || '' }) }).then(function(res) {
@@ -1727,7 +1837,11 @@ async function shareAsPDF(){
       _react2.default.createElement('div', { className: "space-y-4",}
         , _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"     ,}
           , _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}`,}, _optionalChain([currentUser, 'optionalAccess', _43 => _43.role]) === 'Field Collector' ? 'My Customers' : 'Customers', " (" , displayCustomers.length, ")")
-          , _optionalChain([currentUser, 'optionalAccess', _44 => _44.role]) !== 'Field Collector' && _react2.default.createElement('button', { onClick: () => { setAddCustomerForm({ name: '', phone: '', business: '', location: '' }); setAddCustomerError(''); setShowAddCustomer(true); }, className: "bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" }, _react2.default.createElement(_lucidereact.Plus, { size: 16 }), " Register Customer")
+          , _optionalChain([currentUser, 'optionalAccess', _44 => _44.role]) !== 'Field Collector' && _react2.default.createElement('div', { className: "flex gap-2",}
+            , _react2.default.createElement('button', { onClick: () => { setAddCustomerForm({ name: '', phone: '', business: '', location: '' }); setAddCustomerError(''); setShowAddCustomer(true); }, className: "bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" }, _react2.default.createElement(_lucidereact.Plus, { size: 16 }), " Register Customer")
+            , _react2.default.createElement('button', { onClick: () => excelImportRef.current && excelImportRef.current.click(), className: "bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",}, _react2.default.createElement(_lucidereact.FileText, { size: 16,}), " Import Excel")
+            , _react2.default.createElement('input', { ref: excelImportRef, type: "file", accept: ".xlsx,.xls", style: { display: 'none' }, onChange: handleImportExcel,})
+          )
         )
         , _react2.default.createElement('div', { className: "relative",}, _react2.default.createElement(_lucidereact.Search, { size: 16, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"    ,} ), _react2.default.createElement('input', { type: "text", value: searchTerm, onChange: (e) => { setSearchTerm(e.target.value); setCustomerPage(1); }, placeholder: "Search by name, business, or location..."     , className: `w-full pl-9 pr-4 py-2 rounded-lg border ${borderColor} ${cardBg} ${textPrimary} text-sm`,} ))
         , _react2.default.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"    ,}
@@ -2017,6 +2131,90 @@ async function shareAsPDF(){
           , _react2.default.createElement('button', { onClick: () => { setShowChangePassword(true); setChangePasswordForm({ current: '', newPass: '', confirm: '' }); setChangePasswordError(''); }, className: "px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700",}, "Change Password")
         )
       )
+      , (_optionalChain([currentUser, 'optionalAccess', _bk => _bk.role]) === 'Super Admin') && (
+        _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-6 shadow-sm border ${borderColor}`,}
+          , _react2.default.createElement('div', { className: "flex items-center justify-between mb-4",}
+            , _react2.default.createElement('div', { className: "flex items-center gap-3",}
+              , _react2.default.createElement('div', { className: "p-2 bg-blue-100 rounded-lg",}, _react2.default.createElement(_lucidereact.RefreshCw, { size: 16, className: "text-blue-600",}))
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('h3', { className: `font-semibold ${textPrimary}`,}, "Backup & Restore")
+                , _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, backups.length, " backup(s) stored in database")
+              )
+            )
+            , _react2.default.createElement('button', { onClick: handleCreateBackup, disabled: backupLoading, className: "px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2",}
+              , backupLoading ? _react2.default.createElement(_lucidereact.RefreshCw, { size: 14, className: "animate-spin",}) : _react2.default.createElement(_lucidereact.Download, { size: 14,})
+              , " Create Backup"
+            )
+          )
+          , _react2.default.createElement('div', { className: `rounded-xl border ${borderColor} overflow-hidden mb-4`,}
+            , _react2.default.createElement('div', { className: `px-4 py-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} flex items-center justify-between`,}
+              , _react2.default.createElement('span', { className: `text-xs font-semibold ${textSecondary} uppercase tracking-wide`,}, "Stored Backups")
+              , _react2.default.createElement('label', { className: "text-xs text-blue-500 cursor-pointer font-medium flex items-center gap-1",}
+                , _react2.default.createElement(_lucidereact.FileText, { size: 12,}), " Restore from file"
+                , _react2.default.createElement('input', { ref: restoreFileRef, type: "file", accept: ".json", style: { display: 'none' }, onChange: handleRestoreFromFile,})
+              )
+            )
+            , backups.length === 0 ? (
+              _react2.default.createElement('div', { className: `px-4 py-6 text-center ${textSecondary} text-sm`,}, backupLoading ? 'Loading...' : 'No backups yet. Click "Create Backup" to start.')
+            ) : (
+              _react2.default.createElement('div', { className: "divide-y", style: { borderColor: darkMode ? '#374151' : '#e5e7eb' },}
+                , backups.map(function(b) {
+                  return _react2.default.createElement('div', { key: b._id, className: `flex items-center justify-between px-4 py-3 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`,}
+                    , _react2.default.createElement('div', null
+                      , _react2.default.createElement('p', { className: `text-sm font-medium ${textPrimary}`,}, b.name)
+                      , _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}
+                        , new Date(b.createdAt).toLocaleString(), " • "
+                        , (b.sizeBytes / 1024).toFixed(1), " KB • "
+                        , b.type === 'scheduled' ? '⏰ Auto' : '👤 Manual'
+                      )
+                    )
+                    , _react2.default.createElement('div', { className: "flex gap-1",}
+                      , _react2.default.createElement('button', { onClick: () => handleDownloadBackup(b._id, b.name), title: "Download", className: "p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg",}, _react2.default.createElement(_lucidereact.Download, { size: 14,}))
+                      , _react2.default.createElement('button', { onClick: () => { setShowRestoreConfirm(b._id); setRestoreWipe(false); }, title: "Restore", className: "p-1.5 text-green-500 hover:bg-green-50 rounded-lg",}, _react2.default.createElement(_lucidereact.RefreshCw, { size: 14,}))
+                      , _react2.default.createElement('button', { onClick: () => handleDeleteBackup(b._id), title: "Delete", className: "p-1.5 text-red-400 hover:bg-red-50 rounded-lg",}, _react2.default.createElement(_lucidereact.Trash2, { size: 14,}))
+                    )
+                  );
+                })
+              )
+            )
+          )
+          , _react2.default.createElement('div', { className: `rounded-xl border ${borderColor} p-4`,}
+            , _react2.default.createElement('p', { className: `text-sm font-semibold ${textPrimary} mb-3`,}, "Automatic Backup Schedule")
+            , _react2.default.createElement('div', { className: "flex flex-wrap gap-3 items-center",}
+              , _react2.default.createElement('label', { className: "flex items-center gap-2 cursor-pointer",}
+                , _react2.default.createElement('div', { className: `w-10 h-5 rounded-full transition-colors relative cursor-pointer ${backupSchedule.enabled ? 'bg-blue-600' : 'bg-gray-300'}`, onClick: () => setBackupSchedule(function(p){ return Object.assign({},p,{enabled:!p.enabled}); }),}
+                  , _react2.default.createElement('div', { className: `w-4 h-4 rounded-full bg-white shadow absolute top-0.5 transition-transform ${backupSchedule.enabled ? 'translate-x-5' : 'translate-x-0.5'}`,})
+                )
+                , _react2.default.createElement('span', { className: `text-sm ${textPrimary}`,}, "Enable scheduled backups")
+              )
+              , backupSchedule.enabled && _react2.default.createElement('select', { value: backupSchedule.frequency, onChange: (e) => setBackupSchedule(function(p){ return Object.assign({},p,{frequency:e.target.value}); }), className: `px-3 py-1.5 rounded-lg border ${borderColor} ${darkMode?'bg-gray-700':'bg-white'} ${textPrimary} text-sm`,}
+                , _react2.default.createElement('option', { value: "hourly",}, "Every hour")
+                , _react2.default.createElement('option', { value: "daily",}, "Daily at 2:00 AM")
+                , _react2.default.createElement('option', { value: "weekly",}, "Weekly (Sunday 2:00 AM)")
+              )
+              , _react2.default.createElement('button', { onClick: saveBackupSchedule, className: "px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700",}, "Save Schedule")
+            )
+          )
+        )
+      )
+
+      , showRestoreConfirm && (
+        _react2.default.createElement('div', { className: "fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4",}
+          , _react2.default.createElement('div', { className: `${cardBg} rounded-2xl w-full max-w-sm shadow-2xl p-6`,}
+            , _react2.default.createElement('h3', { className: `font-bold text-lg ${textPrimary} mb-2`,}, "Restore Backup?")
+            , _react2.default.createElement('p', { className: `text-sm ${textSecondary} mb-4`,}, "Existing data will be kept unless you choose to wipe first.")
+            , _react2.default.createElement('label', { className: "flex items-center gap-2 mb-4 cursor-pointer",}
+              , _react2.default.createElement('input', { type: "checkbox", checked: restoreWipe, onChange: (e) => setRestoreWipe(e.target.checked), className: "w-4 h-4 accent-red-600",})
+              , _react2.default.createElement('span', { className: "text-sm text-red-600 font-medium",}, "Wipe existing data before restore (destructive!)")
+            )
+            , _react2.default.createElement('div', { className: "flex gap-2",}
+              , _react2.default.createElement('button', { onClick: () => setShowRestoreConfirm(null), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
+              , _react2.default.createElement('button', { onClick: () => handleRestoreBackup(showRestoreConfirm, restoreWipe), disabled: backupLoading, className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50",}, backupLoading ? 'Restoring...' : 'Restore')
+            )
+          )
+        )
+      )
+
       , (_optionalChain([currentUser, 'optionalAccess', _dz => _dz.role]) === 'Super Admin') && (
         _react2.default.createElement('div', { className: "rounded-xl p-6 shadow-sm border-2 border-red-300 bg-red-50",}
           , _react2.default.createElement('div', { className: "flex items-start gap-3 mb-4",}
@@ -2757,9 +2955,20 @@ async function shareAsPDF(){
                 , _react2.default.createElement('div', { className: `p-3 rounded-xl ${darkMode ? 'bg-gray-700' : 'bg-amber-50'} border border-amber-200`,}
                   , _react2.default.createElement('p', { className: "text-xs text-amber-700 font-medium",}, "To update roles & permissions, use the Roles & Privileges page.")
                 )
+                , _react2.default.createElement('div', { className: `border-t ${borderColor} pt-3`,}
+                  , _react2.default.createElement('p', { className: `text-xs font-bold ${textSecondary} uppercase tracking-wide mb-2`,}, "Change Login Credentials")
+                  , _react2.default.createElement('div', { className: "space-y-2",}
+                    , _react2.default.createElement('input', { type: "text", value: editCredForm.username, onChange: (e) => setEditCredForm({ ...editCredForm, username: e.target.value.toLowerCase().replace(/\s/g,'') }), placeholder: "New username (leave blank to keep)", className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`,})
+                    , _react2.default.createElement('div', { className: "relative",}
+                      , _react2.default.createElement('input', { type: showEditCredPw ? "text" : "password", value: editCredForm.password, onChange: (e) => setEditCredForm({ ...editCredForm, password: e.target.value }), placeholder: "New password (leave blank to keep)", className: `w-full px-3 py-2.5 pr-10 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} ${textPrimary} text-sm`,})
+                      , _react2.default.createElement('button', { type: "button", onClick: () => setShowEditCredPw(!showEditCredPw), className: `absolute right-3 top-1/2 -translate-y-1/2 ${textSecondary}`,}, showEditCredPw ? _react2.default.createElement(_lucidereact.EyeOff, { size: 15,}) : _react2.default.createElement(_lucidereact.Eye, { size: 15,}))
+                    )
+                    , _react2.default.createElement('button', { onClick: saveEditedCredentials, className: "w-full py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700",}, "Update Credentials")
+                  )
+                )
                 , _react2.default.createElement('div', { className: "flex gap-2",}
-                  , _react2.default.createElement('button', { onClick: () => setShowEditProfile(null), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
-                  , _react2.default.createElement('button', { onClick: saveEditedProfile, className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700",}, "Save Changes")
+                  , _react2.default.createElement('button', { onClick: () => { setShowEditProfile(null); setEditCredForm({ username: '', password: '' }); setShowEditCredPw(false); }, className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
+                  , _react2.default.createElement('button', { onClick: saveEditedProfile, className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700",}, "Save Profile")
                 )
               )
             )
