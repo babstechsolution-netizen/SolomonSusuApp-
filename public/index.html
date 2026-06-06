@@ -455,6 +455,8 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [backupSettingsLoaded, setBackupSettingsLoaded] = _react.useState.call(void 0, false);
   const [showRestoreConfirm, setShowRestoreConfirm] = _react.useState.call(void 0, null);
   const [deleteConfirm, setDeleteConfirm] = _react.useState.call(void 0, null);
+  const [selectedCustomers, setSelectedCustomers] = _react.useState.call(void 0, new Set());
+  const [custSelectMode, setCustSelectMode] = _react.useState.call(void 0, false);
   const [restoreWipe, setRestoreWipe] = _react.useState.call(void 0, false);
   const excelImportRef = _react.useRef.call(void 0, null);
   const restoreFileRef = _react.useRef.call(void 0, null);
@@ -1316,6 +1318,49 @@ async function shareAsPDF(){
     }).catch(function(err) { addToast(err.message || 'Delete failed.', 'error'); });
   };
 
+  const toggleCustomerSelect = function(custId) {
+    setSelectedCustomers(function(prev) {
+      var next = new Set(prev);
+      if (next.has(custId)) next.delete(custId); else next.add(custId);
+      return next;
+    });
+  };
+
+  const handleExportCustomers = function() {
+    var token = localStorage.getItem('susu_token');
+    fetch('/api/customers/export', { headers: { Authorization: 'Bearer ' + token } })
+      .then(function(r) { return r.blob(); })
+      .then(function(blob) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'customers_export.xlsx';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }).catch(function() { addToast('Export failed.', 'error'); });
+  };
+
+  const handleBulkDeleteCustomers = function(ids) {
+    apiCall('/api/customers/bulk', { method: 'DELETE', body: JSON.stringify({ ids: Array.from(ids) }) })
+      .then(function(res) {
+        setCustomers(function(prev) { return prev.filter(function(c) { return !ids.has(c.id); }); });
+        setSelectedCustomers(new Set());
+        setCustSelectMode(false);
+        setDeleteConfirm(null);
+        addToast(res.message || 'Deleted.', 'success');
+      }).catch(function(err) { addToast(err.message || 'Delete failed.', 'error'); });
+  };
+
+  const handleDeleteAllCustomers = function() {
+    apiCall('/api/customers', { method: 'DELETE' })
+      .then(function() {
+        setCustomers([]);
+        setSelectedCustomers(new Set());
+        setCustSelectMode(false);
+        setDeleteConfirm(null);
+        addToast('All customers deleted.', 'success');
+      }).catch(function(err) { addToast(err.message || 'Delete failed.', 'error'); });
+  };
+
   const saveAccountProfile = function() {
     if (!editAccountForm.name || !editAccountForm.name.trim()) { addToast('Name cannot be empty', 'error'); return; }
     apiCall('/api/auth/me', { method: 'PATCH', body: JSON.stringify({ name: editAccountForm.name.trim(), phone: editAccountForm.phone || '' }) }).then(function(res) {
@@ -1884,10 +1929,24 @@ async function shareAsPDF(){
       _react2.default.createElement('div', { className: "space-y-4",}
         , _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"     ,}
           , _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}`,}, _optionalChain([currentUser, 'optionalAccess', _43 => _43.role]) === 'Field Collector' ? 'My Customers' : 'Customers', " (" , displayCustomers.length, ")")
-          , _optionalChain([currentUser, 'optionalAccess', _44 => _44.role]) !== 'Field Collector' && _react2.default.createElement('div', { className: "flex gap-2",}
-            , _react2.default.createElement('button', { onClick: () => { setAddCustomerForm({ name: '', phone: '', business: '', location: '' }); setAddCustomerError(''); setShowAddCustomer(true); }, className: "bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" }, _react2.default.createElement(_lucidereact.Plus, { size: 16 }), " Register Customer")
-            , _react2.default.createElement('button', { onClick: () => excelImportRef.current && excelImportRef.current.click(), className: "bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",}, _react2.default.createElement(_lucidereact.FileText, { size: 16,}), " Import Excel")
-            , _react2.default.createElement('input', { ref: excelImportRef, type: "file", accept: ".xlsx,.xls", style: { display: 'none' }, onChange: handleImportExcel,})
+          , _optionalChain([currentUser, 'optionalAccess', _44 => _44.role]) !== 'Field Collector' && (
+            custSelectMode ? (
+              _react2.default.createElement('div', { className: "flex flex-wrap gap-2",}
+                , _react2.default.createElement('button', { onClick: () => { var ids = new Set(customers.map(function(c){ return c.id; })); setSelectedCustomers(ids); }, className: "px-3 py-2 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-1.5",}, _react2.default.createElement(_lucidereact.CheckCircle, { size: 14,}), " Select All")
+                , _react2.default.createElement('button', { onClick: () => { setSelectedCustomers(new Set()); }, className: "px-3 py-2 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200",}, "Deselect All")
+                , selectedCustomers.size > 0 && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'bulk-customers', ids: selectedCustomers, name: selectedCustomers.size + ' customer(s)' }), className: "px-3 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-1.5",}, _react2.default.createElement(_lucidereact.Trash2, { size: 14,}), " Delete Selected (", selectedCustomers.size, ")")
+                , _react2.default.createElement('button', { onClick: () => { setCustSelectMode(false); setSelectedCustomers(new Set()); }, className: "px-3 py-2 text-sm font-medium border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50",}, "Cancel")
+              )
+            ) : (
+              _react2.default.createElement('div', { className: "flex flex-wrap gap-2",}
+                , _react2.default.createElement('button', { onClick: () => { setAddCustomerForm({ name: '', phone: '', business: '', location: '' }); setAddCustomerError(''); setShowAddCustomer(true); }, className: "bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5",}, _react2.default.createElement(_lucidereact.Plus, { size: 15,}), " Register")
+                , _react2.default.createElement('button', { onClick: () => excelImportRef.current && excelImportRef.current.click(), className: "bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5",}, _react2.default.createElement(_lucidereact.FileText, { size: 15,}), " Import")
+                , _react2.default.createElement('button', { onClick: handleExportCustomers, className: "bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5",}, _react2.default.createElement(_lucidereact.Download, { size: 15,}), " Export")
+                , _optionalChain([currentUser, 'optionalAccess', _sa => _sa.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setCustSelectMode(true), className: "px-3 py-2 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-1.5",}, _react2.default.createElement(_lucidereact.CheckCircle, { size: 15,}), " Select")
+                , _optionalChain([currentUser, 'optionalAccess', _sa2 => _sa2.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'all-customers', name: 'ALL customers (' + customers.length + ')' }), className: "px-3 py-2 text-sm font-medium bg-red-50 text-red-600 rounded-lg hover:bg-red-100 flex items-center gap-1.5",}, _react2.default.createElement(_lucidereact.Trash2, { size: 15,}), " Delete All")
+                , _react2.default.createElement('input', { ref: excelImportRef, type: "file", accept: ".xlsx,.xls", style: { display: 'none' }, onChange: handleImportExcel,})
+              )
+            )
           )
         )
         , _react2.default.createElement('div', { className: "relative",}, _react2.default.createElement(_lucidereact.Search, { size: 16, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"    ,} ), _react2.default.createElement('input', { type: "text", value: searchTerm, onChange: (e) => { setSearchTerm(e.target.value); setCustomerPage(1); }, placeholder: "Search by name, business, or location..."     , className: `w-full pl-9 pr-4 py-2 rounded-lg border ${borderColor} ${cardBg} ${textPrimary} text-sm`,} ))
@@ -1895,8 +1954,15 @@ async function shareAsPDF(){
           , paginatedCustomers.map((cust) => {
             const assignedEmp = getEmployeeById(cust.assignedEmployee);
             return (
-              _react2.default.createElement(_framermotion.motion.div, { key: cust.id, initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}`,}
-                , _react2.default.createElement('div', { className: "flex items-start justify-between mb-2"   ,}, _react2.default.createElement('div', { className: "flex items-center gap-3"  ,}, _react2.default.createElement(Avatar, { name: cust.name, color: cust.color, size: "md",} ), _react2.default.createElement('div', null, _react2.default.createElement('h4', { className: `font-semibold ${textPrimary}`,}, cust.name), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, cust.business))), _react2.default.createElement(StatusBadge, { status: cust.status,} ))
+              _react2.default.createElement(_framermotion.motion.div, { key: cust.id, initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, className: `${cardBg} rounded-xl p-4 shadow-sm border-2 ${selectedCustomers.has(cust.id) ? 'border-blue-500' : borderColor}`, onClick: custSelectMode ? () => toggleCustomerSelect(cust.id) : undefined, style: custSelectMode ? { cursor: 'pointer' } : {},}
+                , _react2.default.createElement('div', { className: "flex items-start justify-between mb-2"   ,}
+                  , _react2.default.createElement('div', { className: "flex items-center gap-3"  ,}
+                    , custSelectMode && _react2.default.createElement('input', { type: "checkbox", checked: selectedCustomers.has(cust.id), onChange: () => toggleCustomerSelect(cust.id), onClick: (e) => e.stopPropagation(), className: "w-4 h-4 accent-blue-600 flex-shrink-0",})
+                    , _react2.default.createElement(Avatar, { name: cust.name, color: cust.color, size: "md",})
+                    , _react2.default.createElement('div', null, _react2.default.createElement('h4', { className: `font-semibold ${textPrimary}`,}, cust.name), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, cust.business))
+                  )
+                  , _react2.default.createElement(StatusBadge, { status: cust.status,})
+                )
                 , _react2.default.createElement('div', { className: "space-y-1 mb-3" ,}, _react2.default.createElement('div', { className: "flex items-center gap-2 text-xs"   ,}, _react2.default.createElement(_lucidereact.MapPin, { size: 12, className: textSecondary,} ), _react2.default.createElement('span', { className: textSecondary,}, cust.location)), _react2.default.createElement('div', { className: "flex items-center gap-2 text-xs"   ,}, _react2.default.createElement(_lucidereact.Phone, { size: 12, className: textSecondary,} ), _react2.default.createElement('span', { className: textSecondary,}, cust.phone)), cust.accountNumber && _react2.default.createElement('div', { className: "flex items-center gap-2 text-xs",}, _react2.default.createElement(_lucidereact.CreditCard, { size: 12, className: "text-indigo-400",}), _react2.default.createElement('span', { className: "text-indigo-500 font-mono font-semibold",}, cust.accountNumber)), assignedEmp && _react2.default.createElement('div', { className: "flex items-center gap-2 text-xs"   ,}, _react2.default.createElement(_lucidereact.UserCheck, { size: 12, className: "text-blue-500",} ), _react2.default.createElement('span', { className: "text-blue-500 font-medium" ,}, assignedEmp.name)))
                 , _react2.default.createElement('div', { className: "grid grid-cols-3 gap-2 text-center mb-3"    ,}
                   , _react2.default.createElement('div', { className: `p-2 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-green-50'}`,}, _react2.default.createElement('p', { className: "text-xs text-green-600" ,}, "Balance"), _react2.default.createElement('p', { className: "text-xs font-bold text-green-700"  ,}, formatCurrency(cust.balance)))
@@ -3184,14 +3250,24 @@ async function shareAsPDF(){
           , _react2.default.createElement('div', { className: "flex items-center gap-3 mb-4",}
             , _react2.default.createElement('div', { className: "p-2 bg-red-100 rounded-xl flex-shrink-0",}, _react2.default.createElement(_lucidereact.Trash2, { size: 20, className: "text-red-600",}))
             , _react2.default.createElement('div', null
-              , _react2.default.createElement('h3', { className: `font-bold text-lg ${textPrimary}`,}, "Delete ", deleteConfirm.type === 'customer' ? 'Customer' : 'Employee', "?")
+              , _react2.default.createElement('h3', { className: `font-bold text-lg ${textPrimary}`,},
+                deleteConfirm.type === 'customer' ? 'Delete Customer?' :
+                deleteConfirm.type === 'employee' ? 'Delete Employee?' :
+                deleteConfirm.type === 'bulk-customers' ? 'Delete Selected Customers?' :
+                'Delete ALL Customers?'
+              )
               , _react2.default.createElement('p', { className: `text-sm ${textSecondary}`,}, deleteConfirm.name)
             )
           )
-          , _react2.default.createElement('p', { className: "text-sm text-red-600 bg-red-50 rounded-xl p-3 mb-5",}, "This cannot be undone. All records linked to this ", deleteConfirm.type, " may be affected.")
+          , _react2.default.createElement('p', { className: "text-sm text-red-600 bg-red-50 rounded-xl p-3 mb-5",}, "This cannot be undone.")
           , _react2.default.createElement('div', { className: "flex gap-2",}
             , _react2.default.createElement('button', { onClick: () => setDeleteConfirm(null), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
-            , _react2.default.createElement('button', { onClick: () => deleteConfirm.type === 'customer' ? handleDeleteCustomer(deleteConfirm.id) : handleDeleteEmployee(deleteConfirm.id), className: "flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700",}, "Yes, Delete")
+            , _react2.default.createElement('button', { onClick: () => {
+                if (deleteConfirm.type === 'customer') handleDeleteCustomer(deleteConfirm.id);
+                else if (deleteConfirm.type === 'employee') handleDeleteEmployee(deleteConfirm.id);
+                else if (deleteConfirm.type === 'bulk-customers') handleBulkDeleteCustomers(deleteConfirm.ids);
+                else if (deleteConfirm.type === 'all-customers') handleDeleteAllCustomers();
+              }, className: "flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700",}, "Yes, Delete")
           )
         )
       )

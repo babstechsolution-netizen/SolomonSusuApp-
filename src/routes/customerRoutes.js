@@ -22,6 +22,31 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/customers/export — download all customers as Excel
+router.get('/export', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
+  try {
+    const customers = await Customer.find().sort({ createdAt: -1 });
+    const rows = customers.map(c => ({
+      name: c.name,
+      phone: c.phone === 'N/A' ? '' : (c.phone || ''),
+      business: c.business || '',
+      location: c.location || '',
+      status: c.status || 'active',
+    }));
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(rows);
+    // Set column widths
+    ws['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 30 }, { wch: 30 }, { wch: 12 }];
+    xlsx.utils.book_append_sheet(wb, ws, 'Customers');
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="customers_${Date.now()}.xlsx"`);
+    res.send(buf);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // GET /api/customers/:id
 router.get('/:id', async (req, res) => {
   try {
@@ -140,6 +165,18 @@ router.patch('/:id', async (req, res) => {
     res.json({ success: true, data: cust });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE /api/customers/bulk — delete multiple selected customers
+router.delete('/bulk', requireRole('Super Admin'), async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !ids.length) return res.status(400).json({ success: false, message: 'No IDs provided.' });
+    const result = await Customer.deleteMany({ _id: { $in: ids } });
+    res.json({ success: true, message: `${result.deletedCount} customer(s) deleted.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
