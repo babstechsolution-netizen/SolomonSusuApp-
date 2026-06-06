@@ -444,6 +444,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [authToken, setAuthToken] = _react.useState.call(void 0, typeof localStorage !== 'undefined' ? localStorage.getItem('susu_token') : null);
   const [showAddEmployee, setShowAddEmployee] = _react.useState.call(void 0, false);
   const [addEmployeeForm, setAddEmployeeForm] = _react.useState.call(void 0, { name: '', phone: '', zone: '', role: 'field_collector' });
+  const [newEmployeeCredentials, setNewEmployeeCredentials] = _react.useState.call(void 0, null);
   const [showAddCustomer, setShowAddCustomer] = _react.useState.call(void 0, false);
   const [addCustomerForm, setAddCustomerForm] = _react.useState.call(void 0, { name: '', phone: '', business: '', location: '' });
   const [addCustomerLoading, setAddCustomerLoading] = _react.useState.call(void 0, false);
@@ -737,7 +738,11 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
       setEmployees(function(prev) { return [...prev, mapEmp(res.data)]; });
       setShowAddEmployee(false);
       setAddEmployeeForm({ name: '', phone: '', zone: '', role: 'field_collector' });
-      addToast('Employee added successfully', 'success');
+      if (res.credentials) {
+        setNewEmployeeCredentials({ name: res.data.name, ...res.credentials });
+      } else {
+        addToast('Employee added successfully', 'success');
+      }
     }).catch(function(err) {
       addToast('Failed to add employee: ' + err.message, 'error');
     });
@@ -2880,6 +2885,38 @@ async function shareAsPDF(){
                 , _react2.default.createElement('button', { onClick: () => setShowAddEmployee(false), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
                 , _react2.default.createElement('button', { onClick: handleAddEmployee, disabled: !addEmployeeForm.name.trim() || !addEmployeeForm.phone.trim() || !addEmployeeForm.zone.trim(), className: "flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50",}, "Add Employee")
               )
+            )
+          )
+        )
+      )
+    )
+
+    /* ── NEW EMPLOYEE CREDENTIALS MODAL ── */
+    , _react2.default.createElement(_framermotion.AnimatePresence, null
+      , newEmployeeCredentials && (
+        _react2.default.createElement(_framermotion.motion.div, { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, className: "fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4",}
+          , _react2.default.createElement(_framermotion.motion.div, { initial: { scale: 0.9 }, animate: { scale: 1 }, exit: { scale: 0.9 }, className: `${cardBg} rounded-2xl w-full max-w-sm shadow-2xl`, onClick: (e) => e.stopPropagation(),}
+            , _react2.default.createElement('div', { className: "bg-gradient-to-br from-green-600 to-emerald-700 p-5 rounded-t-2xl flex items-center gap-3",}
+              , _react2.default.createElement('div', { className: "p-2 bg-white bg-opacity-20 rounded-xl",}, _react2.default.createElement(_lucidereact.KeyRound, { size: 18, className: "text-white",}))
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('h3', { className: "font-bold text-white",}, "Employee Added")
+                , _react2.default.createElement('p', { className: "text-xs text-green-100",}, "Share login credentials with ", newEmployeeCredentials.name)
+              )
+            )
+            , _react2.default.createElement('div', { className: "p-5 space-y-4",}
+              , _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "The employee can now log in using:")
+              , _react2.default.createElement('div', { className: `rounded-xl p-4 space-y-3 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} border ${borderColor}`,}
+                , _react2.default.createElement('div', null
+                  , _react2.default.createElement('p', { className: `text-xs font-semibold ${textSecondary} mb-1`,}, "Username")
+                  , _react2.default.createElement('p', { className: `font-mono font-bold ${textPrimary} text-sm`,}, newEmployeeCredentials.username)
+                )
+                , _react2.default.createElement('div', null
+                  , _react2.default.createElement('p', { className: `text-xs font-semibold ${textSecondary} mb-1`,}, "Default Password")
+                  , _react2.default.createElement('p', { className: `font-mono font-bold ${textPrimary} text-sm`,}, newEmployeeCredentials.password)
+                )
+              )
+              , _react2.default.createElement('p', { className: "text-xs text-amber-500 font-medium",}, "Ask the employee to change their password after first login.")
+              , _react2.default.createElement('button', { onClick: () => setNewEmployeeCredentials(null), className: "w-full py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700",}, "Done")
             )
           )
         )

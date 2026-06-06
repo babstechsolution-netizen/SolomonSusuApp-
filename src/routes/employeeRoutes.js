@@ -1,9 +1,26 @@
 const express = require('express');
 const Employee = require('../models/Employee');
+const User = require('../models/User');
 const { protect, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(protect);
+
+const ROLE_MAP = {
+  field_collector: 'Field Collector',
+  branch_manager: 'Branch Manager',
+  team_lead: 'Field Collector',
+};
+
+async function generateUsername(name) {
+  const base = name.toLowerCase().trim().replace(/\s+/g, '.');
+  let username = base;
+  let counter = 1;
+  while (await User.findOne({ username })) {
+    username = `${base}${counter++}`;
+  }
+  return username;
+}
 
 // GET /api/employees
 router.get('/', async (req, res) => {
@@ -29,8 +46,33 @@ router.get('/:id', async (req, res) => {
 // POST /api/employees
 router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
   try {
-    const emp = await Employee.create(req.body);
-    res.status(201).json({ success: true, data: emp });
+    const { name, phone, zone, role, privileges, color, photo, email } = req.body;
+
+    const username = await generateUsername(name);
+    const defaultPassword = 'susu@1234';
+    const userRole = ROLE_MAP[role] || 'Field Collector';
+
+    const user = await User.create({
+      name,
+      username,
+      password: defaultPassword,
+      role: userRole,
+      phone,
+      zone,
+      ...(email ? { email } : {}),
+    });
+
+    const emp = await Employee.create({
+      name, phone, zone, role, privileges, color, photo,
+      ...(email ? { email } : {}),
+      userId: user._id,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: emp,
+      credentials: { username, password: defaultPassword },
+    });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }

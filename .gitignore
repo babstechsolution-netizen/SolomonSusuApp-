@@ -3,3 +3,5 @@ node_modules/
 *.log
 .DS_Store
 db details.txt
+_tmp_check.js
+index.html.html
