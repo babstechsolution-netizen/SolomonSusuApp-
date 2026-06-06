@@ -442,6 +442,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [lastTransaction, setLastTransaction] = _react.useState.call(void 0, null);
   const [userPasswords, setUserPasswords] = _react.useState.call(void 0, { superadmin: 'admin123', admin: 'admin123', employee: 'emp123', customer: 'cust123', accountant: 'acc123' });
   const [authToken, setAuthToken] = _react.useState.call(void 0, typeof localStorage !== 'undefined' ? localStorage.getItem('susu_token') : null);
+  const [initialising, setInitialising] = _react.useState.call(void 0, typeof localStorage !== 'undefined' && !!localStorage.getItem('susu_token'));
   const [showAddEmployee, setShowAddEmployee] = _react.useState.call(void 0, false);
   const [addEmployeeForm, setAddEmployeeForm] = _react.useState.call(void 0, { name: '', phone: '', zone: '', role: 'field_collector', username: '', password: '' });
   const [showEmpPassword, setShowEmpPassword] = _react.useState.call(void 0, false);
@@ -505,7 +506,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   // ── Restore session from stored token on page load ──────────
   _react.useEffect.call(void 0, function() {
     var stored = typeof localStorage !== 'undefined' ? localStorage.getItem('susu_token') : null;
-    if (!stored) return;
+    if (!stored) { setInitialising(false); return; }
     fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + stored } })
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -520,7 +521,9 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
         } else {
           localStorage.removeItem('susu_token');
         }
-      }).catch(function() { localStorage.removeItem('susu_token'); });
+      })
+      .catch(function() { localStorage.removeItem('susu_token'); })
+      .finally(function() { setInitialising(false); });
   }, []);
 
   _react.useEffect.call(void 0, function() {
@@ -2473,6 +2476,15 @@ async function shareAsPDF(){
   };
 
   const menuItems = getMenuItems();
+
+  if (initialising) return (
+    _react2.default.createElement('div', { className: "fixed inset-0 flex items-center justify-center bg-gray-50", },
+      _react2.default.createElement('div', { className: "flex flex-col items-center gap-3", },
+        _react2.default.createElement('div', { className: "w-10 h-10 border-4 border-green-600 border-t-transparent rounded-full animate-spin", }),
+        _react2.default.createElement('p', { className: "text-sm text-gray-500", }, "Loading...")
+      )
+    )
+  );
 
   if (!isAuthenticated) return (
     _react2.default.createElement(_react2.default.Fragment, null,
