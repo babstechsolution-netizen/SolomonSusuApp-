@@ -520,7 +520,8 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
           setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: letters, color: colorMap[u.role] || '#3b82f6', roleKey: u.roleKey || '', photo: u.photo || null, employeeId: u.employeeId || null });
           setAuthToken(stored);
           setIsAuthenticated(true);
-          setCurrentPage('dashboard');
+          var savedPage = localStorage.getItem('susu_page') || 'dashboard';
+          setCurrentPage(savedPage);
         } else {
           localStorage.removeItem('susu_token');
         }
@@ -623,6 +624,13 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Persist current page so refresh restores it
+  _react.useEffect.call(void 0, function() {
+    if (isAuthenticated && currentPage) {
+      localStorage.setItem('susu_page', currentPage);
+    }
+  }, [currentPage, isAuthenticated]);
 
   // Load backup settings when settings page opens (Super Admin only)
   _react.useEffect.call(void 0, function() {
@@ -757,7 +765,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   };
 
   const handleLogout = function() {
-    if (typeof localStorage !== 'undefined') localStorage.removeItem('susu_token');
+    if (typeof localStorage !== 'undefined') { localStorage.removeItem('susu_token'); localStorage.removeItem('susu_page'); }
     setAuthToken(null);
     setIsAuthenticated(false); setCurrentUser(null); setCurrentPage('dashboard');
     setEmployees([]); setCustomers([]); setTransactions([]); setLoans([]);
