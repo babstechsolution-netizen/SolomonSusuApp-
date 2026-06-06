@@ -457,6 +457,17 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [deleteConfirm, setDeleteConfirm] = _react.useState.call(void 0, null);
   const [selectedCustomers, setSelectedCustomers] = _react.useState.call(void 0, new Set());
   const [custSelectMode, setCustSelectMode] = _react.useState.call(void 0, false);
+  const [showCustomerAccount, setShowCustomerAccount] = _react.useState.call(void 0, null);
+  const [customerAccountTxns, setCustomerAccountTxns] = _react.useState.call(void 0, []);
+  const [customerAccountLoading, setCustomerAccountLoading] = _react.useState.call(void 0, false);
+  const [showCustomerLoginModal, setShowCustomerLoginModal] = _react.useState.call(void 0, null);
+  const [customerLoginForm, setCustomerLoginForm] = _react.useState.call(void 0, { username: '', password: '' });
+  const [showCustLoginPw, setShowCustLoginPw] = _react.useState.call(void 0, false);
+  const [myCustomerProfile, setMyCustomerProfile] = _react.useState.call(void 0, null);
+  const [myCustomerTxns, setMyCustomerTxns] = _react.useState.call(void 0, []);
+  const [custWithdrawForm, setCustWithdrawForm] = _react.useState.call(void 0, { amount: '', notes: '', method: 'Cash' });
+  const [showCustWithdraw, setShowCustWithdraw] = _react.useState.call(void 0, false);
+  const [custWithdrawLoading, setCustWithdrawLoading] = _react.useState.call(void 0, false);
   const [restoreWipe, setRestoreWipe] = _react.useState.call(void 0, false);
   const excelImportRef = _react.useRef.call(void 0, null);
   const restoreFileRef = _react.useRef.call(void 0, null);
@@ -517,7 +528,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
           var u = data.user;
           var letters = (u.name || '').split(' ').map(function(n){ return n[0] || ''; }).join('').substring(0, 2).toUpperCase();
           var colorMap = { 'Super Admin': '#dc2626', 'Branch Manager': '#2563eb', 'Field Collector': '#16a34a', 'Customer': '#9333ea', 'Accountant': '#ea580c' };
-          setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: letters, color: colorMap[u.role] || '#3b82f6', roleKey: u.roleKey || '', photo: u.photo || null, employeeId: u.employeeId || null });
+          setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: letters, color: colorMap[u.role] || '#3b82f6', roleKey: u.roleKey || '', photo: u.photo || null, employeeId: u.employeeId || null, customerId: u.customerId || null });
           setAuthToken(stored);
           setIsAuthenticated(true);
           var savedPage = localStorage.getItem('susu_page') || 'dashboard';
@@ -625,6 +636,19 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     return () => clearInterval(t);
   }, []);
 
+  // Load customer profile + transactions when Customer role logs in
+  _react.useEffect.call(void 0, function() {
+    if (!isAuthenticated || _optionalChain([currentUser, 'optionalAccess', _crl => _crl.role]) !== 'Customer') return;
+    apiCall('/api/customers/me').then(function(res) {
+      if (res.data) setMyCustomerProfile(res.data);
+    }).catch(function(){});
+    apiCall('/api/transactions?limit=100').then(function(res) {
+      if (res.data) setMyCustomerTxns(res.data.map(function(t) {
+        return { id: t._id, type: t.type, amount: t.amount, status: t.status, date: t.date, time: t.time, method: t.method, notes: t.notes, receiptNumber: t.receiptNumber };
+      }));
+    }).catch(function(){});
+  }, [isAuthenticated, currentUser]);
+
   // Persist current page so refresh restores it
   _react.useEffect.call(void 0, function() {
     if (isAuthenticated && currentPage) {
@@ -725,7 +749,7 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
       var u = data.user;
       var colorMap = { superadmin: '#dc2626', admin: '#2563eb', employee: '#16a34a', customer: '#9333ea', accountant: '#ea580c' };
       var avatarLetters = (u.name || '').split(' ').map(function(n){return n[0]||'';}).join('').substring(0,2).toUpperCase();
-      setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: avatarLetters, color: colorMap[u.roleKey] || '#3b82f6', roleKey: u.roleKey, photo: u.photo || null, employeeId: u.employeeId || null });
+      setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: avatarLetters, color: colorMap[u.roleKey] || '#3b82f6', roleKey: u.roleKey, photo: u.photo || null, employeeId: u.employeeId || null, customerId: u.customerId || null });
       setIsAuthenticated(true);
       setCurrentPage('dashboard');
       setLoginLoading(false);
@@ -1369,6 +1393,43 @@ async function shareAsPDF(){
       }).catch(function(err) { addToast(err.message || 'Delete failed.', 'error'); });
   };
 
+  const openCustomerAccount = function(cust) {
+    setShowCustomerAccount(cust);
+    setCustomerAccountTxns([]);
+    setCustomerAccountLoading(true);
+    apiCall('/api/transactions?customer=' + cust.id + '&limit=100')
+      .then(function(res) {
+        setCustomerAccountTxns((res.data || []).map(function(t) {
+          return { id: t._id, type: t.type, amount: t.amount, status: t.status, date: t.date, time: t.time, method: t.method, receiptNumber: t.receiptNumber };
+        }));
+      }).catch(function(){})
+      .finally(function(){ setCustomerAccountLoading(false); });
+  };
+
+  const handleCreateCustomerLogin = function() {
+    if (!customerLoginForm.username.trim() || !customerLoginForm.password.trim()) { addToast('Username and password required.', 'error'); return; }
+    apiCall('/api/customers/' + showCustomerLoginModal.id + '/create-login', { method: 'POST', body: JSON.stringify(customerLoginForm) })
+      .then(function(res) {
+        setShowCustomerLoginModal(null);
+        setCustomerLoginForm({ username: '', password: '' });
+        addToast('Login created: ' + res.credentials.username, 'success');
+      }).catch(function(err) { addToast(err.message, 'error'); });
+  };
+
+  const handleCustomerWithdrawRequest = function() {
+    if (!custWithdrawForm.amount || Number(custWithdrawForm.amount) <= 0) { addToast('Enter a valid amount.', 'error'); return; }
+    setCustWithdrawLoading(true);
+    apiCall('/api/transactions', { method: 'POST', body: JSON.stringify({ amount: Number(custWithdrawForm.amount), type: 'withdrawal', method: custWithdrawForm.method, notes: custWithdrawForm.notes }) })
+      .then(function(res) {
+        var t = res.data;
+        setMyCustomerTxns(function(prev) { return [{ id: t._id, type: t.type, amount: t.amount, status: t.status, date: t.date, time: t.time, method: t.method, notes: t.notes }, ...prev]; });
+        setCustWithdrawForm({ amount: '', notes: '', method: 'Cash' });
+        setShowCustWithdraw(false);
+        addToast('Withdrawal request submitted. Awaiting approval.', 'success');
+      }).catch(function(err) { addToast(err.message, 'error'); })
+      .finally(function(){ setCustWithdrawLoading(false); });
+  };
+
   const saveAccountProfile = function() {
     if (!editAccountForm.name || !editAccountForm.name.trim()) { addToast('Name cannot be empty', 'error'); return; }
     apiCall('/api/auth/me', { method: 'PATCH', body: JSON.stringify({ name: editAccountForm.name.trim(), phone: editAccountForm.phone || '' }) }).then(function(res) {
@@ -1761,28 +1822,100 @@ async function shareAsPDF(){
 
   // CUSTOMER DASHBOARD
   const renderCustomerDashboard = () => {
-    const custData = customers.find(c => c.id === (_optionalChain([currentUser, 'optionalAccess', _24 => _24.customerId]) || 1)) || customers[0];
-    const assignedEmp = getEmployeeById(custData.assignedEmployee);
-    const stats = getTransactionStats(timePeriodFilter, custData.id);
+    const prof = myCustomerProfile;
+    const balance = prof ? prof.balance : 0;
+    const totalDep = prof ? prof.totalDeposits : 0;
+    const totalWith = prof ? prof.totalWithdrawals : 0;
+    const assignedEmp = prof && prof.assignedEmployee;
+    const pendingCount = myCustomerTxns.filter(function(t){ return t.status === 'pending'; }).length;
     return (
       _react2.default.createElement('div', { className: "space-y-4",}
-        , _react2.default.createElement('div', { className: "flex items-center gap-3"  ,}, _react2.default.createElement(Avatar, { name: _optionalChain([currentUser, 'optionalAccess', _25 => _25.name]), color: _optionalChain([currentUser, 'optionalAccess', _26 => _26.color]), size: "xl", showOnline: true, photo: _optionalChain([currentUser, 'optionalAccess', _27 => _27.photo]),} ), _react2.default.createElement('div', null, _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}`,}, "My Account" ), _react2.default.createElement('p', { className: `text-sm ${textSecondary}`,}, custData.business), assignedEmp && _react2.default.createElement('p', { className: `text-xs text-blue-500 mt-1`,}, "Collector: " , assignedEmp.name, " (" , assignedEmp.phone, ")")))
-        , _react2.default.createElement(TimePeriodSelector, { value: timePeriodFilter, onChange: setTimePeriodFilter,} )
-        , _react2.default.createElement('div', { className: "grid grid-cols-2 gap-3"  ,}
-          , _react2.default.createElement(StatCard, { title: "Current Balance" , value: formatCurrency(custData.balance), icon: _lucidereact.Wallet, color: "blue",} )
-          , _react2.default.createElement(StatCard, { title: "Total Deposits" , value: formatCurrency(stats.totalDeposits || custData.totalDeposits), icon: _lucidereact.ArrowDownLeft, trend: `${stats.depositCount} txns`, trendUp: true, color: "green",} )
-          , _react2.default.createElement(StatCard, { title: "Total Withdrawals" , value: formatCurrency(stats.totalWithdrawals || custData.totalWithdrawals), icon: _lucidereact.ArrowUpRight, trend: `${stats.withdrawalCount} txns`, trendUp: false, color: "red",} )
-          , _react2.default.createElement(StatCard, { title: "Trust Score" , value: `${custData.trustScore}%`, icon: _lucidereact.Shield, color: "purple",} )
+        , _react2.default.createElement('div', { className: "flex items-center justify-between",}
+          , _react2.default.createElement('div', { className: "flex items-center gap-3",}
+            , _react2.default.createElement(Avatar, { name: _optionalChain([currentUser, 'optionalAccess', _25 => _25.name]), color: _optionalChain([currentUser, 'optionalAccess', _26 => _26.color]), size: "xl", showOnline: true, photo: _optionalChain([currentUser, 'optionalAccess', _27 => _27.photo]),})
+            , _react2.default.createElement('div', null
+              , _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}`,}, "My Wallet")
+              , prof && _react2.default.createElement('p', { className: `text-sm ${textSecondary}`,}, prof.business || prof.location)
+              , assignedEmp && _react2.default.createElement('p', { className: "text-xs text-blue-500 mt-0.5",}, "Collector: ", assignedEmp.name, " • ", assignedEmp.phone)
+            )
+          )
+          , _react2.default.createElement('button', { onClick: () => { setCustWithdrawForm({ amount: '', notes: '', method: 'Cash' }); setShowCustWithdraw(true); }, className: "px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 flex items-center gap-2",}
+            , _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 16,}), "Request Withdrawal"
+          )
         )
-        , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}`,}
-          , _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3`,}, "My Transactions" )
-          , _react2.default.createElement('div', { className: "space-y-2",}
-            , transactions.filter(t => t.customerId === custData.id).slice(0, 5).map((tx) => (
-              _react2.default.createElement('div', { key: tx.id, className: `p-3 rounded-lg border ${borderColor} flex items-center justify-between`,}
-                , _react2.default.createElement('div', { className: "flex items-center gap-3"  ,}, _react2.default.createElement('div', { className: `p-2 rounded-full ${tx.type === 'deposit' ? 'bg-green-100' : 'bg-red-100'}`,}, tx.type === 'deposit' ? _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 14, className: "text-green-600",} ) : _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 14, className: "text-red-600",} )), _react2.default.createElement('div', null, _react2.default.createElement('p', { className: `text-sm font-medium ${textPrimary}`,}, tx.type === 'deposit' ? 'Deposit' : 'Withdrawal'), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, tx.date, " • "  , tx.time)))
-                , _react2.default.createElement('p', { className: `font-bold ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`,}, tx.type === 'deposit' ? '+' : '-', formatCurrency(tx.amount))
+        , _react2.default.createElement('div', { className: "bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg",}
+          , _react2.default.createElement('p', { className: "text-blue-100 text-sm mb-1",}, "Current Balance")
+          , _react2.default.createElement('p', { className: "text-4xl font-bold",}, formatCurrency(balance))
+          , _react2.default.createElement('div', { className: "flex gap-6 mt-4 pt-4 border-t border-white border-opacity-20",}
+            , _react2.default.createElement('div', null, _react2.default.createElement('p', { className: "text-blue-100 text-xs",}, "Total Deposits"), _react2.default.createElement('p', { className: "font-bold text-lg",}, formatCurrency(totalDep)))
+            , _react2.default.createElement('div', null, _react2.default.createElement('p', { className: "text-blue-100 text-xs",}, "Total Withdrawn"), _react2.default.createElement('p', { className: "font-bold text-lg",}, formatCurrency(totalWith)))
+            , pendingCount > 0 && _react2.default.createElement('div', null, _react2.default.createElement('p', { className: "text-blue-100 text-xs",}, "Pending Requests"), _react2.default.createElement('p', { className: "font-bold text-lg text-amber-300",}, pendingCount))
+          )
+        )
+        , prof && _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor} flex items-center gap-3`,}
+          , _react2.default.createElement('div', { className: "p-2 bg-green-100 rounded-lg",}, _react2.default.createElement(_lucidereact.CreditCard, { size: 16, className: "text-green-600",}))
+          , _react2.default.createElement('div', null
+            , _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Account Number")
+            , _react2.default.createElement('p', { className: `font-mono font-bold ${textPrimary}`,}, prof.qrCode || ('FC-' + String(prof._id || '').slice(-6).toUpperCase()))
+          )
+        )
+        , _react2.default.createElement('div', { className: `${cardBg} rounded-xl shadow-sm border ${borderColor}`,}
+          , _react2.default.createElement('div', { className: "flex items-center justify-between p-4 border-b",  style: { borderColor: darkMode ? '#374151' : '#e5e7eb' },}
+            , _react2.default.createElement('h3', { className: `font-semibold ${textPrimary}`,}, "Transaction History")
+            , _react2.default.createElement('span', { className: `text-xs ${textSecondary}`,}, myCustomerTxns.length, " records")
+          )
+          , myCustomerTxns.length === 0 ? (
+            _react2.default.createElement('p', { className: `text-sm ${textSecondary} text-center py-8`,}, "No transactions yet.")
+          ) : (
+            _react2.default.createElement('div', { className: "divide-y", style: { borderColor: darkMode ? '#374151' : '#e5e7eb' },}
+              , myCustomerTxns.map(function(tx) {
+                return _react2.default.createElement('div', { key: tx.id, className: "flex items-center justify-between px-4 py-3",}
+                  , _react2.default.createElement('div', { className: "flex items-center gap-3",}
+                    , _react2.default.createElement('div', { className: `p-2 rounded-full ${tx.type === 'deposit' ? 'bg-green-100' : 'bg-red-100'}`,}, tx.type === 'deposit' ? _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 14, className: "text-green-600",}) : _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 14, className: "text-red-600",}))
+                    , _react2.default.createElement('div', null
+                      , _react2.default.createElement('p', { className: `text-sm font-medium ${textPrimary}`,}, tx.type === 'deposit' ? 'Deposit' : 'Withdrawal', tx.status === 'pending' ? ' (Pending)' : '')
+                      , _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, tx.date, ' • ', tx.method)
+                    )
+                  )
+                  , _react2.default.createElement('div', { className: "text-right",}
+                    , _react2.default.createElement('p', { className: `font-bold ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`,}, tx.type === 'deposit' ? '+' : '-', formatCurrency(tx.amount))
+                    , _react2.default.createElement('span', { className: `text-xs px-1.5 py-0.5 rounded-full ${tx.status === 'approved' ? 'bg-green-100 text-green-700' : tx.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`,}, tx.status)
+                  )
+                );
+              })
+            )
+          )
+        )
+
+        , showCustWithdraw && _react2.default.createElement('div', { className: "fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4",}
+          , _react2.default.createElement('div', { className: `${cardBg} rounded-2xl w-full max-w-sm shadow-2xl p-6`,}
+            , _react2.default.createElement('div', { className: "flex items-center gap-3 mb-4",}
+              , _react2.default.createElement('div', { className: "p-2 bg-red-100 rounded-xl",}, _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 20, className: "text-red-600",}))
+              , _react2.default.createElement('div', null, _react2.default.createElement('h3', { className: `font-bold text-lg ${textPrimary}`,}, "Request Withdrawal"), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Balance: ", formatCurrency(balance)))
+            )
+            , _react2.default.createElement('div', { className: "space-y-3",}
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Amount (GH₵) *")
+                , _react2.default.createElement('input', { type: "number", value: custWithdrawForm.amount, onChange: (e) => setCustWithdrawForm({ ...custWithdrawForm, amount: e.target.value }), placeholder: "0.00", className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
               )
-            ))
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Method")
+                , _react2.default.createElement('select', { value: custWithdrawForm.method, onChange: (e) => setCustWithdrawForm({ ...custWithdrawForm, method: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,}
+                  , _react2.default.createElement('option', { value: "Cash",}, "Cash")
+                  , _react2.default.createElement('option', { value: "MoMo",}, "MoMo")
+                  , _react2.default.createElement('option', { value: "Bank Transfer",}, "Bank Transfer")
+                )
+              )
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Reason / Notes")
+                , _react2.default.createElement('textarea', { value: custWithdrawForm.notes, onChange: (e) => setCustWithdrawForm({ ...custWithdrawForm, notes: e.target.value }), placeholder: "Optional — reason for withdrawal", rows: 2, className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
+              )
+              , _react2.default.createElement('p', { className: "text-xs text-amber-600 bg-amber-50 rounded-lg p-2",}, "Your request will be reviewed and processed by a collector.")
+              , _react2.default.createElement('div', { className: "flex gap-2",}
+                , _react2.default.createElement('button', { onClick: () => setShowCustWithdraw(false), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
+                , _react2.default.createElement('button', { onClick: handleCustomerWithdrawRequest, disabled: custWithdrawLoading || !custWithdrawForm.amount, className: "flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 disabled:opacity-50",}, custWithdrawLoading ? 'Submitting...' : 'Submit Request')
+              )
+            )
           )
         )
       )
@@ -1979,11 +2112,13 @@ async function shareAsPDF(){
                 )
                 , _react2.default.createElement(SavingsCycleBar, { customer: cust, textSecondary: textSecondary })
                 , _react2.default.createElement('div', { className: "flex gap-1.5 mt-3" ,}
+                  , _react2.default.createElement('button', { onClick: () => openCustomerAccount(cust), className: "flex-1 text-xs py-2 bg-blue-50 text-blue-600 rounded-lg font-medium flex items-center justify-center gap-1",}, _react2.default.createElement(_lucidereact.Eye, { size: 11,}), "Account")
                   , _react2.default.createElement('button', { onClick: () => openTransaction('deposit', cust), className: "flex-1 text-xs py-2 bg-green-50 text-green-600 rounded-lg font-medium"      ,}, "Deposit")
                   , _react2.default.createElement('button', { onClick: () => openTransaction('withdrawal', cust), className: "flex-1 text-xs py-2 bg-red-50 text-red-600 rounded-lg font-medium"      ,}, "Withdraw")
-                  , (_optionalChain([currentUser, 'optionalAccess', _45 => _45.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _46 => _46.role]) === 'Branch Manager') && _react2.default.createElement('button', { onClick: () => setShowAssignModal(cust), className: "flex-1 text-xs py-2 bg-green-50 text-green-700 rounded-lg font-medium"      ,}, "Assign")
-                  , _react2.default.createElement('button', { onClick: () => setShowQRModal(cust), className: "text-xs py-2 px-2.5 bg-amber-50 text-amber-600 rounded-lg font-medium flex items-center gap-1"        ,}, _react2.default.createElement(_lucidereact.QrCode, { size: 12,} ), "QR")
-                  , _optionalChain([currentUser, 'optionalAccess', _del2 => _del2.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'customer', id: cust.id, name: cust.name }), className: "text-xs py-2 px-2.5 bg-red-50 text-red-500 rounded-lg font-medium hover:bg-red-100", title: "Delete customer",}, _react2.default.createElement(_lucidereact.Trash2, { size: 12,}))
+                  , (_optionalChain([currentUser, 'optionalAccess', _45 => _45.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _46 => _46.role]) === 'Branch Manager') && _react2.default.createElement('button', { onClick: () => setShowAssignModal(cust), className: "text-xs py-2 px-2 bg-green-50 text-green-700 rounded-lg font-medium"      ,}, "Assign")
+                  , _react2.default.createElement('button', { onClick: () => setShowQRModal(cust), className: "text-xs py-2 px-2 bg-amber-50 text-amber-600 rounded-lg font-medium flex items-center gap-1"        ,}, _react2.default.createElement(_lucidereact.QrCode, { size: 12,}))
+                  , _optionalChain([currentUser, 'optionalAccess', _del2 => _del2.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => { setShowCustomerLoginModal(cust); setCustomerLoginForm({ username: '', password: '' }); }, className: "text-xs py-2 px-2 bg-purple-50 text-purple-600 rounded-lg font-medium hover:bg-purple-100", title: "Create Login",}, _react2.default.createElement(_lucidereact.KeyRound, { size: 12,}))
+                  , _optionalChain([currentUser, 'optionalAccess', _del2b => _del2b.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'customer', id: cust.id, name: cust.name }), className: "text-xs py-2 px-2 bg-red-50 text-red-500 rounded-lg font-medium hover:bg-red-100", title: "Delete customer",}, _react2.default.createElement(_lucidereact.Trash2, { size: 12,}))
                 )
               )
             );
@@ -3276,6 +3411,100 @@ async function shareAsPDF(){
                 else if (deleteConfirm.type === 'bulk-customers') handleBulkDeleteCustomers(deleteConfirm.ids);
                 else if (deleteConfirm.type === 'all-customers') handleDeleteAllCustomers();
               }, className: "flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700",}, "Yes, Delete")
+          )
+        )
+      )
+    )
+
+    /* ── CUSTOMER ACCOUNT DETAIL MODAL (Admin) ── */
+    , showCustomerAccount && (
+      _react2.default.createElement(_framermotion.motion.div, { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, className: "fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4", onClick: () => setShowCustomerAccount(null),}
+        , _react2.default.createElement(_framermotion.motion.div, { initial: { scale: 0.95 }, animate: { scale: 1 }, className: `${cardBg} rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col`, onClick: (e) => e.stopPropagation(),}
+          , _react2.default.createElement('div', { className: "bg-gradient-to-br from-blue-600 to-indigo-700 p-5 rounded-t-2xl flex items-center justify-between flex-shrink-0",}
+            , _react2.default.createElement('div', { className: "flex items-center gap-3",}
+              , _react2.default.createElement(Avatar, { name: showCustomerAccount.name, color: showCustomerAccount.color, size: "md",})
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('h3', { className: "font-bold text-white text-lg",}, showCustomerAccount.name)
+                , _react2.default.createElement('p', { className: "text-blue-100 text-xs",}, showCustomerAccount.business, showCustomerAccount.business && ' • ', showCustomerAccount.phone)
+              )
+            )
+            , _react2.default.createElement('button', { onClick: () => setShowCustomerAccount(null),}, _react2.default.createElement(_lucidereact.X, { size: 20, className: "text-white opacity-70 hover:opacity-100",}))
+          )
+          , _react2.default.createElement('div', { className: "p-5 overflow-y-auto flex-1",}
+            , _react2.default.createElement('div', { className: "grid grid-cols-3 gap-3 mb-5",}
+              , _react2.default.createElement('div', { className: `rounded-xl p-3 text-center ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`,}
+                , _react2.default.createElement('p', { className: "text-xs text-blue-500 font-medium",}, "Balance")
+                , _react2.default.createElement('p', { className: "font-bold text-blue-700 text-lg",}, formatCurrency(showCustomerAccount.balance || 0))
+              )
+              , _react2.default.createElement('div', { className: `rounded-xl p-3 text-center ${darkMode ? 'bg-gray-700' : 'bg-green-50'}`,}
+                , _react2.default.createElement('p', { className: "text-xs text-green-500 font-medium",}, "Deposits")
+                , _react2.default.createElement('p', { className: "font-bold text-green-700 text-lg",}, formatCurrency(showCustomerAccount.totalDeposits || 0))
+              )
+              , _react2.default.createElement('div', { className: `rounded-xl p-3 text-center ${darkMode ? 'bg-gray-700' : 'bg-red-50'}`,}
+                , _react2.default.createElement('p', { className: "text-xs text-red-500 font-medium",}, "Withdrawn")
+                , _react2.default.createElement('p', { className: "font-bold text-red-700 text-lg",}, formatCurrency(showCustomerAccount.totalWithdrawals || 0))
+              )
+            )
+            , _react2.default.createElement('p', { className: `text-xs font-bold uppercase tracking-wide ${textSecondary} mb-2`,}, "Transaction History")
+            , customerAccountLoading ? (
+              _react2.default.createElement('div', { className: "text-center py-8",}, _react2.default.createElement(_lucidereact.RefreshCw, { size: 20, className: "animate-spin text-blue-500 mx-auto",}))
+            ) : customerAccountTxns.length === 0 ? (
+              _react2.default.createElement('p', { className: `text-sm ${textSecondary} text-center py-6`,}, "No transactions yet.")
+            ) : (
+              _react2.default.createElement('div', { className: "space-y-2",}
+                , customerAccountTxns.map(function(t) {
+                  return _react2.default.createElement('div', { key: t.id, className: `flex items-center justify-between p-3 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`,}
+                    , _react2.default.createElement('div', { className: "flex items-center gap-3",}
+                      , _react2.default.createElement('div', { className: `p-2 rounded-full ${t.type === 'deposit' ? 'bg-green-100' : 'bg-red-100'}`,}, t.type === 'deposit' ? _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 14, className: "text-green-600",}) : _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 14, className: "text-red-600",}))
+                      , _react2.default.createElement('div', null
+                        , _react2.default.createElement('p', { className: `text-sm font-medium ${textPrimary}`,}, t.type === 'deposit' ? 'Deposit' : 'Withdrawal')
+                        , _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, t.date, ' • ', t.method)
+                      )
+                    )
+                    , _react2.default.createElement('div', { className: "text-right",}
+                      , _react2.default.createElement('p', { className: `font-bold ${t.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`,}, t.type === 'deposit' ? '+' : '-', formatCurrency(t.amount))
+                      , _react2.default.createElement('span', { className: `text-xs px-1.5 py-0.5 rounded-full ${t.status === 'approved' ? 'bg-green-100 text-green-700' : t.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`,}, t.status)
+                    )
+                  );
+                })
+              )
+            )
+          )
+        )
+      )
+    )
+
+    /* ── CREATE CUSTOMER LOGIN MODAL ── */
+    , showCustomerLoginModal && (
+      _react2.default.createElement(_framermotion.motion.div, { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, className: "fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4", onClick: () => setShowCustomerLoginModal(null),}
+        , _react2.default.createElement(_framermotion.motion.div, { initial: { scale: 0.9 }, animate: { scale: 1 }, className: `${cardBg} rounded-2xl w-full max-w-sm shadow-2xl`, onClick: (e) => e.stopPropagation(),}
+          , _react2.default.createElement('div', { className: "bg-gradient-to-br from-purple-600 to-violet-700 p-5 rounded-t-2xl flex items-center justify-between",}
+            , _react2.default.createElement('div', { className: "flex items-center gap-3",}
+              , _react2.default.createElement('div', { className: "p-2 bg-white bg-opacity-20 rounded-xl",}, _react2.default.createElement(_lucidereact.KeyRound, { size: 18, className: "text-white",}))
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('h3', { className: "font-bold text-white",}, "Create Customer Login")
+                , _react2.default.createElement('p', { className: "text-purple-100 text-xs",}, showCustomerLoginModal.name)
+              )
+            )
+            , _react2.default.createElement('button', { onClick: () => setShowCustomerLoginModal(null),}, _react2.default.createElement(_lucidereact.X, { size: 20, className: "text-white opacity-70 hover:opacity-100",}))
+          )
+          , _react2.default.createElement('div', { className: "p-5 space-y-3",}
+            , _react2.default.createElement('div', null
+              , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Username *")
+              , _react2.default.createElement('input', { type: "text", value: customerLoginForm.username, onChange: (e) => setCustomerLoginForm({ ...customerLoginForm, username: e.target.value.toLowerCase().replace(/\s/g,'') }), placeholder: "e.g. abena.pokua", className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
+            )
+            , _react2.default.createElement('div', null
+              , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Password *")
+              , _react2.default.createElement('div', { className: "relative",}
+                , _react2.default.createElement('input', { type: showCustLoginPw ? "text" : "password", value: customerLoginForm.password, onChange: (e) => setCustomerLoginForm({ ...customerLoginForm, password: e.target.value }), placeholder: "Min. 6 characters", className: `w-full px-3 py-2.5 pr-10 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
+                , _react2.default.createElement('button', { type: "button", onClick: () => setShowCustLoginPw(!showCustLoginPw), className: `absolute right-3 top-1/2 -translate-y-1/2 ${textSecondary}`,}, showCustLoginPw ? _react2.default.createElement(_lucidereact.EyeOff, { size: 15,}) : _react2.default.createElement(_lucidereact.Eye, { size: 15,}))
+              )
+            )
+            , _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "The customer will use these credentials to log in and view their wallet.")
+            , _react2.default.createElement('div', { className: "flex gap-2 pt-1",}
+              , _react2.default.createElement('button', { onClick: () => setShowCustomerLoginModal(null), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
+              , _react2.default.createElement('button', { onClick: handleCreateCustomerLogin, className: "flex-1 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700",}, "Create Login")
+            )
           )
         )
       )

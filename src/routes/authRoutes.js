@@ -25,7 +25,10 @@ router.post('/login', async (req, res) => {
     user.lastLogin = new Date();
     await user.save({ validateModifiedOnly: true });
 
-    res.json({ success: true, token: signToken(user._id), user: user.toPublic() });
+    const pub = user.toPublic();
+    // Include customerId so customer dashboard knows which profile to load
+    if (user.customerId) pub.customerId = user.customerId;
+    res.json({ success: true, token: signToken(user._id), user: pub });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema({
   status: { type: String, enum: ['active', 'suspended', 'inactive'], default: 'active' },
   photo: { type: String },
   employeeId: { type: Number },
+  customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
   lastLogin: { type: Date },
 }, { timestamps: true });
 

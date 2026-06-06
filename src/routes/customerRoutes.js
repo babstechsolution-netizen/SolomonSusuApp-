@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const Customer = require('../models/Customer');
+const User = require('../models/User');
 const { protect, requireRole } = require('../middleware/auth');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -17,6 +18,19 @@ router.get('/', async (req, res) => {
     if (req.query.status) filter.status = req.query.status;
     const customers = await Customer.find(filter).populate('assignedEmployee', 'name zone phone').sort({ createdAt: -1 });
     res.json({ success: true, data: customers });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/customers/me — logged-in customer sees their own profile
+router.get('/me', async (req, res) => {
+  try {
+    if (req.user.role !== 'Customer') return res.status(403).json({ success: false, message: 'Not a customer account.' });
+    if (!req.user.customerId) return res.status(404).json({ success: false, message: 'No customer profile linked to this account.' });
+    const cust = await Customer.findById(req.user.customerId).populate('assignedEmployee', 'name phone zone');
+    if (!cust) return res.status(404).json({ success: false, message: 'Customer profile not found.' });
+    res.json({ success: true, data: cust });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -198,6 +212,30 @@ router.delete('/', requireRole('Super Admin'), async (req, res) => {
     res.json({ success: true, message: 'All customers deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/customers/:id/create-login — create login credentials for an existing customer
+router.post('/:id/create-login', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ success: false, message: 'Username and password are required.' });
+    if (password.length < 6) return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+
+    const cust = await Customer.findById(req.params.id);
+    if (!cust) return res.status(404).json({ success: false, message: 'Customer not found.' });
+
+    const alreadyLinked = await User.findOne({ customerId: cust._id });
+    if (alreadyLinked) return res.status(400).json({ success: false, message: 'This customer already has a login account.' });
+
+    const clean = username.toLowerCase().trim();
+    const clash = await User.findOne({ username: clean });
+    if (clash) return res.status(400).json({ success: false, message: `Username "${clean}" is already taken.` });
+
+    await User.create({ name: cust.name, username: clean, password, role: 'Customer', phone: cust.phone || '', customerId: cust._id });
+    res.json({ success: true, message: 'Login created.', credentials: { username: clean, password } });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
   }
 });
 

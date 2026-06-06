@@ -15,8 +15,13 @@ router.get('/', async (req, res) => {
     if (req.query.status) filter.status = req.query.status;
     if (req.query.method) filter.method = req.query.method;
     if (req.query.employee) filter.employee = req.query.employee;
-    if (req.query.customer) filter.customer = req.query.customer;
     if (req.query.date) filter.date = req.query.date;
+    // Customers can only see their own transactions
+    if (req.user.role === 'Customer') {
+      filter.customer = req.user.customerId;
+    } else if (req.query.customer) {
+      filter.customer = req.query.customer;
+    }
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -38,20 +43,28 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/transactions  (deposit or withdrawal)
+// POST /api/transactions  (deposit or withdrawal; customers create pending withdrawal requests)
 router.post('/', async (req, res) => {
   try {
-    const { customerId, amount, type, method, notes } = req.body;
+    const isCustomer = req.user.role === 'Customer';
+    const { amount, type, method, notes } = req.body;
+    // Customers submit withdrawal requests for their own account; others specify customerId
+    const customerId = isCustomer ? req.user.customerId : req.body.customerId;
+
     if (!customerId || !amount || !type) {
       return res.status(400).json({ success: false, message: 'customerId, amount and type are required.' });
+    }
+    if (isCustomer && type !== 'withdrawal') {
+      return res.status(400).json({ success: false, message: 'Customers can only request withdrawals.' });
     }
 
     const customer = await Customer.findById(customerId);
     if (!customer) return res.status(404).json({ success: false, message: 'Customer not found.' });
 
-    const employee = await Employee.findOne({ userId: req.user._id });
+    const employee = isCustomer ? null : await Employee.findOne({ userId: req.user._id });
+    const txStatus = isCustomer ? 'pending' : 'approved';
 
-    if (type === 'withdrawal' && amount > customer.balance) {
+    if (type === 'withdrawal' && txStatus === 'approved' && Number(amount) > customer.balance) {
       return res.status(400).json({ success: false, message: 'Insufficient balance.' });
     }
 
@@ -59,29 +72,30 @@ router.post('/', async (req, res) => {
       customer: customer._id,
       customerName: customer.name,
       employee: employee ? employee._id : null,
-      employeeName: req.user.name,
+      employeeName: isCustomer ? customer.name : req.user.name,
       amount: Number(amount),
       type,
       method: method || 'Cash',
-      status: 'approved',
+      status: txStatus,
       notes,
     });
 
-    // Update customer balance and totals
-    if (type === 'deposit') {
-      customer.balance += Number(amount);
-      customer.totalDeposits += Number(amount);
-    } else {
-      customer.balance -= Number(amount);
-      customer.totalWithdrawals += Number(amount);
-    }
-    await customer.save();
+    // Only update balance immediately for approved transactions
+    if (txStatus === 'approved') {
+      if (type === 'deposit') {
+        customer.balance += Number(amount);
+        customer.totalDeposits += Number(amount);
+      } else {
+        customer.balance -= Number(amount);
+        customer.totalWithdrawals += Number(amount);
+      }
+      await customer.save();
 
-    // Update employee stats
-    if (employee) {
-      if (type === 'deposit') employee.collections += Number(amount);
-      else employee.withdrawals += Number(amount);
-      await employee.save();
+      if (employee) {
+        if (type === 'deposit') employee.collections += Number(amount);
+        else employee.withdrawals += Number(amount);
+        await employee.save();
+      }
     }
 
     res.status(201).json({ success: true, data: tx });
