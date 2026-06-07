@@ -473,6 +473,8 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   const [custWithdrawForm, setCustWithdrawForm] = _react.useState.call(void 0, { amount: '', notes: '', method: 'Cash' });
   const [showCustWithdraw, setShowCustWithdraw] = _react.useState.call(void 0, false);
   const [custWithdrawLoading, setCustWithdrawLoading] = _react.useState.call(void 0, false);
+  const [withdrawalSettings, setWithdrawalSettings] = _react.useState.call(void 0, { minBalance: 0, feePercent: 0 });
+  const [adminWithdrawalForm, setAdminWithdrawalForm] = _react.useState.call(void 0, { minBalance: '', feePercent: '' });
   const [activityLogs, setActivityLogs] = _react.useState.call(void 0, []);
   const [activityLoading, setActivityLoading] = _react.useState.call(void 0, false);
   const [restoreWipe, setRestoreWipe] = _react.useState.call(void 0, false);
@@ -571,6 +573,12 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
       return apiCall('/api/loans');
     }).then(function(lRes) {
       if (lRes && lRes.data) setLoans(lRes.data.map(mapLoan));
+      return apiCall('/api/transactions/withdrawal-settings');
+    }).then(function(wsRes) {
+      if (wsRes && wsRes.data) {
+        setWithdrawalSettings(wsRes.data);
+        setAdminWithdrawalForm({ minBalance: wsRes.data.minBalance, feePercent: wsRes.data.feePercent });
+      }
     }).catch(function(err) {
       console.error('Data load error:', err.message);
     });
@@ -1330,6 +1338,14 @@ async function shareAsPDF(){
       .finally(function(){ setBackupLoading(false); if (restoreFileRef.current) restoreFileRef.current.value = ''; });
   };
 
+  const saveWithdrawalSettings = function() {
+    var ws = { minBalance: Number(adminWithdrawalForm.minBalance) || 0, feePercent: Number(adminWithdrawalForm.feePercent) || 0 };
+    apiCall('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ withdrawalSettings: ws }) }).then(function() {
+      setWithdrawalSettings(ws);
+      addToast('Withdrawal settings saved.', 'success');
+    }).catch(function(err) { addToast(err.message, 'error'); });
+  };
+
   const saveBackupSchedule = function() {
     apiCall('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ backupSchedule }) }).then(function() {
       addToast('Backup schedule saved.', 'success');
@@ -1468,7 +1484,18 @@ async function shareAsPDF(){
   };
 
   const handleCustomerWithdrawRequest = function() {
-    if (!custWithdrawForm.amount || Number(custWithdrawForm.amount) <= 0) { addToast('Enter a valid amount.', 'error'); return; }
+    var amt = Number(custWithdrawForm.amount);
+    if (!amt || amt <= 0) { addToast('Enter a valid amount.', 'error'); return; }
+    var balance = myCustomerProfile ? myCustomerProfile.balance : 0;
+    var fee = Math.round(amt * withdrawalSettings.feePercent / 100 * 100) / 100;
+    var totalDeduction = amt + fee;
+    if (balance <= withdrawalSettings.minBalance) {
+      addToast('Your balance is at or below the minimum required amount. Withdrawal not allowed.', 'error'); return;
+    }
+    if (totalDeduction > balance - withdrawalSettings.minBalance) {
+      var maxAllowed = Math.max(0, (balance - withdrawalSettings.minBalance) / (1 + withdrawalSettings.feePercent / 100));
+      addToast('Amount too high. Maximum you can withdraw: GH₵' + maxAllowed.toFixed(2), 'error'); return;
+    }
     setCustWithdrawLoading(true);
     apiCall('/api/transactions', { method: 'POST', body: JSON.stringify({ amount: Number(custWithdrawForm.amount), type: 'withdrawal', method: custWithdrawForm.method, notes: custWithdrawForm.notes }) })
       .then(function(res) {
@@ -1961,10 +1988,35 @@ async function shareAsPDF(){
                 , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Reason / Notes")
                 , _react2.default.createElement('textarea', { value: custWithdrawForm.notes, onChange: (e) => setCustWithdrawForm({ ...custWithdrawForm, notes: e.target.value }), placeholder: "Optional — reason for withdrawal", rows: 2, className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`,})
               )
+              , (function() {
+                  var amt = Number(custWithdrawForm.amount) || 0;
+                  var fee = Math.round(amt * withdrawalSettings.feePercent / 100 * 100) / 100;
+                  var maxAllowed = Math.max(0, (balance - withdrawalSettings.minBalance) / (1 + withdrawalSettings.feePercent / 100));
+                  var canWithdraw = balance > withdrawalSettings.minBalance;
+                  return _react2.default.createElement('div', { className: `rounded-xl p-3 space-y-1 ${darkMode?'bg-gray-700':'bg-gray-50'} border ${borderColor}`,}
+                    , _react2.default.createElement('div', { className: "flex justify-between text-xs",}
+                      , _react2.default.createElement('span', { className: textSecondary,}, "Available to withdraw")
+                      , _react2.default.createElement('span', { className: "font-semibold text-green-600",}, formatCurrency(maxAllowed))
+                    )
+                    , withdrawalSettings.minBalance > 0 && _react2.default.createElement('div', { className: "flex justify-between text-xs",}
+                      , _react2.default.createElement('span', { className: textSecondary,}, "Minimum balance kept")
+                      , _react2.default.createElement('span', { className: textSecondary,}, formatCurrency(withdrawalSettings.minBalance))
+                    )
+                    , withdrawalSettings.feePercent > 0 && amt > 0 && _react2.default.createElement('div', { className: "flex justify-between text-xs",}
+                      , _react2.default.createElement('span', { className: textSecondary,}, "Fee (", withdrawalSettings.feePercent, "%)")
+                      , _react2.default.createElement('span', { className: "font-semibold text-red-500",}, "+ ", formatCurrency(fee))
+                    )
+                    , amt > 0 && _react2.default.createElement('div', { className: "flex justify-between text-xs border-t pt-1", style: { borderColor: darkMode?'#374151':'#e5e7eb' },}
+                      , _react2.default.createElement('span', { className: `font-semibold ${textPrimary}`,}, "Total deducted from balance")
+                      , _react2.default.createElement('span', { className: "font-bold text-red-600",}, formatCurrency(amt + fee))
+                    )
+                    , !canWithdraw && _react2.default.createElement('p', { className: "text-xs text-red-600 font-medium pt-1",}, "Your balance is too low to make a withdrawal.")
+                  );
+                })()
               , _react2.default.createElement('p', { className: "text-xs text-amber-600 bg-amber-50 rounded-lg p-2",}, "Your request will be reviewed and processed by a collector.")
               , _react2.default.createElement('div', { className: "flex gap-2",}
                 , _react2.default.createElement('button', { onClick: () => setShowCustWithdraw(false), className: `flex-1 py-2.5 rounded-xl text-sm font-semibold border ${borderColor} ${textSecondary}`,}, "Cancel")
-                , _react2.default.createElement('button', { onClick: handleCustomerWithdrawRequest, disabled: custWithdrawLoading || !custWithdrawForm.amount, className: "flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 disabled:opacity-50",}, custWithdrawLoading ? 'Submitting...' : 'Submit Request')
+                , _react2.default.createElement('button', { onClick: handleCustomerWithdrawRequest, disabled: custWithdrawLoading || !custWithdrawForm.amount || balance <= withdrawalSettings.minBalance, className: "flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 disabled:opacity-50",}, custWithdrawLoading ? 'Submitting...' : 'Submit Request')
               )
             )
           )
@@ -2441,6 +2493,34 @@ async function shareAsPDF(){
           , _react2.default.createElement('button', { onClick: () => { setShowChangePassword(true); setChangePasswordForm({ current: '', newPass: '', confirm: '' }); setChangePasswordError(''); }, className: "px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700",}, "Change Password")
         )
       )
+      , (_optionalChain([currentUser, 'optionalAccess', _ws => _ws.role]) === 'Super Admin') && (
+        _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-6 shadow-sm border ${borderColor}`,}
+          , _react2.default.createElement('div', { className: "flex items-center gap-3 mb-5",}
+            , _react2.default.createElement('div', { className: "p-2 bg-amber-100 rounded-lg",}, _react2.default.createElement(_lucidereact.DollarSign, { size: 16, className: "text-amber-600",}))
+            , _react2.default.createElement('div', null
+              , _react2.default.createElement('h3', { className: `font-semibold ${textPrimary}`,}, "Withdrawal Settings")
+              , _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Set rules for customer withdrawal requests")
+            )
+          )
+          , _react2.default.createElement('div', { className: "grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4",}
+            , _react2.default.createElement('div', null
+              , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Minimum Balance (GH₵)")
+              , _react2.default.createElement('p', { className: `text-xs ${textSecondary} mb-2`,}, "Customers must keep at least this amount in their account")
+              , _react2.default.createElement('input', { type: "number", min: "0", value: adminWithdrawalForm.minBalance, onChange: (e) => setAdminWithdrawalForm({ ...adminWithdrawalForm, minBalance: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "e.g. 50",})
+            )
+            , _react2.default.createElement('div', null
+              , _react2.default.createElement('label', { className: `text-xs font-semibold ${textSecondary} mb-1 block`,}, "Withdrawal Fee (%)")
+              , _react2.default.createElement('p', { className: `text-xs ${textSecondary} mb-2`,}, "Percentage deducted from savings on each withdrawal")
+              , _react2.default.createElement('input', { type: "number", min: "0", max: "100", step: "0.1", value: adminWithdrawalForm.feePercent, onChange: (e) => setAdminWithdrawalForm({ ...adminWithdrawalForm, feePercent: e.target.value }), className: `w-full px-3 py-2.5 rounded-xl border ${borderColor} ${darkMode?'bg-gray-700':'bg-gray-50'} ${textPrimary} text-sm`, placeholder: "e.g. 2",})
+            )
+          )
+          , _react2.default.createElement('div', { className: `p-3 rounded-xl ${darkMode?'bg-gray-700':'bg-amber-50'} border border-amber-200 mb-4`,}
+            , _react2.default.createElement('p', { className: "text-xs text-amber-700",}, "Current: Min balance GH₵", withdrawalSettings.minBalance, " • Fee ", withdrawalSettings.feePercent, "%  — Example: withdrawal of GH₵100 deducts GH₵", (100 + 100 * withdrawalSettings.feePercent / 100).toFixed(2), " from balance")
+          )
+          , _react2.default.createElement('button', { onClick: saveWithdrawalSettings, className: "px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600",}, "Save Withdrawal Settings")
+        )
+      )
+
       , (_optionalChain([currentUser, 'optionalAccess', _bk => _bk.role]) === 'Super Admin') && (
         _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-6 shadow-sm border ${borderColor}`,}
           , _react2.default.createElement('div', { className: "flex items-center justify-between mb-4",}

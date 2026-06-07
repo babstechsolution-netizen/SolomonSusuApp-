@@ -2,11 +2,27 @@ const express = require('express');
 const Transaction = require('../models/Transaction');
 const Customer = require('../models/Customer');
 const Employee = require('../models/Employee');
+const Setting = require('../models/Setting');
 const { protect, requireRole } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
 
+async function getWithdrawalSettings() {
+  const s = await Setting.findOne({ key: 'withdrawalSettings' });
+  return { minBalance: 0, feePercent: 0, ...(s?.value || {}) };
+}
+
 const router = express.Router();
 router.use(protect);
+
+// GET /api/transactions/withdrawal-settings — public (any logged-in user)
+router.get('/withdrawal-settings', async (req, res) => {
+  try {
+    const ws = await getWithdrawalSettings();
+    res.json({ success: true, data: ws });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 // GET /api/transactions
 router.get('/', async (req, res) => {
@@ -64,31 +80,60 @@ router.post('/', async (req, res) => {
 
     const employee = isCustomer ? null : await Employee.findOne({ userId: req.user._id });
     const txStatus = isCustomer ? 'pending' : 'approved';
+    const ws = await getWithdrawalSettings();
+    const amt = Number(amount);
 
-    if (type === 'withdrawal' && txStatus === 'approved' && Number(amount) > customer.balance) {
-      return res.status(400).json({ success: false, message: 'Insufficient balance.' });
+    if (type === 'withdrawal') {
+      const fee = Math.round(amt * ws.feePercent / 100 * 100) / 100;
+      const totalDeduction = amt + fee;
+
+      // Customers: validate min balance and fee
+      if (isCustomer) {
+        if (customer.balance <= ws.minBalance) {
+          return res.status(400).json({
+            success: false,
+            message: `Your balance (GH₵${customer.balance.toLocaleString()}) is at or below the minimum required balance of GH₵${ws.minBalance.toLocaleString()}. Withdrawal not allowed.`,
+          });
+        }
+        if (totalDeduction > customer.balance - ws.minBalance) {
+          const maxAllowed = Math.max(0, (customer.balance - ws.minBalance) / (1 + ws.feePercent / 100));
+          return res.status(400).json({
+            success: false,
+            message: `Amount too high. With a ${ws.feePercent}% fee and minimum balance of GH₵${ws.minBalance}, you can withdraw up to GH₵${maxAllowed.toFixed(2)}.`,
+          });
+        }
+      }
+
+      // Employees/admin immediate approval: check balance
+      if (!isCustomer && totalDeduction > customer.balance) {
+        return res.status(400).json({ success: false, message: 'Insufficient balance.' });
+      }
     }
+
+    const fee = type === 'withdrawal' ? Math.round(amt * ws.feePercent / 100 * 100) / 100 : 0;
 
     const tx = await Transaction.create({
       customer: customer._id,
       customerName: customer.name,
       employee: employee ? employee._id : null,
       employeeName: isCustomer ? customer.name : req.user.name,
-      amount: Number(amount),
+      amount: amt,
       type,
       method: method || 'Cash',
       status: txStatus,
       notes,
+      feePercent: type === 'withdrawal' ? ws.feePercent : 0,
+      feeAmount: fee,
     });
 
     // Only update balance immediately for approved transactions
     if (txStatus === 'approved') {
       if (type === 'deposit') {
-        customer.balance += Number(amount);
-        customer.totalDeposits += Number(amount);
+        customer.balance += amt;
+        customer.totalDeposits += amt;
       } else {
-        customer.balance -= Number(amount);
-        customer.totalWithdrawals += Number(amount);
+        customer.balance -= (amt + fee);
+        customer.totalWithdrawals += amt;
       }
       await customer.save();
 
@@ -114,13 +159,33 @@ router.post('/', async (req, res) => {
 router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager', 'Accountant'), async (req, res) => {
   try {
     const { status } = req.body;
-    const tx = await Transaction.findByIdAndUpdate(
-      req.params.id,
-      { status, approvedBy: req.user._id },
-      { new: true }
-    );
+    const tx = await Transaction.findById(req.params.id);
     if (!tx) return res.status(404).json({ success: false, message: 'Transaction not found.' });
-    logActivity('approval', req.user.name, req.user.role, `${req.user.name} ${status} transaction #${req.params.id}`, { status });
+
+    // Only update balance when moving from pending → approved/rejected
+    if (tx.status === 'pending' && status === 'approved') {
+      const customer = await Customer.findById(tx.customer);
+      if (customer) {
+        const fee = tx.feeAmount || 0;
+        if (tx.type === 'withdrawal') {
+          if (tx.amount + fee > customer.balance) {
+            return res.status(400).json({ success: false, message: 'Customer has insufficient balance to approve this withdrawal.' });
+          }
+          customer.balance -= (tx.amount + fee);
+          customer.totalWithdrawals += tx.amount;
+        } else {
+          customer.balance += tx.amount;
+          customer.totalDeposits += tx.amount;
+        }
+        await customer.save();
+      }
+    }
+
+    tx.status = status;
+    tx.approvedBy = req.user._id;
+    await tx.save();
+
+    logActivity('approval', req.user.name, req.user.role, `${req.user.name} ${status} ${tx.type} of GH₵${tx.amount} for ${tx.customerName}`, { status, amount: tx.amount, customer: tx.customerName });
     res.json({ success: true, data: tx });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

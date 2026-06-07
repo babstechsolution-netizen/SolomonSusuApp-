@@ -10,6 +10,8 @@ const transactionSchema = new mongoose.Schema({
   method: { type: String, enum: ['Cash', 'MoMo', 'Bank Transfer'], default: 'Cash' },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
   notes: { type: String },
+  feePercent: { type: Number, default: 0 },
+  feeAmount: { type: Number, default: 0 },
   receiptNumber: { type: String, unique: true },
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   date: { type: String },
