@@ -389,8 +389,53 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
   );
 };
 
+const APP_THEMES = [
+  { id:'green',  name:'Forest',  emoji:'🌿', c50:'#f0fdf4',c100:'#dcfce7',c200:'#bbf7d0',c300:'#86efac',c400:'#4ade80',c500:'#22c55e',c600:'#16a34a',c700:'#15803d',c800:'#166534',c900:'#14532d', sidebarFrom:'#15803d',sidebarTo:'#1e4d2b',activeItem:'#166534',inactiveText:'#d1fae5' },
+  { id:'blue',   name:'Ocean',   emoji:'🌊', c50:'#eff6ff',c100:'#dbeafe',c200:'#bfdbfe',c300:'#93c5fd',c400:'#60a5fa',c500:'#3b82f6',c600:'#2563eb',c700:'#1d4ed8',c800:'#1e40af',c900:'#1e3a8a', sidebarFrom:'#1d4ed8',sidebarTo:'#1e3a8a',activeItem:'#1e40af',inactiveText:'#bfdbfe' },
+  { id:'purple', name:'Royal',   emoji:'👑', c50:'#faf5ff',c100:'#f3e8ff',c200:'#e9d5ff',c300:'#d8b4fe',c400:'#c084fc',c500:'#a855f7',c600:'#9333ea',c700:'#7e22ce',c800:'#6b21a8',c900:'#581c87', sidebarFrom:'#7e22ce',sidebarTo:'#581c87',activeItem:'#6b21a8',inactiveText:'#e9d5ff' },
+  { id:'teal',   name:'Teal',    emoji:'🌊', c50:'#f0fdfa',c100:'#ccfbf1',c200:'#99f6e4',c300:'#5eead4',c400:'#2dd4bf',c500:'#14b8a6',c600:'#0d9488',c700:'#0f766e',c800:'#115e59',c900:'#134e4a', sidebarFrom:'#0f766e',sidebarTo:'#134e4a',activeItem:'#115e59',inactiveText:'#99f6e4' },
+  { id:'indigo', name:'Indigo',  emoji:'🔮', c50:'#eef2ff',c100:'#e0e7ff',c200:'#c7d2fe',c300:'#a5b4fc',c400:'#818cf8',c500:'#6366f1',c600:'#4f46e5',c700:'#4338ca',c800:'#3730a3',c900:'#312e81', sidebarFrom:'#4338ca',sidebarTo:'#312e81',activeItem:'#3730a3',inactiveText:'#c7d2fe' },
+  { id:'rose',   name:'Rose',    emoji:'🌹', c50:'#fff1f2',c100:'#ffe4e6',c200:'#fecdd3',c300:'#fda4af',c400:'#fb7185',c500:'#f43f5e',c600:'#e11d48',c700:'#be123c',c800:'#9f1239',c900:'#881337', sidebarFrom:'#be123c',sidebarTo:'#881337',activeItem:'#9f1239',inactiveText:'#fecdd3' },
+  { id:'orange', name:'Sunset',  emoji:'🌅', c50:'#fff7ed',c100:'#ffedd5',c200:'#fed7aa',c300:'#fdba74',c400:'#fb923c',c500:'#f97316',c600:'#ea580c',c700:'#c2410c',c800:'#9a3412',c900:'#7c2d12', sidebarFrom:'#c2410c',sidebarTo:'#7c2d12',activeItem:'#9a3412',inactiveText:'#fed7aa' },
+];
+
+function applyTheme(t) {
+  var el = document.getElementById('app-theme');
+  if (!el) { el = document.createElement('style'); el.id = 'app-theme'; document.head.appendChild(el); }
+  el.textContent = [
+    `.bg-green-50,.hover\\:bg-green-50:hover{background-color:${t.c50}!important}`,
+    `.bg-green-100,.hover\\:bg-green-100:hover{background-color:${t.c100}!important}`,
+    `.bg-green-200{background-color:${t.c200}!important}`,
+    `.bg-green-300{background-color:${t.c300}!important}`,
+    `.bg-green-500{background-color:${t.c500}!important}`,
+    `.bg-green-600,.hover\\:bg-green-600:hover{background-color:${t.c600}!important}`,
+    `.bg-green-700,.hover\\:bg-green-700:hover{background-color:${t.c700}!important}`,
+    `.bg-green-800{background-color:${t.c800}!important}`,
+    `.bg-green-900{background-color:${t.c900}!important}`,
+    `.text-green-500{color:${t.c500}!important}`,
+    `.text-green-600{color:${t.c600}!important}`,
+    `.text-green-700{color:${t.c700}!important}`,
+    `.text-green-800{color:${t.c800}!important}`,
+    `.border-green-100{border-color:${t.c100}!important}`,
+    `.border-green-200{border-color:${t.c200}!important}`,
+    `.border-green-400{border-color:${t.c400}!important}`,
+    `.border-green-500{border-color:${t.c500}!important}`,
+    `.border-green-600{border-color:${t.c600}!important}`,
+    `.from-green-500,.from-green-600{--tw-gradient-from:${t.c600}!important}`,
+    `.from-green-700{--tw-gradient-from:${t.c700}!important}`,
+    `.via-green-700{--tw-gradient-via:${t.c700}!important}`,
+    `.to-green-600,.to-green-700,.to-emerald-600,.to-emerald-700{--tw-gradient-to:${t.c700}!important}`,
+    `.to-green-900{--tw-gradient-to:${t.c900}!important}`,
+    `.from-green-500.to-emerald-600{--tw-gradient-from:${t.c500}!important}`,
+    `.ring-green-200{--tw-ring-color:${t.c200}!important}`,
+    `.ring-green-500,.focus\\:ring-green-500:focus{--tw-ring-color:${t.c500}!important}`,
+    `.accent-green-600{accent-color:${t.c600}!important}`,
+  ].join('');
+}
+
  function FieldCollectionApp() {
   const [darkMode, setDarkMode] = _react.useState.call(void 0, false);
+  const [selectedTheme, setSelectedTheme] = _react.useState.call(void 0, (typeof localStorage !== 'undefined' && localStorage.getItem('susu_theme')) || 'green');
   const [sidebarOpen, setSidebarOpen] = _react.useState.call(void 0, false);
   const [currentPage, setCurrentPage] = _react.useState.call(void 0, 'dashboard');
   const [isAuthenticated, setIsAuthenticated] = _react.useState.call(void 0, false);
@@ -584,6 +629,8 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     });
   }, [isAuthenticated]);
 
+  const activeTheme = APP_THEMES.find(function(t){ return t.id === selectedTheme; }) || APP_THEMES[0];
+
   const bg = darkMode ? 'bg-gray-900' : 'bg-gray-50';
   const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   const textPrimary = darkMode ? 'text-white' : 'text-gray-900';
@@ -644,6 +691,12 @@ const SavingsCycleBar = ({ customer, textSecondary }) => {
     });
     return Object.values(years).sort(function(a, b) { return a.year.localeCompare(b.year); });
   }, [transactions]);
+
+  // Apply color theme on change
+  _react.useEffect.call(void 0, function() {
+    applyTheme(activeTheme);
+    if (typeof localStorage !== 'undefined') localStorage.setItem('susu_theme', selectedTheme);
+  }, [selectedTheme]);
 
   // Live clock
   _react.useEffect.call(void 0, () => {
@@ -1336,6 +1389,20 @@ async function shareAsPDF(){
         else addToast(res.message || 'Restore failed.', 'error');
       }).catch(function(){ addToast('Upload failed.', 'error'); })
       .finally(function(){ setBackupLoading(false); if (restoreFileRef.current) restoreFileRef.current.value = ''; });
+  };
+
+  const handleClearActivityLog = function() {
+    apiCall('/api/activity', { method: 'DELETE' }).then(function() {
+      setActivityLogs([]);
+      addToast('Activity log cleared.', 'success');
+    }).catch(function(err) { addToast(err.message, 'error'); });
+  };
+
+  const handleClearTransactions = function() {
+    apiCall('/api/transactions', { method: 'DELETE' }).then(function() {
+      setTransactions([]);
+      addToast('All transaction history cleared.', 'success');
+    }).catch(function(err) { addToast(err.message, 'error'); });
   };
 
   const saveWithdrawalSettings = function() {
@@ -2472,9 +2539,22 @@ async function shareAsPDF(){
       )
       , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-6 shadow-sm border ${borderColor}`,}
         , _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-4`,}, "Preferences")
-        , _react2.default.createElement('div', { className: "flex items-center justify-between"  ,}
+        , _react2.default.createElement('div', { className: "flex items-center justify-between mb-5"  ,}
           , _react2.default.createElement('div', null, _react2.default.createElement('p', { className: `text-sm font-medium ${textPrimary}`,}, "Dark Mode" ), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Toggle dark theme"  ))
           , _react2.default.createElement('button', { onClick: () => setDarkMode(!darkMode), className: `w-12 h-6 rounded-full transition-colors ${darkMode ? 'bg-blue-600' : 'bg-gray-300'} relative`,}, _react2.default.createElement('div', { className: `w-5 h-5 rounded-full bg-white shadow absolute top-0.5 transition-transform ${darkMode ? 'translate-x-6' : 'translate-x-0.5'}`,}))
+        )
+        , _react2.default.createElement('div', { className: `border-t ${borderColor} pt-4`,}
+          , _react2.default.createElement('p', { className: `text-sm font-medium ${textPrimary} mb-1`,}, "Color Theme")
+          , _react2.default.createElement('p', { className: `text-xs ${textSecondary} mb-3`,}, "Choose your preferred accent color")
+          , _react2.default.createElement('div', { className: "grid grid-cols-4 gap-2",}
+            , APP_THEMES.map(function(theme) {
+                return _react2.default.createElement('button', { key: theme.id, onClick: () => setSelectedTheme(theme.id), className: `flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all ${selectedTheme === theme.id ? 'border-blue-500 shadow-md' : `border-transparent ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}`,}
+                  , _react2.default.createElement('div', { className: "w-8 h-8 rounded-full shadow-sm ring-2 ring-white", style: { background: 'linear-gradient(135deg, ' + theme.c500 + ', ' + theme.c800 + ')' },})
+                  , _react2.default.createElement('span', { className: `text-xs font-medium ${selectedTheme === theme.id ? 'text-blue-600' : textSecondary}`,}, theme.name)
+                  , selectedTheme === theme.id && _react2.default.createElement('div', { className: "w-1.5 h-1.5 rounded-full bg-blue-500",})
+                );
+              })
+          )
         )
       )
       , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-6 shadow-sm border ${borderColor}`,}
@@ -2624,6 +2704,10 @@ async function shareAsPDF(){
             )
           )
           , _react2.default.createElement('button', { onClick: () => { setShowClearDataConfirm(true); setClearDataInput(''); }, className: "w-full py-3 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 flex items-center justify-center gap-2",}, _react2.default.createElement(_lucidereact.Trash2, { size: 16,} ), " Clear All Demo Data" )
+          , _react2.default.createElement('div', { className: "grid grid-cols-2 gap-3 mt-3",}
+            , _react2.default.createElement('button', { onClick: () => { if (window.confirm('Clear ALL transaction history? This cannot be undone.')) handleClearTransactions(); }, className: "py-2.5 bg-red-100 text-red-700 rounded-xl text-sm font-semibold hover:bg-red-200 flex items-center justify-center gap-2",}, _react2.default.createElement(_lucidereact.Trash2, { size: 14,}), " Clear Transactions")
+            , _react2.default.createElement('button', { onClick: () => { if (window.confirm('Clear ALL activity logs? This cannot be undone.')) handleClearActivityLog(); }, className: "py-2.5 bg-red-100 text-red-700 rounded-xl text-sm font-semibold hover:bg-red-200 flex items-center justify-center gap-2",}, _react2.default.createElement(_lucidereact.Trash2, { size: 14,}), " Clear Logs")
+          )
         )
       )
     )
@@ -2879,7 +2963,7 @@ async function shareAsPDF(){
     _react2.default.createElement(_framermotion.motion.div, { key: "main-app", initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.25 }, className: `flex min-h-screen ${bg}` },
 
       /* ── AWINBIRE DESKTOP SIDEBAR ── */
-      _react2.default.createElement('aside', { className: "hidden md:flex fixed top-0 left-0 h-screen w-64 z-40 flex-col bg-green-800 shadow-xl", style: { background: 'linear-gradient(to bottom, #15803d, #1e4d2b)' } },
+      _react2.default.createElement('aside', { className: "hidden md:flex fixed top-0 left-0 h-screen w-64 z-40 flex-col bg-green-800 shadow-xl", style: { background: 'linear-gradient(to bottom, ' + activeTheme.sidebarFrom + ', ' + activeTheme.sidebarTo + ')' } },
         _react2.default.createElement('div', { className: "p-5 border-b border-green-600 flex-shrink-0" },
           _react2.default.createElement('div', { className: "flex items-center gap-3" },
             _react2.default.createElement('div', { className: "w-12 h-12 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-lg" },
@@ -2915,7 +2999,7 @@ async function shareAsPDF(){
         _react2.default.createElement('nav', { className: "flex-1 overflow-y-auto p-3 space-y-0.5" },
           menuItems.map(function(item) {
             var active = currentPage === item.id;
-            return _react2.default.createElement('button', { key: item.id, onClick: function() { setCurrentPage(item.id); setSearchTerm(''); }, style: { background: active ? '#166534' : 'transparent', color: active ? '#fff' : '#d1fae5', boxShadow: active ? '0 2px 8px rgba(0,0,0,0.3)' : 'none' }, className: 'w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 text-left' },
+            return _react2.default.createElement('button', { key: item.id, onClick: function() { setCurrentPage(item.id); setSearchTerm(''); }, style: { background: active ? activeTheme.activeItem : 'transparent', color: active ? '#fff' : activeTheme.inactiveText, boxShadow: active ? '0 2px 8px rgba(0,0,0,0.3)' : 'none' }, className: 'w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 text-left' },
               _react2.default.createElement('span', { className: "w-5 h-5 mr-3 flex-shrink-0 flex items-center" }, _react2.default.createElement(item.icon, { size: 17 })),
               _react2.default.createElement('span', { className: "text-sm font-medium whitespace-nowrap" }, item.label)
             );
@@ -2932,7 +3016,7 @@ async function shareAsPDF(){
       /* ── MOBILE SIDEBAR OVERLAY ── */
       sidebarOpen && _react2.default.createElement('div', { className: "md:hidden fixed inset-0 z-50 flex" },
         _react2.default.createElement('div', { className: "absolute inset-0 bg-black bg-opacity-50", onClick: function() { setSidebarOpen(false); } }),
-        _react2.default.createElement('aside', { className: "relative w-64 flex flex-col bg-green-800 shadow-2xl", style: { background: 'linear-gradient(to bottom, #15803d, #1e4d2b)' } },
+        _react2.default.createElement('aside', { className: "relative w-64 flex flex-col bg-green-800 shadow-2xl", style: { background: 'linear-gradient(to bottom, ' + activeTheme.sidebarFrom + ', ' + activeTheme.sidebarTo + ')' } },
           _react2.default.createElement('div', { className: "p-4 border-b border-green-600 flex-shrink-0" },
             _react2.default.createElement('div', { className: "flex items-center justify-between" },
               _react2.default.createElement('div', { className: "flex items-center gap-2" },
@@ -2971,7 +3055,7 @@ async function shareAsPDF(){
           _react2.default.createElement('nav', { className: "flex-1 overflow-y-auto p-2.5 space-y-0.5" },
             menuItems.map(function(item) {
               var active = currentPage === item.id;
-              return _react2.default.createElement('button', { key: item.id, onClick: function() { setCurrentPage(item.id); setSidebarOpen(false); setSearchTerm(''); }, style: { background: active ? '#166534' : 'transparent', color: active ? '#fff' : '#d1fae5' }, className: 'w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200' },
+              return _react2.default.createElement('button', { key: item.id, onClick: function() { setCurrentPage(item.id); setSidebarOpen(false); setSearchTerm(''); }, style: { background: active ? activeTheme.activeItem : 'transparent', color: active ? '#fff' : activeTheme.inactiveText }, className: 'w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200' },
                 _react2.default.createElement('span', { className: "w-5 h-5 mr-3 flex-shrink-0 flex items-center" }, _react2.default.createElement(item.icon, { size: 16 })),
                 _react2.default.createElement('span', { className: "text-sm font-medium" }, item.label)
               );
