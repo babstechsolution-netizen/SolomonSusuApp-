@@ -13,6 +13,7 @@ const employeeSchema = new mongoose.Schema({
   performance: { type: Number, default: 80, min: 0, max: 100 },
   color: { type: String, default: '#16a34a' },
   photo: { type: String },
+  nationalId: { type: String },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 

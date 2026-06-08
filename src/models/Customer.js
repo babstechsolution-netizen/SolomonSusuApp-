@@ -18,6 +18,7 @@ const customerSchema = new mongoose.Schema({
   startDate: { type: String },
   color: { type: String, default: '#16a34a' },
   photo: { type: String },
+  nationalId: { type: String },
   assignedEmployee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
   qrCode: { type: String, unique: true, sparse: true },
 }, { timestamps: true });

@@ -39,7 +39,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/employees
 router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
   try {
-    const { name, phone, zone, role, privileges, color, photo, email, username, password } = req.body;
+    const { name, phone, zone, role, privileges, color, photo, email, username, password, nationalId } = req.body;
 
     if (!username || !username.trim()) {
       return res.status(400).json({ success: false, message: 'Username is required.' });
@@ -69,6 +69,7 @@ router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) 
     const emp = await Employee.create({
       name, phone, zone, role, privileges, color, photo,
       ...(email ? { email } : {}),
+      ...(nationalId ? { nationalId } : {}),
       userId: user._id,
     });
 
