@@ -5,6 +5,7 @@ const Employee = require('../models/Employee');
 const Setting = require('../models/Setting');
 const { protect, requireRole } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
+const { sync, notify } = require('../socket');
 
 async function getWithdrawalSettings() {
   const s = await Setting.findOne({ key: 'withdrawalSettings' });
@@ -149,6 +150,20 @@ router.post('/', async (req, res) => {
       : `${req.user.name} recorded ${type} of GH₵${Number(amount).toLocaleString()} for ${customer.name}`;
     logActivity(type, req.user.name, req.user.role, actionDesc, { amount: Number(amount), customer: customer.name, status: txStatus });
 
+    // Broadcast to all clients and send notification to admin
+    sync('transactions', 'create', tx);
+    notify({
+      id: tx._id,
+      type: tx.type,
+      message: isCustomer
+        ? `${customer.name} requested withdrawal of GH₵${Number(amount).toLocaleString()}`
+        : `${type === 'deposit' ? 'Deposit' : 'Withdrawal'} of GH₵${Number(amount).toLocaleString()} recorded for ${customer.name} by ${req.user.name}`,
+      status: txStatus,
+      amount: Number(amount),
+      customer: customer.name,
+      time: new Date().toISOString(),
+    });
+
     res.status(201).json({ success: true, data: tx });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -186,6 +201,10 @@ router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager', 'Accoun
     await tx.save();
 
     logActivity('approval', req.user.name, req.user.role, `${req.user.name} ${status} ${tx.type} of GH₵${tx.amount} for ${tx.customerName}`, { status, amount: tx.amount, customer: tx.customerName });
+    sync('transactions', 'update', tx);
+    if (status === 'approved') {
+      notify({ id: tx._id, type: 'approval', message: `${tx.type} of GH₵${tx.amount} for ${tx.customerName} was ${status}`, amount: tx.amount, customer: tx.customerName, time: new Date().toISOString() });
+    }
     res.json({ success: true, data: tx });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -198,6 +217,7 @@ router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
     const tx = await Transaction.findByIdAndDelete(req.params.id);
     if (!tx) return res.status(404).json({ success: false, message: 'Transaction not found.' });
     logActivity('transaction_delete', req.user.name, req.user.role, `${req.user.name} deleted transaction for ${tx.customerName || ''} — GH₵${tx.amount}`, { amount: tx.amount, customer: tx.customerName });
+    sync('transactions', 'delete', { _id: tx._id });
     res.json({ success: true, message: 'Transaction deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

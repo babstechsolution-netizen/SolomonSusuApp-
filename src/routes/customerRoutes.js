@@ -5,6 +5,7 @@ const Customer = require('../models/Customer');
 const User = require('../models/User');
 const { protect, requireRole } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
+const { sync } = require('../socket');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -168,6 +169,7 @@ router.post('/', requireRole('Super Admin', 'Branch Manager', 'Field Collector')
   try {
     const cust = await Customer.create(req.body);
     logActivity('customer_add', req.user.name, req.user.role, `${req.user.name} registered customer ${cust.name}`, { customer: cust.name, phone: cust.phone });
+    sync('customers', 'create', cust);
     res.status(201).json({ success: true, data: cust });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -180,6 +182,7 @@ router.patch('/:id', async (req, res) => {
     const cust = await Customer.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!cust) return res.status(404).json({ success: false, message: 'Customer not found.' });
     logActivity('customer_edit', req.user.name, req.user.role, `${req.user.name} updated profile for customer ${cust.name}`, { customer: cust.name });
+    sync('customers', 'update', cust);
     res.json({ success: true, data: cust });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -205,6 +208,7 @@ router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
     const cust = await Customer.findByIdAndDelete(req.params.id);
     if (!cust) return res.status(404).json({ success: false, message: 'Customer not found.' });
     logActivity('customer_delete', req.user.name, req.user.role, `${req.user.name} deleted customer ${cust.name}`, { customer: cust.name });
+    sync('customers', 'delete', { _id: cust._id });
     res.json({ success: true, message: 'Customer deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

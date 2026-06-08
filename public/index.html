@@ -2,7 +2,7 @@
     <meta charset="utf-8">
     <title>Awinbire Enterprise</title><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 30 C1 23 -3 12 2 5 C6 16 10 26 12 34 L19 46 C15 41 9 36 12 30 Z' fill='%2322c55e'/%3E%3Cpath d='M48 30 C59 23 63 12 58 5 C54 16 50 26 48 34 L41 46 C45 41 51 36 48 30 Z' fill='%2322c55e'/%3E%3Cpath d='M30 1 L51 10 L52 31 L30 51 L8 31 L9 10 Z' fill='%2314532d'/%3E%3Cpath d='M30 5 L48 13 L49 30 L30 48 L11 30 L12 13 Z' fill='white'/%3E%3Cpath d='M30 9 L46 16 L47 29 L30 45 L13 29 L14 16 Z' fill='%2316a34a'/%3E%3Ctext x='30' y='34' text-anchor='middle' font-size='16' font-weight='900' fill='white' font-family='Arial Black%2C Arial%2C sans-serif'%3EAE%3C/text%3E%3C/svg%3E">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-  <script src="https://puc.poecdn.net/authenticated_preview_page/disableWebRTC.9710cebe07429a9e8e06.js"></script><meta name="x-poe-allow-downloads" content="true"><meta name="x-poe-datastore-behavior" content="disabled"><script src="https://puc.poecdn.net/authenticated_preview_page/tw.50ec1b0612bf5b0c30a5.js"></script><script src="https://puc.poecdn.net/authenticated_preview_page/deps.faccd16000d314dc16d5.js"></script><script src="https://puc.poecdn.net/authenticated_preview_page/exports.b0f0f482cdeb5302b0b9.js"></script><script src="https://puc.poecdn.net/authenticated_preview_page/renderer.75c73ae6b4235f62945a.js"></script><script>Object.defineProperty(exports, "__esModule", {value: true}); function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; } function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }var _react = require('react'); var _react2 = _interopRequireDefault(_react);
+  <script src="https://puc.poecdn.net/authenticated_preview_page/disableWebRTC.9710cebe07429a9e8e06.js"></script><meta name="x-poe-allow-downloads" content="true"><meta name="x-poe-datastore-behavior" content="disabled"><script src="https://puc.poecdn.net/authenticated_preview_page/tw.50ec1b0612bf5b0c30a5.js"></script><script src="https://puc.poecdn.net/authenticated_preview_page/deps.faccd16000d314dc16d5.js"></script><script src="https://puc.poecdn.net/authenticated_preview_page/exports.b0f0f482cdeb5302b0b9.js"></script><script src="https://puc.poecdn.net/authenticated_preview_page/renderer.75c73ae6b4235f62945a.js"></script><script src="/socket.io/socket.io.js"></script><script>Object.defineProperty(exports, "__esModule", {value: true}); function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; } function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }var _react = require('react'); var _react2 = _interopRequireDefault(_react);
 var _framermotion = require('framer-motion');
 
 
@@ -627,6 +627,66 @@ function applyTheme(t) {
     }).catch(function(err) {
       console.error('Data load error:', err.message);
     });
+  }, [isAuthenticated]);
+
+  // ── Socket.io real-time sync ─────────────────────────────────
+  _react.useEffect.call(void 0, function() {
+    if (!isAuthenticated) return;
+    if (typeof window === 'undefined' || !window.io) return;
+    var socket = window.io({ transports: ['websocket', 'polling'] });
+    socket.on('sync:employees', function(payload) {
+      var action = payload.action; var d = payload.data;
+      if (action === 'create') setEmployees(function(prev) { return prev.some(function(e){ return e.id === (d._id || d.id); }) ? prev : prev.concat([mapEmp(d)]); });
+      else if (action === 'update') setEmployees(function(prev) { return prev.map(function(e) { return e.id === (d._id || d.id) ? mapEmp(d) : e; }); });
+      else if (action === 'delete') setEmployees(function(prev) { return prev.filter(function(e) { return e.id !== (d._id || d.id); }); });
+    });
+    socket.on('sync:customers', function(payload) {
+      var action = payload.action; var d = payload.data;
+      if (action === 'create') setCustomers(function(prev) { return prev.some(function(c){ return c.id === (d._id || d.id); }) ? prev : prev.concat([mapCust(d)]); });
+      else if (action === 'update') setCustomers(function(prev) { return prev.map(function(c) { return c.id === (d._id || d.id) ? mapCust(d) : c; }); });
+      else if (action === 'delete') setCustomers(function(prev) { return prev.filter(function(c) { return c.id !== (d._id || d.id); }); });
+    });
+    socket.on('sync:transactions', function(payload) {
+      var action = payload.action; var d = payload.data;
+      if (action === 'create') setTransactions(function(prev) {
+        if (prev.some(function(t){ return t.id === (d._id || d.id); })) return prev;
+        return [mapTx(d)].concat(prev).slice(0, 200);
+      });
+      else if (action === 'update') setTransactions(function(prev) { return prev.map(function(t) { return t.id === (d._id || d.id) ? mapTx(d) : t; }); });
+      else if (action === 'delete') setTransactions(function(prev) { return prev.filter(function(t) { return t.id !== (d._id || d.id); }); });
+    });
+    socket.on('sync:loans', function(payload) {
+      var action = payload.action; var d = payload.data;
+      if (action === 'create') setLoans(function(prev) { return prev.some(function(l){ return l.id === (d._id || d.id); }) ? prev : prev.concat([mapLoan(d)]); });
+      else if (action === 'update') setLoans(function(prev) { return prev.map(function(l) { return l.id === (d._id || d.id) ? mapLoan(d) : l; }); });
+      else if (action === 'delete') setLoans(function(prev) { return prev.filter(function(l) { return l.id !== (d._id || d.id); }); });
+    });
+    return function() { socket.disconnect(); };
+  }, [isAuthenticated]);
+
+  // ── Re-fetch on page visibility restore (phone app backgrounding) ──
+  _react.useEffect.call(void 0, function() {
+    if (!isAuthenticated) return;
+    function handleVisibility() {
+      if (document.visibilityState !== 'visible') return;
+      Promise.all([
+        apiCall('/api/employees'),
+        apiCall('/api/customers'),
+        apiCall('/api/transactions?limit=200')
+      ]).then(function(results) {
+        var eRes = results[0]; var cRes = results[1]; var tRes = results[2];
+        if (eRes.data) setEmployees(eRes.data.map(mapEmp));
+        if (cRes.data) setCustomers(cRes.data.map(mapCust));
+        if (tRes.data) setTransactions(tRes.data.map(mapTx));
+        return apiCall('/api/loans');
+      }).then(function(lRes) {
+        if (lRes && lRes.data) setLoans(lRes.data.map(mapLoan));
+      }).catch(function(err) {
+        console.error('Visibility re-fetch error:', err.message);
+      });
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+    return function() { document.removeEventListener('visibilitychange', handleVisibility); };
   }, [isAuthenticated]);
 
   const activeTheme = APP_THEMES.find(function(t){ return t.id === selectedTheme; }) || APP_THEMES[0];

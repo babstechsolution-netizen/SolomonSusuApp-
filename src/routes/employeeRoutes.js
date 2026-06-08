@@ -3,6 +3,7 @@ const Employee = require('../models/Employee');
 const User = require('../models/User');
 const { protect, requireRole } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
+const { sync } = require('../socket');
 
 const router = express.Router();
 router.use(protect);
@@ -72,6 +73,7 @@ router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) 
     });
 
     logActivity('employee_add', req.user.name, req.user.role, `${req.user.name} added employee ${name} (${userRole})`, { employee: name, role: userRole });
+    sync('employees', 'create', emp);
     res.status(201).json({
       success: true,
       data: emp,
@@ -132,6 +134,7 @@ router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager'), async 
     const emp = await Employee.findByIdAndUpdate(req.params.id, { status }, { new: true });
     if (!emp) return res.status(404).json({ success: false, message: 'Employee not found.' });
     logActivity('employee_status', req.user.name, req.user.role, `${req.user.name} ${status} employee ${emp.name}`, { employee: emp.name, status });
+    sync('employees', 'update', emp);
     res.json({ success: true, data: emp, message: `Employee ${status}.` });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -152,7 +155,10 @@ router.delete('/', requireRole('Super Admin'), async (req, res) => {
 router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
   try {
     const emp = await Employee.findByIdAndDelete(req.params.id);
-    if (emp) logActivity('employee_delete', req.user.name, req.user.role, `${req.user.name} deleted employee ${emp.name}`, { employee: emp ? emp.name : req.params.id });
+    if (emp) {
+      logActivity('employee_delete', req.user.name, req.user.role, `${req.user.name} deleted employee ${emp.name}`, { employee: emp.name });
+      sync('employees', 'delete', { _id: emp._id });
+    }
     res.json({ success: true, message: 'Employee deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

@@ -1,3 +1,4 @@
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -14,15 +15,22 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const { startBackupScheduler } = require('./scheduler');
+const socketModule = require('./socket');
 
 const app = express();
+const server = http.createServer(app);
+
+const corsOrigins = FRONTEND_URL === '*' ? '*' : FRONTEND_URL.split(',').map(u => u.trim());
+
+// Init socket.io — must happen before routes load so they can require('./socket')
+socketModule.init(server, corsOrigins);
 
 // Connect to MongoDB then start scheduler
 connectDB().then(() => startBackupScheduler().catch(() => {}));
 
 // Middleware
 app.use(cors({
-  origin: FRONTEND_URL === '*' ? '*' : FRONTEND_URL.split(',').map(u => u.trim()),
+  origin: corsOrigins,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -33,14 +41,10 @@ app.use(express.urlencoded({ extended: true }));
 // Serve frontend
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Health check (JSON, for uptime monitors and login page diagnostics)
+// Health check
 app.get('/health', (req, res) => {
   const dbState = ['disconnected', 'connected', 'connecting', 'disconnecting'];
-  res.json({
-    status: 'ok',
-    uptime: process.uptime(),
-    db: dbState[mongoose.connection.readyState] || 'unknown',
-  });
+  res.json({ status: 'ok', uptime: process.uptime(), db: dbState[mongoose.connection.readyState] || 'unknown' });
 });
 
 // API Routes
@@ -53,12 +57,12 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/activity', activityRoutes);
 
-// API 404 — only for /api/* paths
+// API 404
 app.use('/api', (req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found.` });
 });
 
-// SPA fallback — serve index.html for all other routes
+// SPA fallback
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
@@ -69,7 +73,7 @@ app.use((err, req, res, _next) => {
   res.status(err.status || 500).json({ success: false, message: err.message || 'Internal server error.' });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Awinbire Enterprise API running on port ${PORT} [${NODE_ENV}]`);
 });
 
