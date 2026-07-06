@@ -582,7 +582,7 @@ function applyTheme(t) {
           var u = data.user;
           var letters = (u.name || '').split(' ').map(function(n){ return n[0] || ''; }).join('').substring(0, 2).toUpperCase();
           var colorMap = { 'Super Admin': '#dc2626', 'Branch Manager': '#2563eb', 'Field Collector': '#16a34a', 'Customer': '#9333ea', 'Accountant': '#ea580c' };
-          setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: letters, color: colorMap[u.role] || '#3b82f6', roleKey: u.roleKey || '', photo: u.photo || null, employeeId: u.employeeId || null, customerId: u.customerId || null });
+          setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: letters, color: colorMap[u.role] || '#3b82f6', roleKey: u.roleKey || '', photo: u.photo || null, employeeId: u.employeeId || null, customerId: u.customerId || null, privileges: u.privileges || [] });
           setAuthToken(stored);
           setIsAuthenticated(true);
           var savedPage = localStorage.getItem('susu_page') || 'dashboard';
@@ -698,7 +698,7 @@ function applyTheme(t) {
   const borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
 
   const getEmployeeById = (id) => employees.find(e => e.id === id);
-  const getCustomersByEmployee = (empId) => customers.filter(c => c.assignedEmployee === empId);
+  const getCustomersByEmployee = (empId) => empId ? customers.filter(c => c.assignedEmployee && String(c.assignedEmployee) === String(empId)) : [];
   const getRoleInfo = (roleId) => availableRoles.find(r => r.id === roleId);
 
   const filteredCustomersForSearch = _react.useMemo.call(void 0, () => {
@@ -887,7 +887,7 @@ function applyTheme(t) {
       var u = data.user;
       var colorMap = { superadmin: '#dc2626', admin: '#2563eb', employee: '#16a34a', customer: '#9333ea', accountant: '#ea580c' };
       var avatarLetters = (u.name || '').split(' ').map(function(n){return n[0]||'';}).join('').substring(0,2).toUpperCase();
-      setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: avatarLetters, color: colorMap[u.roleKey] || '#3b82f6', roleKey: u.roleKey, photo: u.photo || null, employeeId: u.employeeId || null, customerId: u.customerId || null });
+      setCurrentUser({ name: u.name, username: u.username || '', email: u.email || '', role: u.role, phone: u.phone || '', avatar: avatarLetters, color: colorMap[u.roleKey] || '#3b82f6', roleKey: u.roleKey, photo: u.photo || null, employeeId: u.employeeId || null, customerId: u.customerId || null, privileges: u.privileges || [] });
       setIsAuthenticated(true);
       setCurrentPage('dashboard');
       setLoginLoading(false);
@@ -1159,11 +1159,14 @@ function applyTheme(t) {
   };
 
   const saveRoleAndPrivileges = () => {
-    if (showRoleModal) {
-      setEmployees(employees.map(emp => emp.id === showRoleModal.id ? { ...emp, role: selectedRole, privileges: selectedPrivileges } : emp));
-      setRoleUpdateSuccess(true);
-      setTimeout(() => { setShowRoleModal(null); setRoleUpdateSuccess(false); }, 2000);
-    }
+    if (!showRoleModal) return;
+    apiCall('/api/employees/' + showRoleModal.id, { method: 'PATCH', body: JSON.stringify({ role: selectedRole, privileges: selectedPrivileges }) })
+      .then(function() {
+        setEmployees(employees.map(emp => emp.id === showRoleModal.id ? { ...emp, role: selectedRole, privileges: selectedPrivileges } : emp));
+        setRoleUpdateSuccess(true);
+        setTimeout(() => { setShowRoleModal(null); setRoleUpdateSuccess(false); }, 2000);
+      })
+      .catch(function(err) { addToast(err.message || 'Failed to save privileges', 'error'); });
   };
 
   const handleScanQR = (code) => {
@@ -2293,7 +2296,7 @@ async function shareAsPDF(){
 
   // CUSTOMERS WITH PAGINATION
   const renderCustomers = () => {
-    let displayCustomers = _optionalChain([currentUser, 'optionalAccess', _42 => _42.role]) === 'Field Collector' ? getCustomersByEmployee(currentUser.employeeId || 1) : customers;
+    let displayCustomers = _optionalChain([currentUser, 'optionalAccess', _42 => _42.role]) === 'Field Collector' ? getCustomersByEmployee(currentUser.employeeId) : customers;
     if (searchTerm) displayCustomers = displayCustomers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.business.toLowerCase().includes(searchTerm.toLowerCase()) || c.location.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const totalCustPages = Math.ceil(displayCustomers.length / customerItemsPerPage);
@@ -2322,6 +2325,7 @@ async function shareAsPDF(){
               )
             )
           )
+          , (_optionalChain([currentUser, 'optionalAccess', _fcp => _fcp.role]) === 'Field Collector' && (_optionalChain([currentUser, 'optionalAccess', _fcp2 => _fcp2.privileges]) || []).includes('manage_customers')) && _react2.default.createElement('button', { onClick: () => { setAddCustomerForm({ name: '', phone: '', business: '', location: '' }); setAddCustomerError(''); setShowAddCustomer(true); }, className: "bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5",}, _react2.default.createElement(_lucidereact.Plus, { size: 15,}), " Register")
         )
         , _react2.default.createElement('div', { className: "relative",}, _react2.default.createElement(_lucidereact.Search, { size: 16, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"    ,} ), _react2.default.createElement('input', { type: "text", value: searchTerm, onChange: (e) => { setSearchTerm(e.target.value); setCustomerPage(1); }, placeholder: "Search by name, business, or location..."     , className: `w-full pl-9 pr-4 py-2 rounded-lg border ${borderColor} ${cardBg} ${textPrimary} text-sm`,} ))
         , _react2.default.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"    ,}

@@ -9,7 +9,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: JWT_EXPIRES_IN
-        value: 7d
+        value: 30d
       - key: FRONTEND_URL
         value: "*"
       - key: MONGODB_URI

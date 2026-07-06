@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Employee = require('../models/Employee');
 const { protect } = require('../middleware/auth');
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/env');
 const { logActivity } = require('../utils/activityLog');
@@ -8,6 +9,20 @@ const { logActivity } = require('../utils/activityLog');
 const router = express.Router();
 
 const signToken = (id) => jwt.sign({ id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+// Attach the linked Employee record's id + privileges so the frontend can
+// (a) show a collector the customers assigned to them, and (b) enforce privileges.
+// Super Admin implicitly has every privilege.
+async function withEmployeeInfo(pubUser) {
+  const emp = await Employee.findOne({ userId: pubUser._id }).select('_id privileges');
+  if (emp) {
+    pubUser.employeeId = emp._id;
+    pubUser.privileges = emp.privileges || [];
+  } else {
+    pubUser.privileges = [];
+  }
+  return pubUser;
+}
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
@@ -30,6 +45,7 @@ router.post('/login', async (req, res) => {
     const pub = user.toPublic();
     // Include customerId so customer dashboard knows which profile to load
     if (user.customerId) pub.customerId = user.customerId;
+    await withEmployeeInfo(pub);
     res.json({ success: true, token: signToken(user._id), user: pub });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -37,8 +53,10 @@ router.post('/login', async (req, res) => {
 });
 
 // GET /api/auth/me
-router.get('/me', protect, (req, res) => {
-  res.json({ success: true, user: req.user });
+router.get('/me', protect, async (req, res) => {
+  const pub = req.user.toPublic ? req.user.toPublic() : req.user.toObject();
+  await withEmployeeInfo(pub);
+  res.json({ success: true, user: pub });
 });
 
 // PATCH /api/auth/change-password
