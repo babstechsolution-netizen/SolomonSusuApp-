@@ -491,8 +491,14 @@ function applyTheme(t) {
     var token = (typeof localStorage !== 'undefined' ? localStorage.getItem('susu_token') : null) || authToken;
     var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
     if (token) headers['Authorization'] = 'Bearer ' + token;
-    return fetch(path, Object.assign({}, opts, { headers: headers })).then(function(res) {
-      return res.json().then(function(json) {
+    // Hard timeout so a stalled request can never leave the UI spinning forever
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 30000) : null;
+    var fetchOpts = Object.assign({}, opts, { headers: headers });
+    if (ctrl) fetchOpts.signal = ctrl.signal;
+    return fetch(path, fetchOpts).then(function(res) {
+      if (timer) clearTimeout(timer);
+      return res.json().catch(function () { return {}; }).then(function(json) {
         // Expired/invalid session: clear it and return to the login screen instead of failing silently
         if (res.status === 401 && token && path.indexOf('/api/auth/login') === -1) {
           try { localStorage.removeItem('susu_token'); } catch (e) {}
@@ -501,6 +507,10 @@ function applyTheme(t) {
         if (!res.ok) throw new Error(json.message || json.error || 'Request failed');
         return json;
       });
+    }).catch(function(err) {
+      if (timer) clearTimeout(timer);
+      if (err && err.name === 'AbortError') throw new Error('Request timed out — check your connection and try again.');
+      throw err;
     });
   };
 
