@@ -462,16 +462,114 @@ a{color:inherit;text-decoration:none;}
     q('#cc').onclick=closeModal;q('#sv').onclick=function(){var cp=q('#cp').value,np=q('#np').value;if(np.length<6){toast('New password too short','err');return;}var b=q('#sv');b.innerHTML='<span class="spin"></span>';b.disabled=true;
       api('/api/auth/change-password',{method:'PATCH',body:JSON.stringify({currentPassword:cp,newPassword:np})}).then(function(){closeModal();toast('Password changed','ok');}).catch(function(e){toast(e.message,'err');closeModal();});};}
 
+  // ---------- SHARED REFERENCE DATA ----------
+  var ROLES=[{key:'field_collector',name:'Field Collector'},{key:'branch_manager',name:'Branch Manager'},{key:'accountant',name:'Accountant'},{key:'team_lead',name:'Team Lead'},{key:'cashier',name:'Cashier'},{key:'supervisor',name:'Supervisor'}];
+  function roleLabel(k){var r=ROLES.filter(function(x){return x.key===k;})[0];return r?r.name:(k||'Staff');}
+  var PRIVS=[{id:'collect_money',n:'Collect Money',c:'Transactions'},{id:'process_withdrawal',n:'Process Withdrawals',c:'Transactions'},{id:'approve_transactions',n:'Approve Transactions',c:'Transactions'},{id:'manage_customers',n:'Manage Customers',c:'Customers'},{id:'assign_customers',n:'Assign Customers',c:'Customers'},{id:'view_reports',n:'View Reports',c:'Data & Reports'},{id:'export_data',n:'Export Data',c:'Data & Reports'},{id:'manage_employees',n:'Manage Employees',c:'Management'},{id:'view_all_transactions',n:'View All Transactions',c:'Access'},{id:'view_own_transactions',n:'View Own Transactions',c:'Access'},{id:'generate_receipts',n:'Generate Receipts',c:'Operations'},{id:'system_settings',n:'System Settings',c:'Administration'}];
+  var DEFAULT_PRIVS={field_collector:['collect_money','process_withdrawal','view_own_transactions','generate_receipts'],branch_manager:['collect_money','process_withdrawal','approve_transactions','view_reports','export_data','manage_customers','assign_customers','manage_employees','view_all_transactions','generate_receipts'],accountant:['view_reports','export_data','view_all_transactions','approve_transactions'],team_lead:['collect_money','process_withdrawal','view_reports','assign_customers','view_all_transactions','generate_receipts'],cashier:['collect_money','process_withdrawal','generate_receipts','view_own_transactions'],supervisor:['collect_money','process_withdrawal','approve_transactions','view_reports','assign_customers','view_all_transactions','generate_receipts']};
+  function defaultPrivs(role){return DEFAULT_PRIVS[role]||[];}
+
+  // ---------- MORE HUB ----------
+  function moreScreen(){S.screen='more';
+    var items=[['customers','👥','Customers','All customer records'],['employees','🧑‍💼','Employees','Staff & performance'],['assignments','🔗','Assignments','Assign customers to collectors'],['roles','🛡️','Roles & Privileges','Control staff access'],['reports','📈','Reports','Totals & breakdowns'],['leaderboard','🏆','Leaderboard','Top collectors'],['loans','💳','Loans','Customer loans'],['txns','🧾','Transactions','All transactions']];
+    set('<div class="app-bar"><div class="ab-title">More</div></div><div class="sc"><div class="body-pad"><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)">'+
+      items.map(function(it){return '<div class="set-item" data-go="'+it[0]+'"><div class="set-ic">'+it[1]+'</div><div style="flex:1"><div class="set-lbl">'+it[2]+'</div><div class="set-val">'+it[3]+'</div></div><span class="set-val">›</span></div>';}).join('')+
+      '</div></div></div>'+bnav('more'));
+    all('[data-go]').forEach(function(el){el.onclick=function(){nav(el.getAttribute('data-go'));};});wireNav();}
+
+  // ---------- ADMIN: CUSTOMERS ----------
+  function adminCustomers(){S.screen='customers';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/customers').then(function(d){var list=d.data||[];S.allCustomers=list;
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers ('+list.length+')</div></div><div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="q" placeholder="Search name, business, ID…"></div><div id="list">'+(list.length?list.map(acRow).join(''):'<div class="empty"><div class="ei">👥</div>No customers.</div>')+'</div></div></div>'+bnav('customers'));
+      q('[data-back]').onclick=home;var box=q('#q');box.oninput=function(){var v=box.value.toLowerCase();var l=list.filter(function(c){return (c.name||'').toLowerCase().indexOf(v)>=0||(c.business||'').toLowerCase().indexOf(v)>=0||acctNo(c).toLowerCase().indexOf(v)>=0;});q('#list').innerHTML=l.length?l.map(acRow).join(''):'<div class="empty">No matches.</div>';};wireNav();}).catch(function(e){toast(e.message,'err');});}
+  function acRow(c){return '<div class="cli"><div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(c.name)+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+' · '+esc((c.assignedEmployee&&c.assignedEmployee.name)||'unassigned')+'</div></div><div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';}
+
+  // ---------- EMPLOYEES ----------
+  function employeesScreen(){S.screen='employees';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Employees</div><div class="ab-back" id="addemp" style="width:auto;padding:0 12px;font-size:22px">＋</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/employees').then(function(d){var list=d.data||[];S.emps=list;
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Employees ('+list.length+')</div><div class="ab-back" id="addemp" style="width:auto;padding:0 12px;font-size:22px">＋</div></div><div class="sc"><div class="body-pad">'+(list.length?list.map(empRow).join(''):'<div class="empty"><div class="ei">🧑‍💼</div>No employees.</div>')+'</div></div>'+bnav('more'));
+      q('[data-back]').onclick=moreScreen;q('#addemp').onclick=addEmpModal;wireNav();}).catch(function(e){toast(e.message,'err');});}
+  function empRow(e){return '<div class="cli"><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+initials(e.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(roleLabel(e.role))+' · '+esc(e.zone||'')+'</div></div><div class="cli-right"><div class="cli-bal" style="color:var(--g-600)">'+money(e.collections)+'</div><div class="cli-id">'+(e.performance||0)+'% perf</div></div></div>';}
+  function addEmpModal(){modal('<h3>Add Employee</h3><div class="inp-wrap"><input class="inp" id="en" placeholder="Full name"></div><div class="inp-wrap"><input class="inp" id="ep" placeholder="Phone"></div><div class="inp-wrap"><input class="inp" id="ez" placeholder="Zone / Market"></div><div class="inp-wrap"><select class="inp" id="er">'+ROLES.map(function(r){return '<option value="'+r.key+'">'+r.name+'</option>';}).join('')+'</select></div><div class="inp-wrap"><input class="inp" id="eu" placeholder="Username (for login)"></div><div class="inp-wrap"><input class="inp" id="epw" type="password" placeholder="Password (min 6)"></div><button class="btn btn-p btn-full btn-lg" id="es">Create Employee</button><button class="btn btn-ghost btn-full" style="margin-top:8px" id="ec">Cancel</button>');
+    q('#ec').onclick=closeModal;q('#es').onclick=function(){var name=q('#en').value.trim(),phone=q('#ep').value.trim(),zone=q('#ez').value.trim(),role=q('#er').value,u=q('#eu').value.trim(),pw=q('#epw').value;if(!name||!phone||!zone||!u||pw.length<6){toast('Fill all fields; password min 6 chars','err');return;}var b=q('#es');b.innerHTML='<span class="spin"></span>';b.disabled=true;
+      api('/api/employees',{method:'POST',body:JSON.stringify({name:name,phone:phone,zone:zone,role:role,username:u,password:pw,privileges:defaultPrivs(role)})}).then(function(r){closeModal();toast('Employee created'+(r.credentials?(' — login: '+r.credentials.username):''),'ok');employeesScreen();}).catch(function(e){toast(e.message,'err');closeModal();});};}
+
+  // ---------- ROLES & PRIVILEGES ----------
+  function rolesScreen(){S.screen='roles';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Roles & Privileges</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/employees').then(function(d){var list=d.data||[];
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Roles & Privileges</div></div><div class="sc"><div class="body-pad"><div style="font-size:12px;color:var(--t3);margin-bottom:12px">Tap an employee to change their role and toggle what they can access.</div>'+(list.length?list.map(function(e){return '<div class="cli" data-emp="'+esc(e._id)+'"><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+initials(e.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(roleLabel(e.role))+' · '+((e.privileges||[]).length)+' privileges</div></div><span class="set-val">›</span></div>';}).join(''):'<div class="empty"><div class="ei">🛡️</div>No employees.</div>')+'</div></div>'+bnav('more'));
+      q('[data-back]').onclick=moreScreen;all('[data-emp]').forEach(function(el){el.onclick=function(){var e=list.filter(function(x){return x._id===el.getAttribute('data-emp');})[0];if(e)editRoles(e);};});wireNav();}).catch(function(e){toast(e.message,'err');});}
+  function editRoles(emp){S.screen='editroles';var selRole=emp.role||'field_collector';var selPrivs=(emp.privileges||[]).slice();
+    function draw(){var cats={};PRIVS.forEach(function(p){(cats[p.c]=cats[p.c]||[]).push(p);});
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Edit Access</div><div class="ab-back" id="save" style="width:auto;padding:0 12px;font-size:14px;font-weight:700">Save</div></div><div class="sc"><div class="body-pad">'+
+        '<div class="cli" style="margin-bottom:14px"><div class="cli-av" style="background:'+(emp.color||colorFor(emp._id))+'">'+initials(emp.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(emp.name)+'</div><div class="cli-meta">'+esc(emp.zone||'')+'</div></div></div>'+
+        '<div class="sec-lbl" style="padding-left:0">Assigned Role</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+ROLES.map(function(r){return '<span class="chip'+(selRole===r.key?' on':'')+'" data-role="'+r.key+'">'+r.name+'</span>';}).join('')+'</div>'+
+        Object.keys(cats).map(function(cat){return '<div class="sec-lbl" style="padding-left:0">'+cat+'</div><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs);margin-bottom:12px">'+cats[cat].map(function(p){return '<div class="set-item"><div style="flex:1"><div class="set-lbl" style="font-size:13px">'+p.n+'</div></div><div class="tgl'+(selPrivs.indexOf(p.id)>=0?' on':'')+'" data-priv="'+p.id+'"><b></b></div></div>';}).join('')+'</div>';}).join('')+
+        '<button class="btn btn-p btn-full btn-lg" id="save2">💾 Save Changes</button></div></div>'+bnav('more'));
+      q('[data-back]').onclick=rolesScreen;
+      all('[data-role]').forEach(function(el){el.onclick=function(){selRole=el.getAttribute('data-role');selPrivs=defaultPrivs(selRole).slice();draw();};});
+      all('[data-priv]').forEach(function(el){el.onclick=function(){var id=el.getAttribute('data-priv');var i=selPrivs.indexOf(id);if(i>=0)selPrivs.splice(i,1);else selPrivs.push(id);el.classList.toggle('on');};});
+      function doSave(){api('/api/employees/'+emp._id,{method:'PATCH',body:JSON.stringify({role:selRole,privileges:selPrivs})}).then(function(){toast('Access updated','ok');rolesScreen();}).catch(function(e){toast(e.message,'err');});}
+      q('#save').onclick=doSave;q('#save2').onclick=doSave;}
+    draw();}
+
+  // ---------- ASSIGNMENTS ----------
+  function assignmentsScreen(){S.screen='assignments';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Assignments</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    Promise.all([api('/api/customers'),api('/api/employees')]).then(function(r){var custs=r[0].data||[];var emps=r[1].data||[];S.asgCusts=custs;S.asgEmps=emps;
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Assignments</div></div><div class="sc"><div class="body-pad"><div style="font-size:12px;color:var(--t3);margin-bottom:10px">Tap a customer to assign them to a collector.</div><div class="search-bar">🔎<input id="q" placeholder="Search customer…"></div><div id="list">'+custs.map(asgRow).join('')+'</div></div></div>'+bnav('more'));
+      q('[data-back]').onclick=moreScreen;var box=q('#q');box.oninput=function(){var v=box.value.toLowerCase();q('#list').innerHTML=custs.filter(function(c){return (c.name||'').toLowerCase().indexOf(v)>=0;}).map(asgRow).join('');wireAsg();};wireAsg();wireNav();}).catch(function(e){toast(e.message,'err');});}
+  function asgRow(c){return '<div class="cli" data-asg="'+esc(c._id)+'"><div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(c.name)+'</div><div class="cli-meta">Collector: '+esc((c.assignedEmployee&&c.assignedEmployee.name)||'unassigned')+'</div></div><span class="set-val">Assign ›</span></div>';}
+  function wireAsg(){all('[data-asg]').forEach(function(el){el.onclick=function(){var c=S.asgCusts.filter(function(x){return x._id===el.getAttribute('data-asg');})[0];if(c)assignModal(c);};});}
+  function assignModal(c){modal('<h3>Assign '+esc(c.name)+'</h3><div style="font-size:12px;color:var(--t3);margin-bottom:12px">Choose a collector:</div><div style="max-height:50vh;overflow:auto">'+S.asgEmps.map(function(e){return '<div class="cli" data-pick="'+esc(e._id)+'"><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+initials(e.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(roleLabel(e.role))+' · '+esc(e.zone||'')+'</div></div></div>';}).join('')+'</div><button class="btn btn-ghost btn-full" style="margin-top:10px" id="ac">Cancel</button>');
+    q('#ac').onclick=closeModal;all('[data-pick]').forEach(function(el){el.onclick=function(){var empId=el.getAttribute('data-pick');api('/api/customers/'+c._id+'/assign',{method:'PATCH',body:JSON.stringify({employeeId:empId})}).then(function(){closeModal();toast('Customer assigned','ok');assignmentsScreen();}).catch(function(e){toast(e.message,'err');closeModal();});};});}
+
+  // ---------- REPORTS ----------
+  function reportsScreen(){S.screen='reports';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Reports</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/dashboard/reports').then(function(r){var rep=r.data||{};var bm=rep.byMethod||[];var top=rep.topEmployees||[];
+      var totalDep=0,totalWit=0;(rep.byMonth||[]).forEach(function(m){if(m._id.type==='deposit')totalDep+=m.total;else if(m._id.type==='withdrawal')totalWit+=m.total;});
+      var methodTotal=bm.reduce(function(s,m){return s+(m.amount||0);},0)||1;
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Reports</div></div><div class="sc"><div class="body-pad">'+
+        '<div class="card"><div style="display:flex;gap:12px;text-align:center"><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--dep)">'+money(totalDep)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">TOTAL DEPOSITS</div></div><div style="width:1px;background:var(--border-l)"></div><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--wit)">'+money(totalWit)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">TOTAL WITHDRAWALS</div></div></div></div>'+
+        '<div class="card"><div class="s-div" style="margin:0 0 10px"><span class="s-div-title">By Payment Method</span></div>'+(bm.length?bm.map(function(m){var pct=Math.round((m.amount||0)/methodTotal*100);return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>'+esc(m._id||'—')+'</span><span style="font-weight:700">'+money(m.amount)+' ('+pct+'%)</span></div><div class="prog-bg"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>';}).join(''):'<div style="font-size:12px;color:var(--t3)">No data.</div>')+'</div>'+
+        '<div class="s-div"><span class="s-div-title">Top Collectors</span></div>'+(top.length?top.map(function(e,i){return '<div class="cli"><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+(i+1)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(e.zone||'')+'</div></div><div class="cli-bal" style="color:var(--g-600)">'+money(e.collections)+'</div></div>';}).join(''):'<div class="empty">No data.</div>')+
+        '</div></div>'+bnav('more'));
+      q('[data-back]').onclick=moreScreen;wireNav();}).catch(function(e){toast(e.message,'err');});}
+
+  // ---------- LEADERBOARD ----------
+  function leaderboardScreen(){S.screen='leaderboard';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Leaderboard 🏆</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/employees').then(function(d){var list=(d.data||[]).slice().sort(function(a,b){return (b.collections||0)-(a.collections||0);});var max=(list[0]&&list[0].collections)||1;
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Leaderboard 🏆</div></div><div class="sc"><div class="body-pad">'+(list.length?list.map(function(e,i){var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':('#'+(i+1));return '<div class="cli"><div style="width:28px;text-align:center;font-weight:900;flex-shrink:0">'+medal+'</div><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+initials(e.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(e.zone||'')+'</div><div class="prog-bg" style="margin-top:5px"><div class="prog-fill" style="width:'+Math.round((e.collections||0)/max*100)+'%"></div></div></div><div class="cli-bal" style="color:var(--g-600)">'+money(e.collections)+'</div></div>';}).join(''):'<div class="empty">No employees.</div>')+'</div></div>'+bnav('more'));
+      q('[data-back]').onclick=moreScreen;wireNav();}).catch(function(e){toast(e.message,'err');});}
+
+  // ---------- LOANS ----------
+  function loansScreen(){S.screen='loans';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Loans</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/loans').then(function(d){var list=d.data||[];
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Loans ('+list.length+')</div></div><div class="sc"><div class="body-pad">'+(list.length?list.map(function(l){var name=l.customerName||(l.customer&&l.customer.name)||'—';return '<div class="card" style="padding:14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:800">'+esc(name)+'</div><div style="font-size:11px;color:var(--t3)">'+esc(l.purpose||'')+' · '+esc(l.status||'')+'</div></div><div style="text-align:right"><div style="font-weight:900;color:var(--wit)">'+money(l.outstanding)+'</div><div style="font-size:10px;color:var(--t3)">of '+money(l.amount)+'</div></div></div></div>';}).join(''):'<div class="empty"><div class="ei">💳</div>No loans.</div>')+'</div></div>'+bnav('more'));
+      q('[data-back]').onclick=moreScreen;wireNav();}).catch(function(e){toast(e.message,'err');});}
+
   // ---------- NAV ----------
   function avatarNotif(){return '<div class="hdr-av" id="av">'+initials(S.user.name)+(S.unread?'<div class="notif-badge">'+(S.unread>9?'9+':S.unread)+'</div>':'')+'</div>';}
   function wireAvatar(){var a=q('#av');if(a)a.onclick=notifsScreen;}
   function bnav(active){var r=role();var items;
     if(r==='Field Collector')items=[['home','🏠','Home'],['customers','👥','Customers'],['notifs','🔔','Alerts'],['settings','⚙️','Settings']];
     else if(r==='Customer')items=[['home','🏠','Account'],['txns','🧾','History'],['notifs','🔔','Alerts'],['settings','⚙️','Settings']];
-    else items=[['dash','📊','Dashboard'],['approvals','✅','Approvals'],['txns','🧾','Txns'],['notifs','🔔','Alerts'],['settings','⚙️','Settings']];
+    else items=[['dash','📊','Dashboard'],['approvals','✅','Approvals'],['customers','👥','Customers'],['more','☰','More'],['settings','⚙️','Settings']];
     return '<div class="bnav">'+items.map(function(it){return '<div class="bnav-item'+(active===it[0]?' act':'')+'" data-nav="'+it[0]+'"><div class="bnav-icon">'+it[1]+'</div><div class="bnav-lbl">'+it[2]+'</div>'+(it[0]==='notifs'&&S.unread?'<div class="bnav-dot">'+(S.unread>9?'9+':S.unread)+'</div>':'')+'</div>';}).join('')+'</div>';}
   function wireNav(){all('[data-nav]').forEach(function(el){var n=el.getAttribute('data-nav');el.onclick=function(){nav(n);};});}
-  function nav(n){if(n==='home'||n==='dash')home();else if(n==='customers')custList('deposit');else if(n==='approvals')approvalsScreen();else if(n==='txns')txnsScreen();else if(n==='notifs')notifsScreen();else if(n==='settings')settingsScreen();}
+  function nav(n){var r=role();
+    if(n==='home'||n==='dash')home();
+    else if(n==='customers'){ if(r==='Field Collector')custList('deposit'); else adminCustomers(); }
+    else if(n==='approvals')approvalsScreen();
+    else if(n==='txns')txnsScreen();
+    else if(n==='notifs')notifsScreen();
+    else if(n==='settings')settingsScreen();
+    else if(n==='more')moreScreen();
+    else if(n==='employees')employeesScreen();
+    else if(n==='roles')rolesScreen();
+    else if(n==='assignments')assignmentsScreen();
+    else if(n==='reports')reportsScreen();
+    else if(n==='leaderboard')leaderboardScreen();
+    else if(n==='loans')loansScreen();}
   function logout(){localStorage.removeItem('aw_token');S.token=null;S.user=null;document.documentElement.setAttribute('data-theme','light');renderLogin();}
 
   function q(s){return document.querySelector(s);}function all(s){return Array.prototype.slice.call(document.querySelectorAll(s));}
