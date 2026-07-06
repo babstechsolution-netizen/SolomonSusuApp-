@@ -115,9 +115,21 @@ router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.sing
 
     if (!rows.length) return res.status(400).json({ success: false, message: 'Excel file is empty or has no data rows.' });
 
+    // Parse a money value, tolerating currency symbols, commas and spaces (e.g. "GH₵ 1,200.50")
+    const parseAmount = (v) => {
+      const n = Number(String(v ?? '').replace(/[^0-9.\-]/g, ''));
+      return isNaN(n) ? 0 : n;
+    };
+
+    // Existing customer names (lowercased) so we can skip duplicates
+    const existing = await Customer.find({}, 'name').lean();
+    const existingNames = new Set(existing.map(c => (c.name || '').trim().toLowerCase()));
+    const seenInFile = new Set();
+
     const colors = ['#ec4899', '#06b6d4', '#f59e0b', '#8b5cf6', '#3b82f6', '#10b981', '#ef4444', '#14b8a6'];
     const valid = [];
     const errors = [];
+    const skippedDuplicates = [];
     const base = Date.now();
 
     rows.forEach((row, i) => {
@@ -127,6 +139,19 @@ router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.sing
         String(Object.values(row)[0] ?? '').trim();
 
       if (!name) { errors.push(`Row ${i + 2}: could not detect a name — row skipped`); return; }
+
+      // Skip duplicate names — already in the system or repeated within this file
+      const nameKey = name.trim().toLowerCase();
+      if (existingNames.has(nameKey) || seenInFile.has(nameKey)) {
+        skippedDuplicates.push(name);
+        return;
+      }
+      seenInFile.add(nameKey);
+
+      // Account balance — the other detail columns can be filled in later
+      const balance = parseAmount(
+        pickCol(row, ['accountbalance', 'currentbalance', 'openingbalance', 'savingsbalance', 'balance', 'totalsavings', 'savings', 'amount', 'deposit', 'bal'])
+      );
 
       // Phone is optional — admin can edit later
       const phone =
@@ -143,21 +168,31 @@ router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.sing
         phone: phone || 'N/A',   // phone is required in schema; admin updates it later
         business,
         location,
+        balance,
+        totalDeposits: balance,  // opening balance counts as accumulated savings
         color: colors[i % colors.length],
         status: 'active',
         qrCode: `AW-${base}${i}`,
       });
     });
 
-    if (!valid.length) return res.status(400).json({ success: false, message: 'No rows could be imported — every row was missing a name.', errors });
+    if (!valid.length) {
+      const reason = skippedDuplicates.length
+        ? `No new customers imported — all ${skippedDuplicates.length} name(s) already exist.`
+        : 'No rows could be imported — every row was missing a name.';
+      return res.status(400).json({ success: false, message: reason, errors, skippedDuplicates });
+    }
 
     const created = await Customer.insertMany(valid, { ordered: false });
-    logActivity('customer_import', req.user.name, req.user.role, `${req.user.name} imported ${created.length} customer(s) from Excel`, { count: created.length, skipped: errors.length });
+    logActivity('customer_import', req.user.name, req.user.role, `${req.user.name} imported ${created.length} customer(s) from Excel`, { count: created.length, skipped: errors.length, duplicates: skippedDuplicates.length });
+    let message = `${created.length} customer(s) imported successfully.`;
+    if (skippedDuplicates.length) message += ` ${skippedDuplicates.length} duplicate name(s) skipped.`;
     res.json({
       success: true,
-      message: `${created.length} customer(s) imported successfully.`,
+      message,
       data: created,
       errors,
+      skippedDuplicates,
     });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
