@@ -3,6 +3,7 @@ const multer = require('multer');
 const xlsx = require('xlsx');
 const Customer = require('../models/Customer');
 const User = require('../models/User');
+const Employee = require('../models/Employee');
 const { protect, requireRole } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
 const { sync } = require('../socket');
@@ -285,12 +286,21 @@ router.post('/:id/create-login', requireRole('Super Admin', 'Branch Manager'), a
   }
 });
 
-// PATCH /api/customers/:id/assign
-router.patch('/:id/assign', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
+// PATCH /api/customers/:id/assign — managers reassign to anyone; field collectors self-assign
+router.patch('/:id/assign', requireRole('Super Admin', 'Branch Manager', 'Field Collector'), async (req, res) => {
   try {
-    const { employeeId } = req.body;
+    let employeeId = req.body.employeeId;
+    // Field Collectors can only assign customers to themselves
+    if (req.user.role === 'Field Collector') {
+      const me = await Employee.findOne({ userId: req.user._id }).select('_id');
+      if (!me) return res.status(400).json({ success: false, message: 'No employee profile linked to your account.' });
+      employeeId = me._id;
+    }
     const cust = await Customer.findByIdAndUpdate(req.params.id, { assignedEmployee: employeeId }, { new: true }).populate('assignedEmployee', 'name');
-    res.json({ success: true, data: cust, message: 'Customer reassigned.' });
+    if (!cust) return res.status(404).json({ success: false, message: 'Customer not found.' });
+    logActivity('customer_assign', req.user.name, req.user.role, `${req.user.name} assigned customer ${cust.name} to ${(cust.assignedEmployee && cust.assignedEmployee.name) || 'an employee'}`, { customer: cust.name });
+    sync('customers', 'update', cust); // real-time update across devices
+    res.json({ success: true, data: cust, message: 'Customer assigned.' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }

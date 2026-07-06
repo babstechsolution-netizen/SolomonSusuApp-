@@ -493,6 +493,11 @@ function applyTheme(t) {
     if (token) headers['Authorization'] = 'Bearer ' + token;
     return fetch(path, Object.assign({}, opts, { headers: headers })).then(function(res) {
       return res.json().then(function(json) {
+        // Expired/invalid session: clear it and return to the login screen instead of failing silently
+        if (res.status === 401 && token && path.indexOf('/api/auth/login') === -1) {
+          try { localStorage.removeItem('susu_token'); } catch (e) {}
+          if (typeof window !== 'undefined') window.location.reload();
+        }
         if (!res.ok) throw new Error(json.message || json.error || 'Request failed');
         return json;
       });
@@ -934,6 +939,14 @@ function applyTheme(t) {
       setAddCustomerError(err.message || 'Failed to register customer');
       setAddCustomerLoading(false);
     });
+  };
+
+  const assignToMe = function(cust) {
+    if (!currentUser || !currentUser.employeeId) { addToast('Your account is not linked to an employee profile.', 'error'); return; }
+    apiCall('/api/customers/' + cust.id + '/assign', { method: 'PATCH', body: JSON.stringify({ employeeId: currentUser.employeeId }) }).then(function(res) {
+      setCustomers(function(prev) { return prev.map(function(c) { return c.id === cust.id ? mapCust(res.data) : c; }); });
+      addToast('Customer assigned to you', 'success');
+    }).catch(function(err) { addToast('Failed to assign: ' + err.message, 'error'); });
   };
 
   const toggleEmployeeStatus = function(empId) {
@@ -2231,7 +2244,7 @@ async function shareAsPDF(){
 
   // CUSTOMERS WITH PAGINATION
   const renderCustomers = () => {
-    let displayCustomers = _optionalChain([currentUser, 'optionalAccess', _42 => _42.role]) === 'Field Collector' ? getCustomersByEmployee(currentUser.employeeId) : customers;
+    let displayCustomers = customers;
     if (searchTerm) displayCustomers = displayCustomers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.business.toLowerCase().includes(searchTerm.toLowerCase()) || c.location.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const totalCustPages = Math.ceil(displayCustomers.length / customerItemsPerPage);
@@ -2289,6 +2302,8 @@ async function shareAsPDF(){
                   , _react2.default.createElement('button', { onClick: () => openTransaction('deposit', cust), className: "flex-1 text-xs py-2 bg-green-50 text-green-600 rounded-lg font-medium"      ,}, "Deposit")
                   , _react2.default.createElement('button', { onClick: () => openTransaction('withdrawal', cust), className: "flex-1 text-xs py-2 bg-red-50 text-red-600 rounded-lg font-medium"      ,}, "Withdraw")
                   , (_optionalChain([currentUser, 'optionalAccess', _45 => _45.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _46 => _46.role]) === 'Branch Manager') && _react2.default.createElement('button', { onClick: () => setShowAssignModal(cust), className: "text-xs py-2 px-2 bg-green-50 text-green-700 rounded-lg font-medium"      ,}, "Assign")
+                  , (_optionalChain([currentUser, 'optionalAccess', _fca => _fca.role]) === 'Field Collector' && String(cust.assignedEmployee || '') !== String(currentUser.employeeId || '')) && _react2.default.createElement('button', { onClick: () => assignToMe(cust), className: "text-xs py-2 px-2 bg-green-600 text-white rounded-lg font-medium", title: "Assign this customer to me",}, "Assign to me")
+                  , (_optionalChain([currentUser, 'optionalAccess', _fcb => _fcb.role]) === 'Field Collector' && String(cust.assignedEmployee || '') === String(currentUser.employeeId || '')) && _react2.default.createElement('span', { className: "text-xs py-2 px-2 bg-green-50 text-green-700 rounded-lg font-medium"      ,}, "✓ Mine")
                   , _react2.default.createElement('button', { onClick: () => setShowQRModal(cust), className: "text-xs py-2 px-2 bg-amber-50 text-amber-600 rounded-lg font-medium flex items-center gap-1"        ,}, _react2.default.createElement(_lucidereact.QrCode, { size: 12,}))
                   , _optionalChain([currentUser, 'optionalAccess', _del2 => _del2.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => { setShowCustomerLoginModal(cust); setCustomerLoginForm({ username: '', password: '' }); }, className: "text-xs py-2 px-2 bg-purple-50 text-purple-600 rounded-lg font-medium hover:bg-purple-100", title: "Create Login",}, _react2.default.createElement(_lucidereact.KeyRound, { size: 12,}))
                   , _optionalChain([currentUser, 'optionalAccess', _del2b => _del2b.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'customer', id: cust.id, name: cust.name }), className: "text-xs py-2 px-2 bg-red-50 text-red-500 rounded-lg font-medium hover:bg-red-100", title: "Delete customer",}, _react2.default.createElement(_lucidereact.Trash2, { size: 12,}))
