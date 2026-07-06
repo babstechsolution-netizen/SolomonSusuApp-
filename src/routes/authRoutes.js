@@ -93,6 +93,26 @@ router.patch('/me', protect, async (req, res) => {
   }
 });
 
+// GET /api/auth/preferences — appearance settings for the logged-in user
+router.get('/preferences', protect, (req, res) => {
+  res.json({ success: true, data: req.user.preferences || {} });
+});
+
+// PATCH /api/auth/preferences — update appearance settings (follows the user across devices)
+router.patch('/preferences', protect, async (req, res) => {
+  try {
+    const { darkMode, accentColor, textSize } = req.body;
+    const updates = {};
+    if (darkMode !== undefined) updates['preferences.darkMode'] = !!darkMode;
+    if (accentColor !== undefined) updates['preferences.accentColor'] = accentColor;
+    if (textSize !== undefined) updates['preferences.textSize'] = textSize;
+    const user = await User.findByIdAndUpdate(req.user._id, { $set: updates }, { new: true, runValidators: true });
+    res.json({ success: true, data: user.preferences });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
 // POST /api/auth/seed-admin  (run once to create the first super admin)
 router.post('/seed-admin', async (req, res) => {
   try {

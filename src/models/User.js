@@ -19,6 +19,12 @@ const userSchema = new mongoose.Schema({
   employeeId: { type: Number },
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
   lastLogin: { type: Date },
+  // Appearance/preferences stored on the account so they follow the user to any device
+  preferences: {
+    darkMode: { type: Boolean, default: false },
+    accentColor: { type: String, default: '#1A5C2E' },
+    textSize: { type: String, default: 'medium' },
+  },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

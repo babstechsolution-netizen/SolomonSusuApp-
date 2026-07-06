@@ -60,114 +60,49 @@ const defaultRolePrivileges = {
   supervisor: ['collect_money', 'process_withdrawal', 'approve_transactions', 'view_reports', 'assign_customers', 'view_all_transactions', 'generate_receipts'],
 };
 
-const initialEmployeesData = [
-  { id: 1, name: 'Kwame Asante', phone: '024-555-0101', zone: 'Makola Market', status: 'active', collections: 125000, withdrawals: 32000, customers: 45, performance: 92, color: '#3b82f6', role: 'field_collector', privileges: ['collect_money', 'process_withdrawal', 'view_own_transactions', 'generate_receipts'], photo: null },
-  { id: 2, name: 'Ama Mensah', phone: '020-555-0102', zone: 'Kaneshie Market', status: 'active', collections: 108000, withdrawals: 28000, customers: 38, performance: 87, color: '#10b981', role: 'field_collector', privileges: ['collect_money', 'process_withdrawal', 'view_own_transactions', 'generate_receipts'], photo: null },
-  { id: 3, name: 'Kofi Boateng', phone: '027-555-0103', zone: 'Osu Oxford St', status: 'active', collections: 152000, withdrawals: 45000, customers: 52, performance: 95, color: '#8b5cf6', role: 'team_lead', privileges: ['collect_money', 'process_withdrawal', 'view_reports', 'assign_customers', 'view_all_transactions', 'generate_receipts'], photo: null },
-  { id: 4, name: 'Akua Darko', phone: '024-555-0104', zone: 'Madina Market', status: 'suspended', collections: 32000, withdrawals: 8000, customers: 28, performance: 45, color: '#ef4444', role: 'field_collector', privileges: ['collect_money', 'view_own_transactions'], photo: null },
-  { id: 5, name: 'Yaw Owusu', phone: '055-555-0105', zone: 'Circle Area', status: 'active', collections: 96000, withdrawals: 22000, customers: 33, performance: 78, color: '#f59e0b', role: 'cashier', privileges: ['collect_money', 'process_withdrawal', 'generate_receipts', 'view_own_transactions'], photo: null },
-  { id: 6, name: 'Efua Adjei', phone: '020-555-0106', zone: 'Head Office', status: 'active', collections: 0, withdrawals: 0, customers: 0, performance: 90, color: '#06b6d4', role: 'accountant', privileges: ['view_reports', 'export_data', 'view_all_transactions', 'approve_transactions'], photo: null },
-];
+const initialEmployeesData = []; // demo data removed
 
-const customersData = [
-  { id: 1, accountNumber: 'AWB-2026-0001', name: 'Abena Pokua', business: 'Clothing Store', phone: '024-111-2233', location: 'Makola Market', balance: 2500, totalDeposits: 45000, totalWithdrawals: 42500, status: 'active', trustScore: 92, assignedEmployee: 1, color: '#ec4899' },
-  { id: 2, accountNumber: 'AWB-2026-0002', name: 'Samuel Tetteh', business: 'Electronics Shop', phone: '020-222-3344', location: 'Kaneshie Market', balance: 5000, totalDeposits: 85000, totalWithdrawals: 80000, status: 'active', trustScore: 88, assignedEmployee: 2, color: '#06b6d4' },
-  { id: 3, accountNumber: 'AWB-2026-0003', name: 'Grace Addo', business: 'Food Vendor', phone: '027-333-4455', location: 'Osu Oxford St', balance: 1200, totalDeposits: 28000, totalWithdrawals: 26800, status: 'defaulting', trustScore: 45, assignedEmployee: 3, color: '#f59e0b' },
-  { id: 4, accountNumber: 'AWB-2026-0004', name: 'Emmanuel Kwei', business: 'Spare Parts', phone: '055-444-5566', location: 'Abossey Okai', balance: 8500, totalDeposits: 120000, totalWithdrawals: 111500, status: 'active', trustScore: 95, assignedEmployee: 1, color: '#8b5cf6' },
-  { id: 5, accountNumber: 'AWB-2026-0005', name: 'Mercy Agyemang', business: 'Pharmacy', phone: '024-555-6677', location: 'Madina', balance: 3200, totalDeposits: 52000, totalWithdrawals: 48800, status: 'inactive', trustScore: 72, assignedEmployee: 5, color: '#10b981' },
-  { id: 6, accountNumber: 'AWB-2026-0006', name: 'Daniel Ofori', business: 'Barbershop', phone: '020-666-7788', location: 'Circle', balance: 750, totalDeposits: 18000, totalWithdrawals: 17250, status: 'completed', trustScore: 98, assignedEmployee: 5, color: '#3b82f6' },
-  { id: 7, accountNumber: 'AWB-2026-0007', name: 'Felicia Owusu', business: 'Beauty Shop', phone: '024-777-8899', location: 'Makola Market', balance: 1800, totalDeposits: 36000, totalWithdrawals: 34200, status: 'active', trustScore: 85, assignedEmployee: 1, color: '#ef4444' },
-  { id: 8, accountNumber: 'AWB-2026-0008', name: 'Isaac Mensah', business: 'Mobile Repair', phone: '055-888-9900', location: 'Kaneshie Market', balance: 3500, totalDeposits: 62000, totalWithdrawals: 58500, status: 'active', trustScore: 90, assignedEmployee: 2, color: '#84cc16' },
-  { id: 9, accountNumber: 'AWB-2026-0009', name: 'Patience Asare', business: 'Fruit Vendor', phone: '024-999-0011', location: 'Makola Market', balance: 1100, totalDeposits: 22000, totalWithdrawals: 20900, status: 'active', trustScore: 78, assignedEmployee: 1, color: '#d946ef' },
-  { id: 10, accountNumber: 'AWB-2026-0010', name: 'Kwesi Appiah', business: 'Tailoring Shop', phone: '020-100-2233', location: 'Osu Oxford St', balance: 4200, totalDeposits: 68000, totalWithdrawals: 63800, status: 'active', trustScore: 91, assignedEmployee: 3, color: '#0ea5e9' },
-  { id: 11, accountNumber: 'AWB-2026-0011', name: 'Rita Mensah', business: 'Bakery', phone: '027-200-3344', location: 'Kaneshie Market', balance: 2800, totalDeposits: 41000, totalWithdrawals: 38200, status: 'active', trustScore: 86, assignedEmployee: 2, color: '#f97316' },
-  { id: 12, accountNumber: 'AWB-2026-0012', name: 'Joseph Antwi', business: 'Hardware Store', phone: '055-300-4455', location: 'Abossey Okai', balance: 6700, totalDeposits: 95000, totalWithdrawals: 88300, status: 'active', trustScore: 93, assignedEmployee: 3, color: '#14b8a6' },
-  { id: 13, accountNumber: 'AWB-2026-0013', name: 'Comfort Boateng', business: 'Cosmetics', phone: '024-400-5566', location: 'Circle', balance: 900, totalDeposits: 15000, totalWithdrawals: 14100, status: 'defaulting', trustScore: 42, assignedEmployee: 5, color: '#a855f7' },
-  { id: 14, accountNumber: 'AWB-2026-0014', name: 'Bernard Quaye', business: 'Shoe Store', phone: '020-500-6677', location: 'Makola Market', balance: 3900, totalDeposits: 58000, totalWithdrawals: 54100, status: 'active', trustScore: 87, assignedEmployee: 1, color: '#eab308' },
-  { id: 15, accountNumber: 'AWB-2026-0015', name: 'Agnes Nyarko', business: 'Provisions Store', phone: '027-600-7788', location: 'Madina', balance: 2100, totalDeposits: 34000, totalWithdrawals: 31900, status: 'active', trustScore: 80, assignedEmployee: 5, color: '#22c55e' },
-  { id: 16, accountNumber: 'AWB-2026-0016', name: 'Michael Osei', business: 'Auto Parts', phone: '055-700-8899', location: 'Abossey Okai', balance: 7500, totalDeposits: 110000, totalWithdrawals: 102500, status: 'active', trustScore: 94, assignedEmployee: 3, color: '#2563eb' },
-  { id: 17, accountNumber: 'AWB-2026-0017', name: 'Lydia Acheampong', business: 'Restaurant', phone: '024-800-9900', location: 'Osu Oxford St', balance: 4800, totalDeposits: 72000, totalWithdrawals: 67200, status: 'active', trustScore: 89, assignedEmployee: 3, color: '#dc2626' },
-  { id: 18, accountNumber: 'AWB-2026-0018', name: 'Francis Adjei', business: 'Printing Press', phone: '020-900-0011', location: 'Circle', balance: 1500, totalDeposits: 25000, totalWithdrawals: 23500, status: 'inactive', trustScore: 65, assignedEmployee: 5, color: '#7c3aed' },
-  { id: 19, accountNumber: 'AWB-2026-0019', name: 'Esther Ampofo', business: 'Herbal Shop', phone: '027-010-1122', location: 'Madina', balance: 2300, totalDeposits: 38000, totalWithdrawals: 35700, status: 'active', trustScore: 82, assignedEmployee: 2, color: '#059669' },
-  { id: 20, accountNumber: 'AWB-2026-0020', name: 'Robert Danso', business: 'Furniture Shop', phone: '055-020-2233', location: 'Kaneshie Market', balance: 5800, totalDeposits: 88000, totalWithdrawals: 82200, status: 'active', trustScore: 90, assignedEmployee: 2, color: '#ca8a04' },
-  { id: 21, accountNumber: 'AWB-2026-0021', name: 'Sandra Owusu', business: 'Jewelry Shop', phone: '024-030-3344', location: 'Osu Oxford St', balance: 6200, totalDeposits: 92000, totalWithdrawals: 85800, status: 'active', trustScore: 91, assignedEmployee: 3, color: '#e11d48' },
-  { id: 22, accountNumber: 'AWB-2026-0022', name: 'Paul Koomson', business: 'Stationery Shop', phone: '020-040-4455', location: 'Makola Market', balance: 1700, totalDeposits: 29000, totalWithdrawals: 27300, status: 'active', trustScore: 76, assignedEmployee: 1, color: '#0891b2' },
-  { id: 23, accountNumber: 'AWB-2026-0023', name: 'Nana Ama Serwaa', business: 'Cloth Vendor', phone: '027-050-5566', location: 'Makola Market', balance: 3100, totalDeposits: 47000, totalWithdrawals: 43900, status: 'active', trustScore: 84, assignedEmployee: 1, color: '#7c2d12' },
-  { id: 24, accountNumber: 'AWB-2026-0024', name: 'Thomas Frimpong', business: 'Phone Accessories', phone: '055-060-6677', location: 'Circle', balance: 2400, totalDeposits: 39000, totalWithdrawals: 36600, status: 'defaulting', trustScore: 48, assignedEmployee: 5, color: '#4f46e5' },
-];
+const customersData = []; // demo data removed
 
-const transactionsData = [
-  { id: 1, customer: 'Abena Pokua', customerId: 1, employee: 'Kwame Asante', employeeId: 1, amount: 500, type: 'deposit', method: 'Cash', status: 'approved', time: '09:30 AM', date: '2026-05-15' },
-  { id: 2, customer: 'Samuel Tetteh', customerId: 2, employee: 'Ama Mensah', employeeId: 2, amount: 1000, type: 'deposit', method: 'MoMo', status: 'pending', time: '10:15 AM', date: '2026-05-15' },
-  { id: 3, customer: 'Grace Addo', customerId: 3, employee: 'Kofi Boateng', employeeId: 3, amount: 2000, type: 'withdrawal', method: 'Cash', status: 'approved', time: '11:00 AM', date: '2026-05-15' },
-  { id: 4, customer: 'Emmanuel Kwei', customerId: 4, employee: 'Kwame Asante', employeeId: 1, amount: 2500, type: 'deposit', method: 'Bank Transfer', status: 'pending', time: '11:45 AM', date: '2026-05-15' },
-  { id: 5, customer: 'Mercy Agyemang', customerId: 5, employee: 'Yaw Owusu', employeeId: 5, amount: 800, type: 'withdrawal', method: 'MoMo', status: 'approved', time: '12:30 PM', date: '2026-05-15' },
-  { id: 6, customer: 'Daniel Ofori', customerId: 6, employee: 'Yaw Owusu', employeeId: 5, amount: 350, type: 'deposit', method: 'Cash', status: 'approved', time: '01:15 PM', date: '2026-05-15' },
-  { id: 7, customer: 'Felicia Owusu', customerId: 7, employee: 'Kwame Asante', employeeId: 1, amount: 1500, type: 'withdrawal', method: 'Cash', status: 'approved', time: '02:00 PM', date: '2026-05-14' },
-  { id: 8, customer: 'Isaac Mensah', customerId: 8, employee: 'Ama Mensah', employeeId: 2, amount: 600, type: 'deposit', method: 'Cash', status: 'approved', time: '03:00 PM', date: '2026-05-14' },
-  { id: 9, customer: 'Abena Pokua', customerId: 1, employee: 'Kwame Asante', employeeId: 1, amount: 3000, type: 'withdrawal', method: 'Cash', status: 'approved', time: '04:00 PM', date: '2026-05-13' },
-  { id: 10, customer: 'Samuel Tetteh', customerId: 2, employee: 'Ama Mensah', employeeId: 2, amount: 1200, type: 'deposit', method: 'MoMo', status: 'approved', time: '09:00 AM', date: '2026-05-12' },
-  { id: 11, customer: 'Emmanuel Kwei', customerId: 4, employee: 'Kwame Asante', employeeId: 1, amount: 5000, type: 'withdrawal', method: 'Bank Transfer', status: 'approved', time: '10:00 AM', date: '2026-05-10' },
-  { id: 12, customer: 'Grace Addo', customerId: 3, employee: 'Kofi Boateng', employeeId: 3, amount: 400, type: 'deposit', method: 'Cash', status: 'approved', time: '11:30 AM', date: '2026-05-08' },
-  { id: 13, customer: 'Patience Asare', customerId: 9, employee: 'Kwame Asante', employeeId: 1, amount: 700, type: 'deposit', method: 'Cash', status: 'approved', time: '08:30 AM', date: '2026-05-15' },
-  { id: 14, customer: 'Kwesi Appiah', customerId: 10, employee: 'Kofi Boateng', employeeId: 3, amount: 1500, type: 'deposit', method: 'MoMo', status: 'approved', time: '09:45 AM', date: '2026-05-15' },
-  { id: 15, customer: 'Rita Mensah', customerId: 11, employee: 'Ama Mensah', employeeId: 2, amount: 900, type: 'deposit', method: 'Cash', status: 'approved', time: '10:30 AM', date: '2026-05-14' },
-  { id: 16, customer: 'Joseph Antwi', customerId: 12, employee: 'Kofi Boateng', employeeId: 3, amount: 2200, type: 'withdrawal', method: 'Cash', status: 'approved', time: '11:15 AM', date: '2026-05-14' },
-  { id: 17, customer: 'Comfort Boateng', customerId: 13, employee: 'Yaw Owusu', employeeId: 5, amount: 300, type: 'deposit', method: 'Cash', status: 'pending', time: '02:30 PM', date: '2026-05-13' },
-  { id: 18, customer: 'Bernard Quaye', customerId: 14, employee: 'Kwame Asante', employeeId: 1, amount: 1800, type: 'deposit', method: 'Bank Transfer', status: 'approved', time: '03:15 PM', date: '2026-05-13' },
-  { id: 19, customer: 'Agnes Nyarko', customerId: 15, employee: 'Yaw Owusu', employeeId: 5, amount: 650, type: 'deposit', method: 'Cash', status: 'approved', time: '04:00 PM', date: '2026-05-12' },
-  { id: 20, customer: 'Michael Osei', customerId: 16, employee: 'Kofi Boateng', employeeId: 3, amount: 3500, type: 'withdrawal', method: 'Bank Transfer', status: 'approved', time: '09:00 AM', date: '2026-05-11' },
-];
+const transactionsData = []; // demo data removed
 
-const weeklyChartData = [
-  { day: 'Mon', deposits: 4500, withdrawals: 1200 },
-  { day: 'Tue', deposits: 5200, withdrawals: 2100 },
-  { day: 'Wed', deposits: 3800, withdrawals: 800 },
-  { day: 'Thu', deposits: 6100, withdrawals: 3000 },
-  { day: 'Fri', deposits: 5800, withdrawals: 1500 },
-  { day: 'Sat', deposits: 4200, withdrawals: 900 },
-  { day: 'Sun', deposits: 2100, withdrawals: 400 },
-];
+// Real 7-day deposits/withdrawals derived from the loaded transactions (no more sample data).
+function computeWeeklyChart(transactions) {
+  const days = [];
+  const map = {};
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const row = { key: key, day: d.toLocaleDateString('en-US', { weekday: 'short' }), deposits: 0, withdrawals: 0 };
+    days.push(row);
+    map[key] = row;
+  }
+  (transactions || []).forEach(function (t) {
+    if (t.status && t.status !== 'approved') return;
+    const b = map[t.date];
+    if (!b) return;
+    if (t.type === 'deposit') b.deposits += Number(t.amount) || 0;
+    else if (t.type === 'withdrawal') b.withdrawals += Number(t.amount) || 0;
+  });
+  return days;
+}
 
 
 const notifications = [];
 
-const loansData = [
-  { id: 1, customerId: 4, customerName: 'Emmanuel Kwei', amount: 5000, outstanding: 3500, monthlyPayment: 583, nextPaymentDate: '2026-06-01', disbursedDate: '2026-01-15', status: 'active', interestRate: 5, purpose: 'Stock purchase', officer: 'Kofi Boateng' },
-  { id: 2, customerId: 7, customerName: 'Felicia Owusu', amount: 2000, outstanding: 2000, monthlyPayment: 400, nextPaymentDate: '2026-05-30', disbursedDate: '2026-03-30', status: 'overdue', interestRate: 5, purpose: 'Equipment', officer: 'Kwame Asante' },
-  { id: 3, customerId: 12, customerName: 'Joseph Antwi', amount: 8000, outstanding: 6400, monthlyPayment: 700, nextPaymentDate: '2026-06-05', disbursedDate: '2026-02-10', status: 'active', interestRate: 4.5, purpose: 'Business expansion', officer: 'Kofi Boateng' },
-  { id: 4, customerId: 2, customerName: 'Samuel Tetteh', amount: 3500, outstanding: 0, monthlyPayment: 700, nextPaymentDate: null, disbursedDate: '2025-11-20', status: 'paid', interestRate: 5, purpose: 'Renovation', officer: 'Ama Mensah' },
-  { id: 5, customerId: 16, customerName: 'Michael Osei', amount: 10000, outstanding: 8500, monthlyPayment: 900, nextPaymentDate: '2026-06-10', disbursedDate: '2026-03-01', status: 'active', interestRate: 4, purpose: 'Vehicle purchase', officer: 'Kofi Boateng' },
-];
+const loansData = []; // demo data removed
 
 const activityLogData = [];
 
-const depositsByZone = [
-  { name: 'Osu Oxford St', value: 152000 },
-  { name: 'Makola Market', value: 125000 },
-  { name: 'Kaneshie Market', value: 108000 },
-  { name: 'Circle Area', value: 96000 },
-  { name: 'Madina Market', value: 32000 },
-];
+const depositsByZone = []; // demo data removed
 
-const customerSavingsData = {
-  1: { savingsCycle: 30, dailyContribution: 50, cycleStartDate: '2026-05-01', savingsGoal: 5000 },
-  2: { savingsCycle: 60, dailyContribution: 100, cycleStartDate: '2026-04-01', savingsGoal: 10000 },
-  3: { savingsCycle: 30, dailyContribution: 30, cycleStartDate: '2026-05-01', savingsGoal: 3000 },
-  4: { savingsCycle: 90, dailyContribution: 200, cycleStartDate: '2026-03-01', savingsGoal: 25000 },
-  7: { savingsCycle: 30, dailyContribution: 80, cycleStartDate: '2026-05-01', savingsGoal: 5000 },
-  10: { savingsCycle: 60, dailyContribution: 120, cycleStartDate: '2026-04-01', savingsGoal: 15000 },
-  12: { savingsCycle: 90, dailyContribution: 150, cycleStartDate: '2026-03-01', savingsGoal: 20000 },
-  16: { savingsCycle: 60, dailyContribution: 180, cycleStartDate: '2026-04-15', savingsGoal: 18000 },
-};
+// Sample savings-cycle data removed; real customers show their own data or nothing.
+const customerSavingsData = {};
 
-const userCredentials = {
-  superadmin: { email: 'admin@awinbire.gh', password: 'admin123', name: 'Super Admin', role: 'Super Admin', avatar: 'SA', color: '#dc2626', photo: null },
-  admin: { email: 'manager@awinbire.gh', password: 'admin123', name: 'Branch Manager', role: 'Branch Manager', avatar: 'BM', color: '#2563eb', photo: null },
-  employee: { email: 'collector@awinbire.gh', password: 'emp123', name: 'Field Collector', role: 'Field Collector', avatar: 'FC', color: '#16a34a', employeeId: null, photo: null },
-  customer: { email: 'customer@awinbire.gh', password: 'cust123', name: 'Customer', role: 'Customer', avatar: 'CU', color: '#9333ea', customerId: null, photo: null },
-  accountant: { email: 'accountant@awinbire.gh', password: 'acc123', name: 'Accountant', role: 'Accountant', avatar: 'AC', color: '#ea580c', photo: null },
-};
+// Demo login accounts removed — the app authenticates only against MongoDB via /api/auth/login.
+const userCredentials = {};
 
 const QRCodeSVG = ({ data, size = 120, customerName = '', svgId = '' }) => {
   const generatePattern = (str) => {
@@ -485,7 +420,7 @@ function applyTheme(t) {
   const [showEditProfile, setShowEditProfile] = _react.useState.call(void 0, null);
   const [editProfileForm, setEditProfileForm] = _react.useState.call(void 0, {});
   const [lastTransaction, setLastTransaction] = _react.useState.call(void 0, null);
-  const [userPasswords, setUserPasswords] = _react.useState.call(void 0, { superadmin: 'admin123', admin: 'admin123', employee: 'emp123', customer: 'cust123', accountant: 'acc123' });
+  const [userPasswords, setUserPasswords] = _react.useState.call(void 0, {});
   const [authToken, setAuthToken] = _react.useState.call(void 0, typeof localStorage !== 'undefined' ? localStorage.getItem('susu_token') : null);
   const [initialising, setInitialising] = _react.useState.call(void 0, typeof localStorage !== 'undefined' && !!localStorage.getItem('susu_token'));
   const [showAddEmployee, setShowAddEmployee] = _react.useState.call(void 0, false);
@@ -1965,7 +1900,7 @@ async function shareAsPDF(){
         , _react2.default.createElement('div', { className: "grid grid-cols-1 lg:grid-cols-3 gap-4"   ,}
           , _react2.default.createElement('div', { className: `lg:col-span-2 ${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}`,}
             , _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-4`,}, "Deposits vs Withdrawals"  )
-            , _react2.default.createElement(_recharts.ResponsiveContainer, { width: "100%", height: 200,}, _react2.default.createElement(_recharts.BarChart, { data: weeklyChartData,}, _react2.default.createElement(_recharts.CartesianGrid, { strokeDasharray: "3 3" , stroke: darkMode ? '#374151' : '#e5e7eb',} ), _react2.default.createElement(_recharts.XAxis, { dataKey: "day", stroke: darkMode ? '#9ca3af' : '#6b7280', fontSize: 12,} ), _react2.default.createElement(_recharts.YAxis, { stroke: darkMode ? '#9ca3af' : '#6b7280', fontSize: 12,} ), _react2.default.createElement(_recharts.Tooltip, null ), _react2.default.createElement(_recharts.Bar, { dataKey: "deposits", fill: "#10b981", radius: [4, 4, 0, 0], name: "Deposits",} ), _react2.default.createElement(_recharts.Bar, { dataKey: "withdrawals", fill: "#ef4444", radius: [4, 4, 0, 0], name: "Withdrawals",} )))
+            , _react2.default.createElement(_recharts.ResponsiveContainer, { width: "100%", height: 200,}, _react2.default.createElement(_recharts.BarChart, { data: computeWeeklyChart(transactions),}, _react2.default.createElement(_recharts.CartesianGrid, { strokeDasharray: "3 3" , stroke: darkMode ? '#374151' : '#e5e7eb',} ), _react2.default.createElement(_recharts.XAxis, { dataKey: "day", stroke: darkMode ? '#9ca3af' : '#6b7280', fontSize: 12,} ), _react2.default.createElement(_recharts.YAxis, { stroke: darkMode ? '#9ca3af' : '#6b7280', fontSize: 12,} ), _react2.default.createElement(_recharts.Tooltip, null ), _react2.default.createElement(_recharts.Bar, { dataKey: "deposits", fill: "#10b981", radius: [4, 4, 0, 0], name: "Deposits",} ), _react2.default.createElement(_recharts.Bar, { dataKey: "withdrawals", fill: "#ef4444", radius: [4, 4, 0, 0], name: "Withdrawals",} )))
           )
           , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}`,}
             , _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3`,}, "Quick Actions" )

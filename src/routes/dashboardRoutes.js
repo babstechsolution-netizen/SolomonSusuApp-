@@ -45,6 +45,40 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/dashboard/timeseries?days=7  — deposits vs withdrawals per day for the dashboard chart
+router.get('/timeseries', async (req, res) => {
+  try {
+    const days = Math.min(90, Math.max(1, parseInt(req.query.days) || 7));
+    const start = new Date();
+    start.setDate(start.getDate() - (days - 1));
+    const startStr = start.toISOString().split('T')[0];
+
+    const agg = await Transaction.aggregate([
+      { $match: { status: 'approved', date: { $gte: startStr } } },
+      { $group: { _id: { date: '$date', type: '$type' }, total: { $sum: '$amount' } } },
+    ]);
+
+    // Build a continuous series so days with no activity still appear (consistent chart on every device)
+    const byDate = {};
+    for (let i = 0; i < days; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const key = d.toISOString().split('T')[0];
+      byDate[key] = { date: key, deposits: 0, withdrawals: 0 };
+    }
+    agg.forEach((row) => {
+      const bucket = byDate[row._id.date];
+      if (!bucket) return;
+      if (row._id.type === 'deposit') bucket.deposits = row.total;
+      else if (row._id.type === 'withdrawal') bucket.withdrawals = row.total;
+    });
+
+    res.json({ success: true, data: Object.values(byDate) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // GET /api/dashboard/reports  — monthly aggregated data
 router.get('/reports', async (req, res) => {
   try {

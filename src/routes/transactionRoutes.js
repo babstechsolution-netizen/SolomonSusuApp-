@@ -3,9 +3,11 @@ const Transaction = require('../models/Transaction');
 const Customer = require('../models/Customer');
 const Employee = require('../models/Employee');
 const Setting = require('../models/Setting');
+const User = require('../models/User');
 const { protect, requireRole } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
-const { sync, notify } = require('../socket');
+const { createNotification } = require('../utils/notify');
+const { sync } = require('../socket');
 
 async function getWithdrawalSettings() {
   const s = await Setting.findOne({ key: 'withdrawalSettings' });
@@ -20,6 +22,45 @@ router.get('/withdrawal-settings', async (req, res) => {
   try {
     const ws = await getWithdrawalSettings();
     res.json({ success: true, data: ws });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/transactions/collector-summary — today's figures for the logged-in collector.
+// Server-computed so every device shows identical numbers.
+router.get('/collector-summary', async (req, res) => {
+  try {
+    const emp = await Employee.findOne({ userId: req.user._id });
+    if (!emp) {
+      return res.json({ success: true, data: { collected: 0, withdrawn: 0, visited: 0, remaining: 0, totalAssigned: 0, dailyTarget: 0, progress: 0 } });
+    }
+    const today = new Date().toISOString().split('T')[0];
+
+    const [depAgg, witAgg, visitedIds, totalAssigned] = await Promise.all([
+      Transaction.aggregate([{ $match: { employee: emp._id, type: 'deposit', status: 'approved', date: today } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+      Transaction.aggregate([{ $match: { employee: emp._id, type: 'withdrawal', status: 'approved', date: today } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+      Transaction.distinct('customer', { employee: emp._id, type: 'deposit', date: today }),
+      Customer.countDocuments({ assignedEmployee: emp._id }),
+    ]);
+
+    const collected = (depAgg[0] || {}).total || 0;
+    const withdrawn = (witAgg[0] || {}).total || 0;
+    const visited = visitedIds.length;
+    const dailyTarget = emp.dailyTarget || 0;
+
+    res.json({
+      success: true,
+      data: {
+        collected,
+        withdrawn,
+        visited,
+        remaining: Math.max(0, totalAssigned - visited),
+        totalAssigned,
+        dailyTarget,
+        progress: dailyTarget > 0 ? Math.min(100, Math.round((collected / dailyTarget) * 100)) : 0,
+      },
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -65,7 +106,13 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const isCustomer = req.user.role === 'Customer';
-    const { amount, type, method, notes } = req.body;
+    const { amount, type, method, notes, idempotencyKey } = req.body;
+
+    // Offline retry safety: if this exact submission was already recorded, return it unchanged.
+    if (idempotencyKey) {
+      const existing = await Transaction.findOne({ idempotencyKey });
+      if (existing) return res.status(200).json({ success: true, data: existing, duplicate: true });
+    }
     // Customers submit withdrawal requests for their own account; others specify customerId
     const customerId = isCustomer ? req.user.customerId : req.body.customerId;
 
@@ -125,6 +172,7 @@ router.post('/', async (req, res) => {
       notes,
       feePercent: type === 'withdrawal' ? ws.feePercent : 0,
       feeAmount: fee,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
     });
 
     // Only update balance immediately for approved transactions
@@ -150,19 +198,37 @@ router.post('/', async (req, res) => {
       : `${req.user.name} recorded ${type} of GH₵${Number(amount).toLocaleString()} for ${customer.name}`;
     logActivity(type, req.user.name, req.user.role, actionDesc, { amount: Number(amount), customer: customer.name, status: txStatus });
 
-    // Broadcast to all clients and send notification to admin
+    // Broadcast to all clients (real-time) and persist notifications so any device sees the history
     sync('transactions', 'create', tx);
-    notify({
-      id: tx._id,
+
+    const amountStr = Number(amount).toLocaleString();
+    // Notify admins/managers for oversight
+    createNotification({
+      recipientRole: 'Super Admin',
       type: tx.type,
-      message: isCustomer
-        ? `${customer.name} requested withdrawal of GH₵${Number(amount).toLocaleString()}`
-        : `${type === 'deposit' ? 'Deposit' : 'Withdrawal'} of GH₵${Number(amount).toLocaleString()} recorded for ${customer.name} by ${req.user.name}`,
-      status: txStatus,
+      title: isCustomer ? 'Withdrawal Request' : `${type === 'deposit' ? 'Deposit' : 'Withdrawal'} Recorded`,
+      body: isCustomer
+        ? `${customer.name} requested withdrawal of GH₵${amountStr}`
+        : `${type === 'deposit' ? 'Deposit' : 'Withdrawal'} of GH₵${amountStr} recorded for ${customer.name} by ${req.user.name}`,
       amount: Number(amount),
       customer: customer.name,
-      time: new Date().toISOString(),
     });
+    // Notify the customer (if they have a login) so it shows on their own device
+    const custUser = await User.findOne({ customerId: customer._id }).select('_id');
+    if (custUser) {
+      createNotification({
+        recipientUser: custUser._id,
+        type: tx.type,
+        title: type === 'deposit' ? 'Deposit Recorded' : (isCustomer ? 'Withdrawal Requested' : 'Withdrawal Recorded'),
+        body: type === 'deposit'
+          ? `GH₵${amountStr} was added to your savings. New balance: GH₵${customer.balance.toLocaleString()}.`
+          : (isCustomer
+              ? `Your withdrawal request for GH₵${amountStr} is pending approval.`
+              : `A withdrawal of GH₵${amountStr} was recorded on your account.`),
+        amount: Number(amount),
+        customer: customer.name,
+      });
+    }
 
     res.status(201).json({ success: true, data: tx });
   } catch (err) {
@@ -202,8 +268,19 @@ router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager', 'Accoun
 
     logActivity('approval', req.user.name, req.user.role, `${req.user.name} ${status} ${tx.type} of GH₵${tx.amount} for ${tx.customerName}`, { status, amount: tx.amount, customer: tx.customerName });
     sync('transactions', 'update', tx);
-    if (status === 'approved') {
-      notify({ id: tx._id, type: 'approval', message: `${tx.type} of GH₵${tx.amount} for ${tx.customerName} was ${status}`, amount: tx.amount, customer: tx.customerName, time: new Date().toISOString() });
+    if (status === 'approved' || status === 'rejected') {
+      // Tell the customer their request outcome (shows on their device history)
+      const custUser = await User.findOne({ customerId: tx.customer }).select('_id');
+      if (custUser) {
+        createNotification({
+          recipientUser: custUser._id,
+          type: 'approval',
+          title: status === 'approved' ? 'Withdrawal Approved' : 'Withdrawal Rejected',
+          body: `Your ${tx.type} of GH₵${Number(tx.amount).toLocaleString()} was ${status}.`,
+          amount: tx.amount,
+          customer: tx.customerName,
+        });
+      }
     }
     res.json({ success: true, data: tx });
   } catch (err) {

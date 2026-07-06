@@ -13,6 +13,9 @@ const transactionSchema = new mongoose.Schema({
   feePercent: { type: Number, default: 0 },
   feeAmount: { type: Number, default: 0 },
   receiptNumber: { type: String, unique: true },
+  // De-duplication key for offline retries: a queued transaction re-sent with the same key
+  // returns the original record instead of being recorded twice.
+  idempotencyKey: { type: String, unique: true, sparse: true },
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   date: { type: String },
   time: { type: String },
@@ -20,7 +23,12 @@ const transactionSchema = new mongoose.Schema({
 
 transactionSchema.pre('save', function (next) {
   if (!this.receiptNumber) {
-    this.receiptNumber = 'RCP-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    // Human-readable receipt reference, e.g. AW-TXN-260706-482913
+    const d = new Date();
+    const yy = String(d.getFullYear()).slice(-2);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    this.receiptNumber = `AW-TXN-${yy}${mm}${dd}-${String(Date.now()).slice(-6)}`;
   }
   if (!this.date) {
     this.date = new Date().toISOString().split('T')[0];

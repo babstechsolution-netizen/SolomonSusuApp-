@@ -8,6 +8,7 @@ const employeeSchema = new mongoose.Schema({
   status: { type: String, enum: ['active', 'suspended', 'inactive'], default: 'active' },
   role: { type: String, default: 'field_collector' },
   privileges: [{ type: String }],
+  dailyTarget: { type: Number, default: 0 },
   collections: { type: Number, default: 0 },
   withdrawals: { type: Number, default: 0 },
   performance: { type: Number, default: 80, min: 0, max: 100 },

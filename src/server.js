@@ -14,6 +14,7 @@ const loanRoutes = require('./routes/loanRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const activityRoutes = require('./routes/activityRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const { startBackupScheduler } = require('./scheduler');
 const socketModule = require('./socket');
 
@@ -56,6 +57,7 @@ app.use('/api/loans', loanRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // API 404
 app.use('/api', (req, res) => {
