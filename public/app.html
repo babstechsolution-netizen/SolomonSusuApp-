@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'">
+<meta name="theme-color" content="#1A5C2E">
+<title>Awinbire Enterprise</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --g-900:#0A2E15;--g-800:#0F3D1C;--g-700:#155228;--g-600:#1A5C2E;--g-500:#216B36;--g-400:#2E7D44;--g-300:#3A9455;--g-100:#A8D8B5;--g-50:#E0F2E7;--g-25:#F0F9F3;
+  --a-700:#9B6200;--a-600:#C47D00;--a-500:#F5A623;--a-400:#F7B845;--a-300:#FACC6A;--a-50:#FFFBF0;
+  --dep:#16A34A;--dep-bg:#DCFCE7;--dep-txt:#14532D;--wit:#DC2626;--wit-bg:#FEE2E2;--wit-txt:#7F1D1D;--pend:#D97706;--pend-bg:#FEF3C7;--pend-txt:#78350F;--info:#2563EB;--info-bg:#DBEAFE;
+  --bg:#F3F5F8;--surf:#FFFFFF;--surf2:#F7F8FB;--surf3:#EEF0F5;--border:#E2E5EE;--border-l:#F0F2F7;
+  --t1:#0F1117;--t2:#4B5563;--t3:#9CA3AF;--t4:#D1D5DB;
+  --r10:10px;--r12:12px;--r14:14px;--r16:16px;--r18:18px;--r20:20px;--r99:9999px;
+  --sh-xs:0 1px 3px rgba(0,0,0,.06);--sh-sm:0 2px 8px rgba(0,0,0,.08);--sh-md:0 4px 16px rgba(0,0,0,.10);--sh-lg:0 8px 32px rgba(0,0,0,.13);--sh-g:0 4px 18px rgba(26,92,46,.28);--sh-a:0 4px 18px rgba(245,166,35,.32);
+  --ff:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--ff);background:var(--bg);color:var(--t1);line-height:1.5;-webkit-font-smoothing:antialiased;max-width:520px;margin:0 auto;min-height:100vh;position:relative;}
+button{font-family:var(--ff);cursor:pointer;border:none;outline:none;}
+input{font-family:var(--ff);outline:none;}
+.hidden{display:none!important;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 22px;min-height:52px;border-radius:var(--r99);font-size:14px;font-weight:700;transition:all .15s ease;border:2px solid transparent;white-space:nowrap;}
+.btn-p{background:var(--g-600);color:#fff;box-shadow:var(--sh-g);}
+.btn-p:active{background:var(--g-700);transform:scale(.98);}
+.btn-a{background:var(--a-500);color:#fff;box-shadow:var(--sh-a);}
+.btn-ghost{background:var(--g-25);color:var(--g-600);}
+.btn-outline{background:transparent;color:var(--g-600);border-color:var(--g-600);}
+.btn-lg{min-height:60px;padding:0 32px;font-size:16px;}
+.btn-full{width:100%;}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r99);font-size:11px;font-weight:700;}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;}
+.b-active{background:var(--dep-bg);color:var(--dep-txt);}.b-active::before{background:var(--dep);}
+.b-inactive{background:#F3F4F6;color:#6B7280;}.b-inactive::before{background:#9CA3AF;}
+.b-def{background:var(--wit-bg);color:var(--wit-txt);}.b-def::before{background:var(--wit);}
+.inp-wrap{margin-bottom:14px;}
+.inp-lbl{display:block;font-size:12px;font-weight:700;color:var(--t2);margin-bottom:5px;}
+.inp{width:100%;padding:14px 16px;border:2px solid var(--border);border-radius:var(--r14);font-size:14px;color:var(--t1);background:var(--surf);}
+.inp:focus{border-color:var(--g-600);box-shadow:0 0 0 4px rgba(26,92,46,.08);}
+.sc{padding-bottom:90px;min-height:100vh;}
+/* login */
+.login-hero{background:linear-gradient(160deg,var(--g-900),var(--g-700) 55%,var(--g-400));padding:64px 28px 52px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+.login-logo{width:88px;height:88px;background:#fff;border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:var(--g-700);box-shadow:var(--sh-lg);border:3px solid var(--a-500);margin-bottom:20px;}
+.login-app{font-size:20px;font-weight:900;color:#fff;}
+.login-tag{font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;}
+.login-body{padding:28px 24px 32px;background:#fff;}
+.login-h{font-size:22px;font-weight:900;margin-bottom:6px;}
+.login-sh{font-size:13px;color:var(--t2);margin-bottom:24px;}
+.err{background:var(--wit-bg);color:var(--wit-txt);padding:10px 14px;border-radius:var(--r12);font-size:12px;font-weight:600;margin-bottom:14px;display:flex;gap:8px;align-items:center;}
+/* header */
+.home-head{background:linear-gradient(160deg,var(--g-900),var(--g-700) 60%,var(--g-400));padding:16px 20px 24px;color:#fff;}
+.home-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;}
+.home-greet{font-size:13px;color:rgba(255,255,255,.65);}
+.home-name{font-size:20px;font-weight:900;}
+.hh-zone{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
+.home-avatar{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--a-500),var(--a-300));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,.3);}
+.today-card{background:rgba(255,255,255,.14);border-radius:var(--r20);padding:18px 20px;border:1px solid rgba(255,255,255,.2);}
+.today-label{font-size:12px;color:rgba(255,255,255,.6);}
+.today-amount{font-size:36px;font-weight:900;letter-spacing:-1px;line-height:1.1;}
+.today-sub{font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;}
+.today-pills{display:flex;gap:10px;margin-top:14px;}
+.today-pill{flex:1;background:rgba(255,255,255,.12);border-radius:var(--r12);padding:10px 12px;text-align:center;}
+.tp-val{font-size:18px;font-weight:800;line-height:1;}
+.tp-lbl{font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;}
+.body-pad{padding:16px;}
+.prog-card{background:#fff;border-radius:var(--r18);padding:18px;box-shadow:var(--sh-xs);margin-bottom:14px;}
+.prog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.prog-title{font-size:14px;font-weight:800;}
+.prog-pct{font-size:14px;font-weight:800;color:var(--g-600);}
+.prog-bg{height:10px;background:var(--surf3);border-radius:var(--r99);overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--g-700),var(--g-300));border-radius:var(--r99);}
+.qa-row{display:flex;gap:12px;margin-bottom:16px;}
+.qa-btn{flex:1;border-radius:var(--r18);padding:18px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.qa-btn:active{transform:scale(.97);}
+.qa-collect{background:linear-gradient(135deg,var(--g-700),var(--g-400));box-shadow:var(--sh-g);color:#fff;}
+.qa-withdraw{background:#fff;box-shadow:var(--sh-sm);border:2px solid var(--border);color:var(--g-600);}
+.qa-scan{background:linear-gradient(135deg,var(--a-700),var(--a-500));box-shadow:var(--sh-a);color:#fff;}
+.qa-icon{font-size:26px;}.qa-lbl{font-size:13px;font-weight:800;}
+.s-div{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.s-div-title{font-size:14px;font-weight:800;}
+.cli{background:#fff;border-radius:var(--r16);padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;box-shadow:var(--sh-xs);}
+.cli-av{width:46px;height:46px;border-radius:var(--r14);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;}
+.cli-info{flex:1;min-width:0;}
+.cli-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cli-meta{font-size:11px;color:var(--t3);margin-top:1px;}
+.cli-right{text-align:right;flex-shrink:0;}
+.cli-bal{font-size:15px;font-weight:900;color:var(--dep);}
+.cli-id{font-size:10px;color:var(--t4);margin-top:2px;}
+.app-bar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--g-700);color:#fff;}
+.app-bar .ab-back{width:40px;height:40px;border-radius:var(--r12);display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,.15);}
+.ab-title{flex:1;font-size:17px;font-weight:800;}
+.search-bar{display:flex;align-items:center;gap:10px;background:#fff;border-radius:var(--r14);padding:12px 16px;box-shadow:var(--sh-xs);margin-bottom:14px;border:2px solid var(--border-l);}
+.search-bar input{border:none;flex:1;font-size:14px;background:transparent;}
+/* deposit */
+.step-ind{padding:12px 20px 0;display:flex;gap:6px;align-items:center;}
+.step-ind div.b{height:4px;flex:1;background:var(--border);border-radius:99px;}
+.step-ind div.b.on{background:var(--g-600);}
+.cust-confirm{background:#fff;border-radius:var(--r18);padding:16px;display:flex;align-items:center;gap:14px;margin:16px;box-shadow:var(--sh-sm);border:2px solid var(--dep);}
+.cust-confirm.wit{border-color:var(--wit);}
+.cc-av{width:52px;height:52px;border-radius:var(--r14);background:linear-gradient(135deg,var(--a-600),var(--a-400));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;flex-shrink:0;}
+.cc-name{font-size:16px;font-weight:800;}
+.cc-id{font-size:11px;color:var(--t3);margin-top:2px;}
+.cc-bal{font-size:13px;color:var(--dep);font-weight:700;margin-top:4px;}
+.type-toggle{display:flex;gap:8px;margin:0 16px;}
+.type-btn{flex:1;border:2px solid var(--border);border-radius:var(--r14);padding:12px;text-align:center;font-weight:800;font-size:14px;color:var(--t2);background:#fff;}
+.type-btn.sel-dep{border-color:var(--g-600);background:var(--g-25);color:var(--g-600);}
+.type-btn.sel-wit{border-color:var(--wit);background:var(--wit-bg);color:var(--wit);}
+.amt-display{text-align:center;padding:24px 20px 14px;}
+.amt-curr{font-size:22px;font-weight:700;color:var(--t3);vertical-align:super;}
+.amt-val{font-size:52px;font-weight:900;letter-spacing:-3px;color:var(--g-600);}
+.amt-val.wit{color:var(--wit);}
+.amt-chips{display:flex;gap:8px;justify-content:center;padding:0 16px;flex-wrap:wrap;}
+.ac{padding:10px 18px;border-radius:var(--r12);font-size:14px;font-weight:800;background:var(--g-25);color:var(--g-600);border:2px solid var(--g-50);}
+.ac.sel{background:var(--g-600);color:#fff;border-color:var(--g-600);}
+.sec-lbl{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;padding:16px 16px 8px;}
+.method-row{display:flex;gap:8px;padding:0 16px;}
+.meth-btn{flex:1;border:2px solid var(--border);border-radius:var(--r14);padding:12px 8px;text-align:center;background:#fff;}
+.meth-btn.sel{border-color:var(--g-600);background:var(--g-25);}
+.meth-ico{font-size:22px;display:block;margin-bottom:5px;}
+.meth-lbl{font-size:11px;font-weight:700;color:var(--t2);}
+.meth-btn.sel .meth-lbl{color:var(--g-600);}
+.fee-box{margin:16px;background:var(--pend-bg);border-radius:var(--r14);padding:14px 16px;font-size:12px;color:#92400E;}
+.fee-row{display:flex;justify-content:space-between;margin-bottom:4px;}
+.confirm-card{background:#fff;border-radius:var(--r20);margin:16px;box-shadow:var(--sh-sm);overflow:hidden;}
+.confirm-top{background:linear-gradient(135deg,var(--g-700),var(--g-400));padding:24px 20px;text-align:center;color:#fff;}
+.confirm-top.wit{background:linear-gradient(135deg,#B91C1C,var(--wit));}
+.conf-type{font-size:12px;color:rgba(255,255,255,.7);text-transform:uppercase;}
+.conf-amt{font-size:44px;font-weight:900;letter-spacing:-2px;margin:8px 0 4px;}
+.conf-fee{font-size:12px;color:rgba(255,255,255,.65);}
+.confirm-body{padding:20px;}
+.conf-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-l);}
+.conf-row:last-child{border-bottom:none;}
+.conf-key{font-size:13px;color:var(--t2);}.conf-val{font-size:13px;font-weight:700;}
+/* receipt */
+.receipt-success{background:linear-gradient(160deg,var(--g-900),var(--g-700));padding:28px 24px 36px;text-align:center;color:#fff;}
+.receipt-success.wit{background:linear-gradient(160deg,#7F1D1D,var(--wit));}
+.rcpt-check{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.15);border:3px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 16px;}
+.rcpt-title{font-size:20px;font-weight:900;}
+.rcpt-sub{font-size:13px;color:rgba(255,255,255,.65);margin-top:4px;}
+.rcpt-amt{font-size:44px;font-weight:900;letter-spacing:-2px;margin-top:16px;}
+.receipt-paper{background:#fff;margin:16px;border-radius:var(--r20);box-shadow:var(--sh-md);overflow:hidden;}
+.rcpt-stripe{background:repeating-linear-gradient(90deg,var(--g-600) 0,var(--g-600) 8px,var(--a-500) 8px,var(--a-500) 16px);height:6px;}
+.rcpt-head{padding:18px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed var(--border);}
+.rcpt-logo-name{font-size:12px;font-weight:800;color:var(--g-700);}
+.rcpt-ref{font-size:11px;color:var(--t3);}
+.rcpt-ref strong{color:var(--g-600);font-family:monospace;}
+.rcpt-body{padding:18px 20px;}
+.rcpt-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border-l);}
+.rcpt-row:last-child{border-bottom:none;}
+.rcpt-key{font-size:12px;color:var(--t3);}.rcpt-val{font-size:13px;font-weight:700;}
+.rcpt-actions{display:flex;gap:8px;padding:0 16px 16px;}
+/* bottom nav */
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;height:72px;background:#fff;border-top:1px solid var(--border-l);display:flex;align-items:center;justify-content:space-around;padding:0 4px 8px;z-index:50;}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 14px;min-width:52px;}
+.bnav-icon{font-size:22px;color:var(--t3);}
+.bnav-lbl{font-size:10px;font-weight:600;color:var(--t3);}
+.bnav-item.act .bnav-icon,.bnav-item.act .bnav-lbl{color:var(--g-600);font-weight:800;}
+.empty{text-align:center;padding:52px 24px;color:var(--t3);}
+.empty .ei{font-size:52px;opacity:.3;margin-bottom:14px;}
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);width:calc(100% - 28px);max-width:492px;background:#1A1D25;color:#fff;padding:14px 16px;border-radius:var(--r14);display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;box-shadow:var(--sh-lg);z-index:300;}
+.toast.err{border-left:3px solid var(--wit);}.toast.ok{border-left:3px solid var(--dep);}.toast.warn{border-left:3px solid var(--pend);}
+.spin{width:20px;height:20px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp 0.7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.center-load{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;gap:14px;color:var(--t3);font-size:13px;}
+.center-load .spin{border-color:rgba(26,92,46,.2);border-top-color:var(--g-600);}
+</style>
+</head>
+<body>
+<div id="app"><div class="center-load"><div class="spin"></div>Loading…</div></div>
+<div id="toast-host"></div>
+<script>
+(function(){
+  "use strict";
+  var AV_COLORS=['#1A5C2E','#C47D00','#1D4ED8','#B91C1C','#6D28D9','#0369A1','#0891b2','#7c2d12'];
+  var S={ token:localStorage.getItem('aw_token')||null, user:null, screen:'loading', customers:[], summary:null, draft:null, ws:{feePercent:0,minBalance:0} };
+
+  function money(n){ n=Number(n||0); return 'GH₵'+n.toLocaleString(undefined,{maximumFractionDigits:2}); }
+  function initials(name){ return (name||'').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase(); }
+  function colorFor(str){ var h=0; str=String(str||''); for(var i=0;i<str.length;i++){h=str.charCodeAt(i)+((h<<5)-h);} return AV_COLORS[Math.abs(h)%AV_COLORS.length]; }
+  function acctNo(c){ return c.qrCode || ('AW-'+String(c._id||c.id||'').slice(-6).toUpperCase()); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];}); }
+  function uuid(){ return (crypto&&crypto.randomUUID)?crypto.randomUUID():'q-'+Date.now()+'-'+Math.random().toString(36).slice(2); }
+
+  function api(path,opts){
+    opts=opts||{};
+    var headers=Object.assign({'Content-Type':'application/json'},opts.headers||{});
+    if(S.token) headers['Authorization']='Bearer '+S.token;
+    return fetch(path,Object.assign({},opts,{headers:headers})).then(function(res){
+      return res.json().then(function(j){ if(!res.ok) throw new Error(j.message||'Request failed'); return j; });
+    });
+  }
+  function toast(msg,kind){
+    var host=document.getElementById('toast-host');
+    host.innerHTML='<div class="toast '+(kind||'ok')+'">'+ (kind==='err'?'⚠️':kind==='warn'?'📡':'✅') +'<span>'+esc(msg)+'</span></div>';
+    setTimeout(function(){ host.innerHTML=''; },3200);
+  }
+  var app=document.getElementById('app');
+  function set(html){ app.innerHTML=html; }
+
+  // ---------- LOGIN ----------
+  function renderLogin(err){
+    S.screen='login';
+    set(
+      '<div class="login-hero"><div class="login-logo">AE</div><div class="login-app">Awinbire Enterprise</div><div class="login-tag">Savings Management System</div></div>'+
+      '<div class="login-body"><div class="login-h">Welcome back 👋</div><div class="login-sh">Sign in to your account</div>'+
+      (err?'<div class="err">⚠️ '+esc(err)+'</div>':'')+
+      '<div class="inp-wrap"><label class="inp-lbl">Username</label><input class="inp" id="lg-user" autocomplete="username" placeholder="your username"></div>'+
+      '<div class="inp-wrap"><label class="inp-lbl">Password</label><input class="inp" id="lg-pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>'+
+      '<button class="btn btn-p btn-full btn-lg" id="lg-btn">Sign In &nbsp;→</button>'+
+      '<div style="text-align:center;margin-top:18px;font-size:12px;color:var(--t3)">🔒 Connected to your live database</div></div>'
+    );
+    var btn=document.getElementById('lg-btn');
+    function submit(){
+      var u=document.getElementById('lg-user').value.trim(), p=document.getElementById('lg-pass').value;
+      if(!u||!p){ renderLogin('Enter username and password.'); return; }
+      btn.innerHTML='<span class="spin"></span>'; btn.disabled=true;
+      api('/api/auth/login',{method:'POST',body:JSON.stringify({username:u,password:p})}).then(function(d){
+        S.token=d.token; localStorage.setItem('aw_token',d.token); S.user=d.user; afterLogin();
+      }).catch(function(e){ renderLogin(e.message||'Login failed'); });
+    }
+    btn.onclick=submit;
+    document.getElementById('lg-pass').addEventListener('keydown',function(e){ if(e.key==='Enter') submit(); });
+  }
+
+  function afterLogin(){
+    // Load supporting data then route by role
+    Promise.all([
+      api('/api/transactions/withdrawal-settings').catch(function(){return{data:S.ws};})
+    ]).then(function(r){ S.ws=r[0].data||S.ws; route(); }).catch(route);
+  }
+  function route(){
+    var role=S.user&&S.user.role;
+    if(role==='Field Collector'){ loadCollectorHome(); }
+    else { renderOtherRole(); }
+  }
+
+  function renderOtherRole(){
+    S.screen='other';
+    set('<div class="app-bar"><div class="ab-title">Awinbire Enterprise</div></div>'+
+      '<div class="empty" style="min-height:70vh;display:flex;flex-direction:column;justify-content:center"><div class="ei">🚧</div>'+
+      '<div style="font-size:16px;font-weight:800;color:var(--t2);margin-bottom:8px">Hi '+esc(S.user.name)+'</div>'+
+      '<div style="font-size:13px;line-height:1.6">The new '+esc(S.user.role)+' screens are being built next.<br>For now, please use the current app.</div>'+
+      '<div style="margin-top:20px;display:flex;gap:10px;justify-content:center"><a class="btn btn-p" href="/">Open current app</a><button class="btn btn-outline" id="lo">Sign out</button></div></div>');
+    document.getElementById('lo').onclick=logout;
+  }
+
+  // ---------- COLLECTOR HOME ----------
+  function loadCollectorHome(){
+    S.screen='home';
+    set('<div class="center-load"><div class="spin"></div>Loading your customers…</div>');
+    Promise.all([
+      api('/api/transactions/collector-summary').catch(function(){return{data:null};}),
+      api('/api/customers').catch(function(){return{data:[]};})
+    ]).then(function(r){
+      S.summary=r[0].data||{collected:0,visited:0,remaining:0,totalAssigned:0,dailyTarget:0,progress:0};
+      var all=r[1].data||[];
+      var myId=String(S.user.employeeId||'');
+      S.customers=all.filter(function(c){ var ae=c.assignedEmployee&&(c.assignedEmployee._id||c.assignedEmployee); return String(ae||'')===myId; });
+      renderCollectorHome();
+    }).catch(function(e){ toast(e.message,'err'); renderCollectorHome(); });
+  }
+  function renderCollectorHome(){
+    S.screen='home';
+    var sm=S.summary||{};
+    var custHtml=S.customers.length? S.customers.slice(0,20).map(custRow).join('') :
+      '<div class="empty"><div class="ei">👥</div>No customers assigned to you yet.</div>';
+    set(
+      '<div class="home-head"><div class="home-top"><div>'+
+      '<div class="home-greet">Welcome,</div><div class="home-name">'+esc(S.user.name)+'</div>'+
+      '<div class="hh-zone">📍 '+esc(S.user.zone||'Field Collector')+'</div></div>'+
+      '<div class="home-avatar">'+initials(S.user.name)+'</div></div>'+
+      '<div class="today-card"><div class="today-label">TODAY\'S COLLECTIONS</div>'+
+      '<div class="today-amount">'+money(sm.collected)+'</div>'+
+      '<div class="today-sub">'+(sm.dailyTarget>0?('Target: '+money(sm.dailyTarget)+' · '+sm.progress+'% reached'):'Keep collecting today')+'</div>'+
+      '<div class="today-pills"><div class="today-pill"><div class="tp-val">'+(sm.visited||0)+'</div><div class="tp-lbl">Visited</div></div>'+
+      '<div class="today-pill"><div class="tp-val">'+(sm.remaining||0)+'</div><div class="tp-lbl">Remaining</div></div>'+
+      '<div class="today-pill"><div class="tp-val">'+(sm.totalAssigned||0)+'</div><div class="tp-lbl">Total</div></div></div></div></div>'+
+      '<div class="sc"><div class="body-pad">'+
+      (sm.dailyTarget>0?('<div class="prog-card"><div class="prog-head"><div class="prog-title">Daily Target Progress</div><div class="prog-pct">'+sm.progress+'%</div></div><div class="prog-bg"><div class="prog-fill" style="width:'+Math.min(100,sm.progress)+'%"></div></div></div>'):'')+
+      '<div class="qa-row"><div class="qa-btn qa-collect" id="qa-collect"><span class="qa-icon">💰</span><span class="qa-lbl">Collect</span></div>'+
+      '<div class="qa-btn qa-withdraw" id="qa-withdraw"><span class="qa-icon">🏧</span><span class="qa-lbl">Withdraw</span></div>'+
+      '<div class="qa-btn qa-scan" id="qa-scan"><span class="qa-icon">🔎</span><span class="qa-lbl">Find</span></div></div>'+
+      '<div class="s-div"><span class="s-div-title">My Customers</span><span style="font-size:12px;color:var(--t3)">'+S.customers.length+' total</span></div>'+
+      custHtml+'</div></div>'+ bottomNav('home')
+    );
+    document.getElementById('qa-collect').onclick=function(){ renderCustomers('deposit'); };
+    document.getElementById('qa-withdraw').onclick=function(){ renderCustomers('withdrawal'); };
+    document.getElementById('qa-scan').onclick=function(){ renderCustomers('deposit'); };
+    wireNav(); wireCustRows();
+  }
+  function custRow(c){
+    return '<div class="cli" data-cust="'+esc(c._id)+'"><div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div>'+
+      '<div class="cli-info"><div class="cli-name">'+esc(c.name)+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+(c.dailyAmount?(' · '+money(c.dailyAmount)+'/day'):'')+'</div></div>'+
+      '<div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';
+  }
+  function wireCustRows(){
+    Array.prototype.forEach.call(document.querySelectorAll('[data-cust]'),function(el){
+      el.onclick=function(){ var c=S.customers.filter(function(x){return x._id===el.getAttribute('data-cust');})[0]; if(c) startTxn(c, S.txnType||'deposit'); };
+    });
+  }
+
+  // ---------- CUSTOMER LIST ----------
+  function renderCustomers(type){
+    S.screen='customers'; S.txnType=type||'deposit';
+    set('<div class="app-bar"><div class="ab-back" id="bk">←</div><div class="ab-title">'+(S.txnType==='withdrawal'?'Withdraw — pick customer':'Collect — pick customer')+'</div></div>'+
+      '<div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="cust-search" placeholder="Search name, business, ID…"></div>'+
+      '<div id="cust-list">'+ (S.customers.length?S.customers.map(custRow).join(''):'<div class="empty"><div class="ei">👥</div>No customers assigned.</div>') +'</div></div></div>'+bottomNav('customers'));
+    document.getElementById('bk').onclick=function(){ loadCollectorHome(); };
+    var box=document.getElementById('cust-search');
+    box.oninput=function(){
+      var q=box.value.toLowerCase();
+      var list=S.customers.filter(function(c){ return (c.name||'').toLowerCase().indexOf(q)>=0 || (c.business||'').toLowerCase().indexOf(q)>=0 || acctNo(c).toLowerCase().indexOf(q)>=0; });
+      document.getElementById('cust-list').innerHTML= list.length?list.map(custRow).join(''):'<div class="empty"><div class="ei">🔍</div>No matches.</div>';
+      wireCustRows();
+    };
+    wireNav(); wireCustRows();
+  }
+
+  // ---------- TRANSACTION FLOW ----------
+  function startTxn(cust,type){
+    S.draft={ cust:cust, type:type||'deposit', amount:0, method:'Cash', note:'' };
+    renderAmount();
+  }
+  function renderAmount(){
+    S.screen='amount'; var d=S.draft, c=d.cust, isW=d.type==='withdrawal';
+    var chips=isW?[50,100,200,500]:[5,10,20,50,100];
+    set('<div class="app-bar"><div class="ab-back" id="bk">←</div><div class="ab-title">'+(isW?'Record Withdrawal':'Record Deposit')+'</div></div>'+
+      '<div class="step-ind"><div class="b on"></div><div class="b"></div><div class="b"></div><div style="font-size:11px;color:var(--t3);font-weight:700;margin-left:4px">1 of 2</div></div>'+
+      '<div class="cust-confirm'+(isW?' wit':'')+'"><div class="cc-av">'+initials(c.name)+'</div><div style="flex:1"><div class="cc-name">'+esc(c.name)+'</div><div class="cc-id">'+esc(acctNo(c))+'</div><div class="cc-bal'+(isW?'':'')+'" style="'+(isW?'color:var(--wit)':'')+'">Balance: '+money(c.balance)+'</div></div>'+(isW?'✏️':'✓')+'</div>'+
+      '<div class="type-toggle"><div class="type-btn '+(!isW?'sel-dep':'')+'" id="t-dep">💰 Deposit</div><div class="type-btn '+(isW?'sel-wit':'')+'" id="t-wit">🏧 Withdrawal</div></div>'+
+      '<div class="amt-display"><span class="amt-curr">GH₵</span><span class="amt-val'+(isW?' wit':'')+'" id="amt-show">'+(d.amount||0)+'</span></div>'+
+      '<div class="amt-chips">'+chips.map(function(v){return '<span class="ac'+(d.amount===v?' sel':'')+'" data-amt="'+v+'">'+money(v)+'</span>';}).join('')+'</div>'+
+      '<div style="padding:14px 16px 0"><input class="inp" id="amt-input" type="number" inputmode="decimal" placeholder="Or type exact amount" value="'+(d.amount||'')+'"></div>'+
+      '<div class="sec-lbl">Payment Method</div><div class="method-row">'+
+      ['Cash','MoMo','Bank Transfer'].map(function(m){var ic=m==='Cash'?'💵':m==='MoMo'?'📱':'🏦';return '<div class="meth-btn'+(d.method===m?' sel':'')+'" data-m="'+m+'"><span class="meth-ico">'+ic+'</span><span class="meth-lbl">'+m+'</span></div>';}).join('')+'</div>'+
+      '<div style="padding:14px 16px"><input class="inp" id="note-input" placeholder="Add note (optional)" value="'+esc(d.note)+'"></div>'+
+      '<div style="padding:0 16px 24px"><button class="btn '+(isW?'':'btn-p')+' btn-full btn-lg" id="next" style="'+(isW?'background:linear-gradient(135deg,#B91C1C,#DC2626);color:#fff;box-shadow:0 4px 18px rgba(220,38,38,.3)':'')+'">Next: Review →</button></div>');
+    document.getElementById('bk').onclick=function(){ renderCustomers(d.type); };
+    document.getElementById('t-dep').onclick=function(){ d.type='deposit'; renderAmount(); };
+    document.getElementById('t-wit').onclick=function(){ d.type='withdrawal'; renderAmount(); };
+    function setAmt(v){ d.amount=Number(v)||0; document.getElementById('amt-show').textContent=d.amount; document.getElementById('amt-input').value=d.amount||''; Array.prototype.forEach.call(document.querySelectorAll('.ac'),function(el){ el.classList.toggle('sel',Number(el.getAttribute('data-amt'))===d.amount); }); }
+    Array.prototype.forEach.call(document.querySelectorAll('.ac'),function(el){ el.onclick=function(){ setAmt(el.getAttribute('data-amt')); }; });
+    document.getElementById('amt-input').oninput=function(e){ d.amount=Number(e.target.value)||0; document.getElementById('amt-show').textContent=d.amount; Array.prototype.forEach.call(document.querySelectorAll('.ac'),function(el){ el.classList.toggle('sel',Number(el.getAttribute('data-amt'))===d.amount); }); };
+    Array.prototype.forEach.call(document.querySelectorAll('.meth-btn'),function(el){ el.onclick=function(){ d.method=el.getAttribute('data-m'); Array.prototype.forEach.call(document.querySelectorAll('.meth-btn'),function(x){x.classList.remove('sel');}); el.classList.add('sel'); }; });
+    document.getElementById('note-input').oninput=function(e){ d.note=e.target.value; };
+    document.getElementById('next').onclick=function(){
+      if(!d.amount||d.amount<=0){ toast('Enter an amount','err'); return; }
+      renderReview();
+    };
+  }
+  function feeFor(amt){ return Math.round(amt*(S.ws.feePercent||0)/100*100)/100; }
+  function renderReview(){
+    S.screen='review'; var d=S.draft, c=d.cust, isW=d.type==='withdrawal';
+    var fee=isW?feeFor(d.amount):0;
+    var newBal=isW?(c.balance-(d.amount+fee)):(c.balance+d.amount);
+    set('<div class="app-bar"><div class="ab-back" id="bk">←</div><div class="ab-title">Confirm '+(isW?'Withdrawal':'Deposit')+'</div></div>'+
+      '<div class="step-ind"><div class="b on"></div><div class="b on"></div><div class="b"></div><div style="font-size:11px;color:var(--t3);font-weight:700;margin-left:4px">2 of 2</div></div>'+
+      '<div class="confirm-card"><div class="confirm-top'+(isW?' wit':'')+'"><div class="conf-type">'+(isW?'🏧 WITHDRAWAL':'💰 DEPOSIT')+'</div><div class="conf-amt">'+money(d.amount)+'</div><div class="conf-fee">'+(isW?('Fee '+money(fee)+' · '):'No fee · ')+esc(d.method)+'</div></div>'+
+      '<div class="confirm-body">'+
+      row('Customer',esc(c.name))+row('Account',esc(acctNo(c)))+row('Method',esc(d.method))+
+      (isW?row('Fee ('+(S.ws.feePercent||0)+'%)',money(fee)):'')+
+      row('Current Balance','<span style="color:var(--t3)">'+money(c.balance)+'</span>')+
+      row('New Balance','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+';font-weight:900">'+money(newBal)+'</span>')+
+      (d.note?row('Note',esc(d.note)):'')+
+      row('Collector',esc(S.user.name))+
+      '</div></div>'+
+      (isW&&newBal<(S.ws.minBalance||0)?'<div class="fee-box" style="background:var(--wit-bg);color:var(--wit-txt)">⚠️ New balance is below the minimum required ('+money(S.ws.minBalance)+'). This may be rejected.</div>':'')+
+      '<div style="padding:0 16px 24px;display:flex;flex-direction:column;gap:10px"><button class="btn btn-p btn-full btn-lg" id="confirm" style="'+(isW?'background:linear-gradient(135deg,#B91C1C,#DC2626)':'')+'">✓ Confirm & Record</button><button class="btn btn-ghost btn-full" id="edit">← Edit</button></div>');
+    document.getElementById('bk').onclick=renderAmount;
+    document.getElementById('edit').onclick=renderAmount;
+    document.getElementById('confirm').onclick=submitTxn;
+  }
+  function row(k,v){ return '<div class="conf-row"><span class="conf-key">'+k+'</span><span class="conf-val">'+v+'</span></div>'; }
+
+  function submitTxn(){
+    var d=S.draft, c=d.cust;
+    var btn=document.getElementById('confirm'); btn.innerHTML='<span class="spin"></span>'; btn.disabled=true;
+    var body={ customerId:c._id, amount:d.amount, type:d.type, method:d.method, notes:d.note, idempotencyKey:uuid() };
+    api('/api/transactions',{method:'POST',body:JSON.stringify(body)}).then(function(r){
+      if(r.queued){ toast(r.message||'Saved offline — will sync','warn'); loadCollectorHome(); return; }
+      renderReceipt(r.data,c,d);
+    }).catch(function(e){ toast(e.message||'Failed','err'); renderReview(); });
+  }
+  function renderReceipt(tx,c,d){
+    S.screen='receipt'; var isW=d.type==='withdrawal';
+    var fee=tx.feeAmount||0;
+    var newBal=isW?(c.balance-(tx.amount+fee)):(c.balance+tx.amount);
+    var waText='Awinbire Enterprise Receipt%0AType: '+(isW?'WITHDRAWAL':'DEPOSIT')+'%0ACustomer: '+encodeURIComponent(c.name)+'%0AAmount: '+encodeURIComponent(money(tx.amount))+'%0AMethod: '+encodeURIComponent(d.method)+'%0ARef: '+encodeURIComponent(tx.receiptNumber||'')+'%0A%0AThank you for saving with Awinbire';
+    set('<div class="receipt-success'+(isW?' wit':'')+'"><div class="rcpt-check">✓</div><div class="rcpt-title">'+(isW?'Withdrawal Recorded!':'Deposit Recorded!')+'</div><div class="rcpt-sub">Saved to your database</div><div class="rcpt-amt">'+money(tx.amount)+'</div></div>'+
+      '<div class="sc"><div class="receipt-paper"><div class="rcpt-stripe"></div>'+
+      '<div class="rcpt-head"><div class="rcpt-logo-name">Awinbire Enterprise<br><span style="font-size:9px;color:var(--t3);font-weight:600">Savings Management</span></div><div class="rcpt-ref">Ref: <strong>'+esc(tx.receiptNumber||'—')+'</strong></div></div>'+
+      '<div class="rcpt-body">'+
+      rrow('Type',(isW?'🏧 Withdrawal':'💰 Deposit'))+rrow('Customer',esc(c.name))+rrow('Account #','<span style="font-family:monospace;color:var(--g-600)">'+esc(acctNo(c))+'</span>')+
+      rrow('Amount','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+'">'+money(tx.amount)+'</span>')+
+      (isW?rrow('Fee',money(fee)):'')+rrow('Method',esc(d.method))+
+      rrow('New Balance','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+';font-weight:900">'+money(newBal)+'</span>')+
+      rrow('Status',esc(tx.status||'approved'))+rrow('Collector',esc(S.user.name))+
+      '</div><div style="padding:14px 20px;background:var(--surf2);text-align:center;font-size:10px;color:var(--t3)">Thank you for saving with Awinbire Enterprise 🌿</div></div>'+
+      '<div class="rcpt-actions"><a class="btn btn-ghost btn-full" style="background:#25D366;color:#fff;text-decoration:none" href="https://wa.me/?text='+waText+'" target="_blank">📲 WhatsApp</a><button class="btn btn-ghost btn-full" id="print">🖨 Print</button></div>'+
+      '<div style="padding:0 16px 30px"><button class="btn btn-p btn-full" id="home">← Back to Home</button></div></div>');
+    document.getElementById('home').onclick=function(){ loadCollectorHome(); };
+    document.getElementById('print').onclick=function(){ window.print(); };
+  }
+  function rrow(k,v){ return '<div class="rcpt-row"><span class="rcpt-key">'+k+'</span><span class="rcpt-val">'+v+'</span></div>'; }
+
+  // ---------- NAV ----------
+  function bottomNav(active){
+    function item(id,ic,lbl){ return '<div class="bnav-item'+(active===id?' act':'')+'" data-nav="'+id+'"><div class="bnav-icon">'+ic+'</div><div class="bnav-lbl">'+lbl+'</div></div>'; }
+    return '<div class="bnav">'+item('home','🏠','Home')+item('customers','👥','Customers')+item('logout','🚪','Sign out')+'</div>';
+  }
+  function wireNav(){
+    Array.prototype.forEach.call(document.querySelectorAll('[data-nav]'),function(el){
+      el.onclick=function(){ var n=el.getAttribute('data-nav'); if(n==='home')loadCollectorHome(); else if(n==='customers')renderCustomers('deposit'); else if(n==='logout')logout(); };
+    });
+  }
+  function logout(){ localStorage.removeItem('aw_token'); S.token=null; S.user=null; renderLogin(); }
+
+  // ---------- BOOT ----------
+  if(S.token){
+    api('/api/auth/me').then(function(d){ S.user=d.user; afterLogin(); }).catch(function(){ localStorage.removeItem('aw_token'); S.token=null; renderLogin(); });
+  } else { renderLogin(); }
+})();
+</script>
+</body>
+</html>
