@@ -23,6 +23,10 @@ const customerSchema = new mongoose.Schema({
   qrCode: { type: String, unique: true, sparse: true },
 }, { timestamps: true });
 
+// Indexes for the most common lookups (collector's customers, status filters)
+customerSchema.index({ assignedEmployee: 1 });
+customerSchema.index({ status: 1 });
+
 customerSchema.pre('save', function (next) {
   if (!this.qrCode) {
     this.qrCode = 'AW-' + String(Date.now()).slice(-6);

@@ -21,6 +21,12 @@ const transactionSchema = new mongoose.Schema({
   time: { type: String },
 }, { timestamps: true });
 
+// Indexes for dashboards, approvals, collector summaries and history queries
+transactionSchema.index({ type: 1, status: 1, date: 1 });
+transactionSchema.index({ employee: 1, date: 1 });
+transactionSchema.index({ customer: 1, createdAt: -1 });
+transactionSchema.index({ status: 1, createdAt: -1 });
+
 transactionSchema.pre('save', function (next) {
   if (!this.receiptNumber) {
     // Human-readable receipt reference, e.g. AW-TXN-260706-482913

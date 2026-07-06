@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
     const filter = {};
     if (req.query.employee) filter.assignedEmployee = req.query.employee;
     if (req.query.status) filter.status = req.query.status;
-    const customers = await Customer.find(filter).populate('assignedEmployee', 'name zone phone').sort({ createdAt: -1 });
+    const customers = await Customer.find(filter).populate('assignedEmployee', 'name zone phone').sort({ createdAt: -1 }).lean();
     res.json({ success: true, data: customers });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

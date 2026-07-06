@@ -18,7 +18,7 @@ const ROLE_MAP = {
 // GET /api/employees
 router.get('/', async (req, res) => {
   try {
-    const employees = await Employee.find().sort({ createdAt: -1 });
+    const employees = await Employee.find().sort({ createdAt: -1 }).lean();
     res.json({ success: true, data: employees });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

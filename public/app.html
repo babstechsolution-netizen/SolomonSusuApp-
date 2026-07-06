@@ -18,72 +18,85 @@
   --t1:#0F1117;--t2:#4B5563;--t3:#9CA3AF;--t4:#D1D5DB;
   --r10:10px;--r12:12px;--r14:14px;--r16:16px;--r18:18px;--r20:20px;--r99:9999px;
   --sh-xs:0 1px 3px rgba(0,0,0,.06);--sh-sm:0 2px 8px rgba(0,0,0,.08);--sh-md:0 4px 16px rgba(0,0,0,.10);--sh-lg:0 8px 32px rgba(0,0,0,.13);--sh-g:0 4px 18px rgba(26,92,46,.28);--sh-a:0 4px 18px rgba(245,166,35,.32);
+  --accent:#1A5C2E;
   --ff:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+[data-theme=dark]{
+  --bg:#0B0E14;--surf:#161A22;--surf2:#1E2330;--surf3:#252B38;--border:#2A3040;--border-l:#1E2330;
+  --t1:#F0F3F9;--t2:#8B95A8;--t3:#525C6E;--t4:#333D50;
+  --g-25:#12241a;--g-50:#14311f;--dep-bg:#122a1c;--wit-bg:#2a1416;--pend-bg:#2a2210;--info-bg:#12203a;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--ff);background:var(--bg);color:var(--t1);line-height:1.5;-webkit-font-smoothing:antialiased;max-width:520px;margin:0 auto;min-height:100vh;position:relative;}
 button{font-family:var(--ff);cursor:pointer;border:none;outline:none;}
-input{font-family:var(--ff);outline:none;}
-.hidden{display:none!important;}
+input,select{font-family:var(--ff);outline:none;}
+a{color:inherit;text-decoration:none;}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 22px;min-height:52px;border-radius:var(--r99);font-size:14px;font-weight:700;transition:all .15s ease;border:2px solid transparent;white-space:nowrap;}
 .btn-p{background:var(--g-600);color:#fff;box-shadow:var(--sh-g);}
 .btn-p:active{background:var(--g-700);transform:scale(.98);}
 .btn-a{background:var(--a-500);color:#fff;box-shadow:var(--sh-a);}
 .btn-ghost{background:var(--g-25);color:var(--g-600);}
 .btn-outline{background:transparent;color:var(--g-600);border-color:var(--g-600);}
+.btn-danger{background:var(--wit-bg);color:var(--wit);}
+.btn-sm{min-height:42px;padding:0 16px;font-size:13px;}
 .btn-lg{min-height:60px;padding:0 32px;font-size:16px;}
 .btn-full{width:100%;}
 .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r99);font-size:11px;font-weight:700;}
 .badge::before{content:'';width:6px;height:6px;border-radius:50%;}
-.b-active{background:var(--dep-bg);color:var(--dep-txt);}.b-active::before{background:var(--dep);}
-.b-inactive{background:#F3F4F6;color:#6B7280;}.b-inactive::before{background:#9CA3AF;}
-.b-def{background:var(--wit-bg);color:var(--wit-txt);}.b-def::before{background:var(--wit);}
+.b-active,.b-approved{background:var(--dep-bg);color:var(--dep-txt);}.b-active::before,.b-approved::before{background:var(--dep);}
+.b-inactive{background:var(--surf3);color:var(--t2);}.b-inactive::before{background:var(--t3);}
+.b-def,.b-rejected{background:var(--wit-bg);color:var(--wit-txt);}.b-def::before,.b-rejected::before{background:var(--wit);}
+.b-pending{background:var(--pend-bg);color:var(--pend-txt);}.b-pending::before{background:var(--pend);}
 .inp-wrap{margin-bottom:14px;}
 .inp-lbl{display:block;font-size:12px;font-weight:700;color:var(--t2);margin-bottom:5px;}
 .inp{width:100%;padding:14px 16px;border:2px solid var(--border);border-radius:var(--r14);font-size:14px;color:var(--t1);background:var(--surf);}
 .inp:focus{border-color:var(--g-600);box-shadow:0 0 0 4px rgba(26,92,46,.08);}
-.sc{padding-bottom:90px;min-height:100vh;}
-/* login */
+.sc{padding-bottom:92px;min-height:100vh;}
+.err{background:var(--wit-bg);color:var(--wit-txt);padding:10px 14px;border-radius:var(--r12);font-size:12px;font-weight:600;margin-bottom:14px;}
+.card{background:var(--surf);border-radius:var(--r18);padding:18px;box-shadow:var(--sh-xs);margin-bottom:14px;}
 .login-hero{background:linear-gradient(160deg,var(--g-900),var(--g-700) 55%,var(--g-400));padding:64px 28px 52px;display:flex;flex-direction:column;align-items:center;text-align:center;}
 .login-logo{width:88px;height:88px;background:#fff;border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:var(--g-700);box-shadow:var(--sh-lg);border:3px solid var(--a-500);margin-bottom:20px;}
 .login-app{font-size:20px;font-weight:900;color:#fff;}
 .login-tag{font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;}
-.login-body{padding:28px 24px 32px;background:#fff;}
+.login-body{padding:28px 24px 32px;background:var(--surf);}
 .login-h{font-size:22px;font-weight:900;margin-bottom:6px;}
 .login-sh{font-size:13px;color:var(--t2);margin-bottom:24px;}
-.err{background:var(--wit-bg);color:var(--wit-txt);padding:10px 14px;border-radius:var(--r12);font-size:12px;font-weight:600;margin-bottom:14px;display:flex;gap:8px;align-items:center;}
-/* header */
-.home-head{background:linear-gradient(160deg,var(--g-900),var(--g-700) 60%,var(--g-400));padding:16px 20px 24px;color:#fff;}
-.home-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;}
-.home-greet{font-size:13px;color:rgba(255,255,255,.65);}
-.home-name{font-size:20px;font-weight:900;}
-.hh-zone{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
-.home-avatar{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--a-500),var(--a-300));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,.3);}
-.today-card{background:rgba(255,255,255,.14);border-radius:var(--r20);padding:18px 20px;border:1px solid rgba(255,255,255,.2);}
-.today-label{font-size:12px;color:rgba(255,255,255,.6);}
-.today-amount{font-size:36px;font-weight:900;letter-spacing:-1px;line-height:1.1;}
-.today-sub{font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;}
-.today-pills{display:flex;gap:10px;margin-top:14px;}
-.today-pill{flex:1;background:rgba(255,255,255,.12);border-radius:var(--r12);padding:10px 12px;text-align:center;}
-.tp-val{font-size:18px;font-weight:800;line-height:1;}
-.tp-lbl{font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;}
+.hdr{background:linear-gradient(160deg,var(--g-900),var(--g-700) 60%,var(--g-400));padding:16px 20px 24px;color:#fff;}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;}
+.hdr-greet{font-size:13px;color:rgba(255,255,255,.65);}
+.hdr-name{font-size:20px;font-weight:900;}
+.hdr-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
+.hdr-av{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--a-500),var(--a-300));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,.3);position:relative;flex-shrink:0;}
+.notif-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;background:var(--wit);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;border:2px solid var(--g-700);}
+.hero-card{background:rgba(255,255,255,.14);border-radius:var(--r20);padding:18px 20px;border:1px solid rgba(255,255,255,.2);}
+.hc-label{font-size:12px;color:rgba(255,255,255,.6);}
+.hc-amount{font-size:36px;font-weight:900;letter-spacing:-1px;line-height:1.1;}
+.hc-sub{font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;}
+.pills{display:flex;gap:10px;margin-top:14px;}
+.pill{flex:1;background:rgba(255,255,255,.12);border-radius:var(--r12);padding:10px 12px;text-align:center;}
+.pill-val{font-size:18px;font-weight:800;line-height:1;}
+.pill-lbl{font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;}
+.kpi-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:2px;}
+.kpi-row::-webkit-scrollbar{display:none;}
+.kpi{min-width:150px;flex-shrink:0;background:rgba(255,255,255,.13);border-radius:var(--r16);padding:14px;border:1px solid rgba(255,255,255,.15);}
+.kpi-ic{font-size:18px;margin-bottom:6px;}
+.kpi-val{font-size:22px;font-weight:900;letter-spacing:-.5px;line-height:1;}
+.kpi-lbl{font-size:10px;color:rgba(255,255,255,.6);margin-top:4px;}
 .body-pad{padding:16px;}
-.prog-card{background:#fff;border-radius:var(--r18);padding:18px;box-shadow:var(--sh-xs);margin-bottom:14px;}
-.prog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
-.prog-title{font-size:14px;font-weight:800;}
-.prog-pct{font-size:14px;font-weight:800;color:var(--g-600);}
+.s-div{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;margin-top:4px;}
+.s-div-title{font-size:14px;font-weight:800;}
+.s-div-link{font-size:12px;font-weight:700;color:var(--g-600);}
 .prog-bg{height:10px;background:var(--surf3);border-radius:var(--r99);overflow:hidden;}
 .prog-fill{height:100%;background:linear-gradient(90deg,var(--g-700),var(--g-300));border-radius:var(--r99);}
+.gold .prog-fill{background:linear-gradient(90deg,var(--a-600),var(--a-400));}
 .qa-row{display:flex;gap:12px;margin-bottom:16px;}
 .qa-btn{flex:1;border-radius:var(--r18);padding:18px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;}
 .qa-btn:active{transform:scale(.97);}
 .qa-collect{background:linear-gradient(135deg,var(--g-700),var(--g-400));box-shadow:var(--sh-g);color:#fff;}
-.qa-withdraw{background:#fff;box-shadow:var(--sh-sm);border:2px solid var(--border);color:var(--g-600);}
+.qa-withdraw{background:var(--surf);box-shadow:var(--sh-sm);border:2px solid var(--border);color:var(--g-600);}
 .qa-scan{background:linear-gradient(135deg,var(--a-700),var(--a-500));box-shadow:var(--sh-a);color:#fff;}
 .qa-icon{font-size:26px;}.qa-lbl{font-size:13px;font-weight:800;}
-.s-div{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-.s-div-title{font-size:14px;font-weight:800;}
-.cli{background:#fff;border-radius:var(--r16);padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;box-shadow:var(--sh-xs);}
+.cli{background:var(--surf);border-radius:var(--r16);padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;box-shadow:var(--sh-xs);}
 .cli-av{width:46px;height:46px;border-radius:var(--r14);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;}
 .cli-info{flex:1;min-width:0;}
 .cli-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -92,22 +105,25 @@ input{font-family:var(--ff);outline:none;}
 .cli-bal{font-size:15px;font-weight:900;color:var(--dep);}
 .cli-id{font-size:10px;color:var(--t4);margin-top:2px;}
 .app-bar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--g-700);color:#fff;}
-.app-bar .ab-back{width:40px;height:40px;border-radius:var(--r12);display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,.15);}
+.ab-back{width:40px;height:40px;border-radius:var(--r12);display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,.15);flex-shrink:0;}
 .ab-title{flex:1;font-size:17px;font-weight:800;}
-.search-bar{display:flex;align-items:center;gap:10px;background:#fff;border-radius:var(--r14);padding:12px 16px;box-shadow:var(--sh-xs);margin-bottom:14px;border:2px solid var(--border-l);}
-.search-bar input{border:none;flex:1;font-size:14px;background:transparent;}
-/* deposit */
+.search-bar{display:flex;align-items:center;gap:10px;background:var(--surf);border-radius:var(--r14);padding:12px 16px;box-shadow:var(--sh-xs);margin-bottom:14px;border:2px solid var(--border-l);}
+.search-bar input{border:none;flex:1;font-size:14px;background:transparent;color:var(--t1);}
+.chip-row{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;}
+.chip-row::-webkit-scrollbar{display:none;}
+.chip{padding:8px 16px;border-radius:var(--r99);font-size:12px;font-weight:700;white-space:nowrap;flex-shrink:0;background:var(--surf);color:var(--t2);border:1.5px solid var(--border);}
+.chip.on{background:var(--g-600);color:#fff;border-color:var(--g-600);}
 .step-ind{padding:12px 20px 0;display:flex;gap:6px;align-items:center;}
 .step-ind div.b{height:4px;flex:1;background:var(--border);border-radius:99px;}
 .step-ind div.b.on{background:var(--g-600);}
-.cust-confirm{background:#fff;border-radius:var(--r18);padding:16px;display:flex;align-items:center;gap:14px;margin:16px;box-shadow:var(--sh-sm);border:2px solid var(--dep);}
+.cust-confirm{background:var(--surf);border-radius:var(--r18);padding:16px;display:flex;align-items:center;gap:14px;margin:16px;box-shadow:var(--sh-sm);border:2px solid var(--dep);}
 .cust-confirm.wit{border-color:var(--wit);}
 .cc-av{width:52px;height:52px;border-radius:var(--r14);background:linear-gradient(135deg,var(--a-600),var(--a-400));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;flex-shrink:0;}
 .cc-name{font-size:16px;font-weight:800;}
 .cc-id{font-size:11px;color:var(--t3);margin-top:2px;}
 .cc-bal{font-size:13px;color:var(--dep);font-weight:700;margin-top:4px;}
 .type-toggle{display:flex;gap:8px;margin:0 16px;}
-.type-btn{flex:1;border:2px solid var(--border);border-radius:var(--r14);padding:12px;text-align:center;font-weight:800;font-size:14px;color:var(--t2);background:#fff;}
+.type-btn{flex:1;border:2px solid var(--border);border-radius:var(--r14);padding:12px;text-align:center;font-weight:800;font-size:14px;color:var(--t2);background:var(--surf);}
 .type-btn.sel-dep{border-color:var(--g-600);background:var(--g-25);color:var(--g-600);}
 .type-btn.sel-wit{border-color:var(--wit);background:var(--wit-bg);color:var(--wit);}
 .amt-display{text-align:center;padding:24px 20px 14px;}
@@ -119,311 +135,348 @@ input{font-family:var(--ff);outline:none;}
 .ac.sel{background:var(--g-600);color:#fff;border-color:var(--g-600);}
 .sec-lbl{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;padding:16px 16px 8px;}
 .method-row{display:flex;gap:8px;padding:0 16px;}
-.meth-btn{flex:1;border:2px solid var(--border);border-radius:var(--r14);padding:12px 8px;text-align:center;background:#fff;}
+.meth-btn{flex:1;border:2px solid var(--border);border-radius:var(--r14);padding:12px 8px;text-align:center;background:var(--surf);}
 .meth-btn.sel{border-color:var(--g-600);background:var(--g-25);}
 .meth-ico{font-size:22px;display:block;margin-bottom:5px;}
 .meth-lbl{font-size:11px;font-weight:700;color:var(--t2);}
 .meth-btn.sel .meth-lbl{color:var(--g-600);}
-.fee-box{margin:16px;background:var(--pend-bg);border-radius:var(--r14);padding:14px 16px;font-size:12px;color:#92400E;}
+.fee-box{margin:16px;background:var(--pend-bg);border-radius:var(--r14);padding:14px 16px;font-size:12px;color:var(--pend-txt);}
 .fee-row{display:flex;justify-content:space-between;margin-bottom:4px;}
-.confirm-card{background:#fff;border-radius:var(--r20);margin:16px;box-shadow:var(--sh-sm);overflow:hidden;}
+.confirm-card{background:var(--surf);border-radius:var(--r20);margin:16px;box-shadow:var(--sh-sm);overflow:hidden;}
 .confirm-top{background:linear-gradient(135deg,var(--g-700),var(--g-400));padding:24px 20px;text-align:center;color:#fff;}
 .confirm-top.wit{background:linear-gradient(135deg,#B91C1C,var(--wit));}
 .conf-type{font-size:12px;color:rgba(255,255,255,.7);text-transform:uppercase;}
 .conf-amt{font-size:44px;font-weight:900;letter-spacing:-2px;margin:8px 0 4px;}
 .conf-fee{font-size:12px;color:rgba(255,255,255,.65);}
-.confirm-body{padding:20px;}
-.conf-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-l);}
-.conf-row:last-child{border-bottom:none;}
-.conf-key{font-size:13px;color:var(--t2);}.conf-val{font-size:13px;font-weight:700;}
-/* receipt */
+.confirm-body,.rcpt-body{padding:20px;}
+.conf-row,.rcpt-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-l);}
+.conf-row:last-child,.rcpt-row:last-child{border-bottom:none;}
+.conf-key,.rcpt-key{font-size:13px;color:var(--t2);}.conf-val,.rcpt-val{font-size:13px;font-weight:700;}
 .receipt-success{background:linear-gradient(160deg,var(--g-900),var(--g-700));padding:28px 24px 36px;text-align:center;color:#fff;}
 .receipt-success.wit{background:linear-gradient(160deg,#7F1D1D,var(--wit));}
 .rcpt-check{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.15);border:3px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 16px;}
 .rcpt-title{font-size:20px;font-weight:900;}
 .rcpt-sub{font-size:13px;color:rgba(255,255,255,.65);margin-top:4px;}
 .rcpt-amt{font-size:44px;font-weight:900;letter-spacing:-2px;margin-top:16px;}
-.receipt-paper{background:#fff;margin:16px;border-radius:var(--r20);box-shadow:var(--sh-md);overflow:hidden;}
+.receipt-paper{background:var(--surf);margin:16px;border-radius:var(--r20);box-shadow:var(--sh-md);overflow:hidden;}
 .rcpt-stripe{background:repeating-linear-gradient(90deg,var(--g-600) 0,var(--g-600) 8px,var(--a-500) 8px,var(--a-500) 16px);height:6px;}
 .rcpt-head{padding:18px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed var(--border);}
-.rcpt-logo-name{font-size:12px;font-weight:800;color:var(--g-700);}
+.rcpt-logo-name{font-size:12px;font-weight:800;color:var(--g-600);}
 .rcpt-ref{font-size:11px;color:var(--t3);}
 .rcpt-ref strong{color:var(--g-600);font-family:monospace;}
-.rcpt-body{padding:18px 20px;}
-.rcpt-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border-l);}
-.rcpt-row:last-child{border-bottom:none;}
-.rcpt-key{font-size:12px;color:var(--t3);}.rcpt-val{font-size:13px;font-weight:700;}
 .rcpt-actions{display:flex;gap:8px;padding:0 16px 16px;}
-/* bottom nav */
-.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;height:72px;background:#fff;border-top:1px solid var(--border-l);display:flex;align-items:center;justify-content:space-around;padding:0 4px 8px;z-index:50;}
-.bnav-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 14px;min-width:52px;}
+/* txn row */
+.txn{background:var(--surf);border-radius:var(--r14);padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;box-shadow:var(--sh-xs);}
+.txn-ic{width:40px;height:40px;border-radius:var(--r12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.txn-ic.dep{background:var(--dep-bg);}.txn-ic.wit{background:var(--wit-bg);}
+.txn-mid{flex:1;min-width:0;}
+.txn-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.txn-meta{font-size:11px;color:var(--t3);}
+.txn-right{text-align:right;flex-shrink:0;}
+.txn-amt{font-size:14px;font-weight:900;}
+.txn-amt.dep{color:var(--dep);}.txn-amt.wit{color:var(--wit);}
+.txn-time{font-size:10px;color:var(--t4);}
+/* approval */
+.appr{background:var(--surf);border-radius:var(--r18);padding:18px;margin-bottom:12px;box-shadow:var(--sh-xs);border:1.5px solid var(--pend-bg);}
+.appr-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.appr-cust{font-size:15px;font-weight:800;}
+.appr-meta{font-size:11px;color:var(--t3);margin-top:2px;}
+.appr-amt{font-size:22px;font-weight:900;color:var(--wit);}
+.appr-body{background:var(--surf2);border-radius:var(--r12);padding:12px 14px;margin-bottom:14px;font-size:12px;}
+.appr-body .r{display:flex;justify-content:space-between;margin-bottom:5px;}
+.appr-body .r:last-child{margin-bottom:0;}
+.appr-acts{display:flex;gap:8px;}
+/* notifications */
+.nrow{background:var(--surf);border-radius:var(--r16);padding:14px 16px;display:flex;gap:12px;margin-bottom:6px;box-shadow:var(--sh-xs);}
+.nrow.unread{border-left:3px solid var(--g-600);}
+.n-ic{width:42px;height:42px;border-radius:var(--r12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--surf3);}
+.n-title{font-size:13px;font-weight:700;}
+.n-body{font-size:12px;color:var(--t2);margin-top:2px;}
+.n-time{font-size:10px;color:var(--t3);margin-top:5px;}
+/* settings */
+.set-hero{background:linear-gradient(135deg,var(--g-700),var(--g-400));padding:24px 20px;display:flex;align-items:center;gap:16px;color:#fff;}
+.set-av{width:64px;height:64px;border-radius:22px;background:linear-gradient(135deg,var(--a-600),var(--a-400));display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;border:3px solid rgba(255,255,255,.3);flex-shrink:0;}
+.set-name{font-size:18px;font-weight:900;}
+.set-role{display:inline-block;background:rgba(255,255,255,.2);padding:3px 10px;border-radius:var(--r99);font-size:11px;font-weight:700;margin-top:4px;}
+.set-sec-title{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;padding:0 4px;margin:16px 0 6px;}
+.set-item{background:var(--surf);padding:15px 16px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border-l);}
+.set-item:first-child{border-radius:var(--r14) var(--r14) 0 0;}
+.set-item:last-child{border-radius:0 0 var(--r14) var(--r14);border-bottom:none;}
+.set-ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--surf3);}
+.set-lbl{flex:1;font-size:14px;font-weight:600;}
+.set-val{font-size:12px;color:var(--t3);}
+.tgl{width:50px;height:28px;background:var(--border);border-radius:var(--r99);position:relative;transition:background .2s;flex-shrink:0;}
+.tgl.on{background:var(--g-600);}
+.tgl b{position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.15);}
+.tgl.on b{transform:translateX(22px);}
+.colors{display:flex;gap:8px;}
+.cdot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;}
+/* bnav */
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;height:72px;background:var(--surf);border-top:1px solid var(--border-l);display:flex;align-items:center;justify-content:space-around;padding:0 4px 8px;z-index:50;}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 12px;min-width:52px;position:relative;}
 .bnav-icon{font-size:22px;color:var(--t3);}
 .bnav-lbl{font-size:10px;font-weight:600;color:var(--t3);}
 .bnav-item.act .bnav-icon,.bnav-item.act .bnav-lbl{color:var(--g-600);font-weight:800;}
+.bnav-dot{position:absolute;top:2px;right:8px;min-width:16px;height:16px;padding:0 3px;background:var(--wit);border-radius:8px;color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;}
 .empty{text-align:center;padding:52px 24px;color:var(--t3);}
-.empty .ei{font-size:52px;opacity:.3;margin-bottom:14px;}
+.empty .ei{font-size:52px;opacity:.35;margin-bottom:14px;}
 .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);width:calc(100% - 28px);max-width:492px;background:#1A1D25;color:#fff;padding:14px 16px;border-radius:var(--r14);display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;box-shadow:var(--sh-lg);z-index:300;}
 .toast.err{border-left:3px solid var(--wit);}.toast.ok{border-left:3px solid var(--dep);}.toast.warn{border-left:3px solid var(--pend);}
-.spin{width:20px;height:20px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp 0.7s linear infinite;}
+.spin{width:20px;height:20px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;display:inline-block;}
 @keyframes sp{to{transform:rotate(360deg);}}
 .center-load{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;gap:14px;color:var(--t3);font-size:13px;}
 .center-load .spin{border-color:rgba(26,92,46,.2);border-top-color:var(--g-600);}
+.bars{display:flex;gap:6px;align-items:flex-end;height:90px;margin-top:8px;}
+.bar-grp{flex:1;display:flex;gap:2px;align-items:flex-end;height:100%;}
+.bar{flex:1;border-radius:4px 4px 0 0;min-height:2px;}
+.bar.d{background:linear-gradient(180deg,var(--g-400),var(--g-700));}
+.bar.w{background:linear-gradient(180deg,#F87171,var(--wit));}
+.bar-lbls{display:flex;gap:6px;margin-top:6px;}
+.bar-lbls span{flex:1;text-align:center;font-size:9px;color:var(--t3);}
+.legend{display:flex;gap:16px;margin-top:12px;}
+.legend span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);}
+.legend i{width:8px;height:8px;border-radius:2px;display:inline-block;}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:flex-end;justify-content:center;}
+.modal{background:var(--surf);width:100%;max-width:520px;border-radius:var(--r20) var(--r20) 0 0;padding:22px 20px 30px;}
+.modal h3{font-size:17px;font-weight:800;margin-bottom:14px;}
 </style>
 </head>
 <body>
 <div id="app"><div class="center-load"><div class="spin"></div>Loading…</div></div>
 <div id="toast-host"></div>
+<div id="modal-host"></div>
 <script>
 (function(){
   "use strict";
-  var AV_COLORS=['#1A5C2E','#C47D00','#1D4ED8','#B91C1C','#6D28D9','#0369A1','#0891b2','#7c2d12'];
-  var S={ token:localStorage.getItem('aw_token')||null, user:null, screen:'loading', customers:[], summary:null, draft:null, ws:{feePercent:0,minBalance:0} };
+  var AV=['#1A5C2E','#C47D00','#1D4ED8','#B91C1C','#6D28D9','#0369A1','#0891b2','#7c2d12'];
+  var S={token:localStorage.getItem('aw_token')||null,user:null,screen:'',customers:[],summary:null,dash:null,ws:{feePercent:0,minBalance:0},draft:null,notifs:[],unread:0,txnType:'deposit'};
 
-  function money(n){ n=Number(n||0); return 'GH₵'+n.toLocaleString(undefined,{maximumFractionDigits:2}); }
-  function initials(name){ return (name||'').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase(); }
-  function colorFor(str){ var h=0; str=String(str||''); for(var i=0;i<str.length;i++){h=str.charCodeAt(i)+((h<<5)-h);} return AV_COLORS[Math.abs(h)%AV_COLORS.length]; }
-  function acctNo(c){ return c.qrCode || ('AW-'+String(c._id||c.id||'').slice(-6).toUpperCase()); }
-  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];}); }
-  function uuid(){ return (crypto&&crypto.randomUUID)?crypto.randomUUID():'q-'+Date.now()+'-'+Math.random().toString(36).slice(2); }
+  function money(n){n=Number(n||0);return 'GH₵'+n.toLocaleString(undefined,{maximumFractionDigits:2});}
+  function initials(n){return (n||'').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();}
+  function colorFor(s){var h=0;s=String(s||'');for(var i=0;i<s.length;i++){h=s.charCodeAt(i)+((h<<5)-h);}return AV[Math.abs(h)%AV.length];}
+  function acctNo(c){return c.qrCode||('AW-'+String(c._id||c.id||'').slice(-6).toUpperCase());}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+  function uuid(){return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():'q-'+Date.now()+'-'+Math.random().toString(36).slice(2);}
+  function timeAgo(d){if(!d)return '';var t=new Date(d).getTime();var s=Math.floor((Date.now()-t)/1000);if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
 
-  function api(path,opts){
-    opts=opts||{};
-    var headers=Object.assign({'Content-Type':'application/json'},opts.headers||{});
-    if(S.token) headers['Authorization']='Bearer '+S.token;
-    return fetch(path,Object.assign({},opts,{headers:headers})).then(function(res){
-      return res.json().then(function(j){ if(!res.ok) throw new Error(j.message||'Request failed'); return j; });
-    });
-  }
-  function toast(msg,kind){
-    var host=document.getElementById('toast-host');
-    host.innerHTML='<div class="toast '+(kind||'ok')+'">'+ (kind==='err'?'⚠️':kind==='warn'?'📡':'✅') +'<span>'+esc(msg)+'</span></div>';
-    setTimeout(function(){ host.innerHTML=''; },3200);
-  }
+  function api(path,opts){opts=opts||{};var h=Object.assign({'Content-Type':'application/json'},opts.headers||{});if(S.token)h['Authorization']='Bearer '+S.token;
+    return fetch(path,Object.assign({},opts,{headers:h})).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.message||'Request failed');return j;});});}
+  function toast(m,k){var h=document.getElementById('toast-host');h.innerHTML='<div class="toast '+(k||'ok')+'">'+(k==='err'?'⚠️':k==='warn'?'📡':'✅')+'<span>'+esc(m)+'</span></div>';setTimeout(function(){h.innerHTML='';},3200);}
+  function modal(html){document.getElementById('modal-host').innerHTML='<div class="modal-bg" id="mbg"><div class="modal">'+html+'</div></div>';document.getElementById('mbg').onclick=function(e){if(e.target.id==='mbg')closeModal();};}
+  function closeModal(){document.getElementById('modal-host').innerHTML='';}
   var app=document.getElementById('app');
-  function set(html){ app.innerHTML=html; }
+  function set(h){app.innerHTML=h;}
+
+  function applyTheme(){var p=(S.user&&S.user.preferences)||{};document.documentElement.setAttribute('data-theme',p.darkMode?'dark':'light');}
 
   // ---------- LOGIN ----------
-  function renderLogin(err){
-    S.screen='login';
-    set(
-      '<div class="login-hero"><div class="login-logo">AE</div><div class="login-app">Awinbire Enterprise</div><div class="login-tag">Savings Management System</div></div>'+
+  function renderLogin(err){S.screen='login';
+    set('<div class="login-hero"><div class="login-logo">AE</div><div class="login-app">Awinbire Enterprise</div><div class="login-tag">Savings Management System</div></div>'+
       '<div class="login-body"><div class="login-h">Welcome back 👋</div><div class="login-sh">Sign in to your account</div>'+
       (err?'<div class="err">⚠️ '+esc(err)+'</div>':'')+
-      '<div class="inp-wrap"><label class="inp-lbl">Username</label><input class="inp" id="lg-user" autocomplete="username" placeholder="your username"></div>'+
-      '<div class="inp-wrap"><label class="inp-lbl">Password</label><input class="inp" id="lg-pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>'+
-      '<button class="btn btn-p btn-full btn-lg" id="lg-btn">Sign In &nbsp;→</button>'+
-      '<div style="text-align:center;margin-top:18px;font-size:12px;color:var(--t3)">🔒 Connected to your live database</div></div>'
-    );
-    var btn=document.getElementById('lg-btn');
-    function submit(){
-      var u=document.getElementById('lg-user').value.trim(), p=document.getElementById('lg-pass').value;
-      if(!u||!p){ renderLogin('Enter username and password.'); return; }
-      btn.innerHTML='<span class="spin"></span>'; btn.disabled=true;
-      api('/api/auth/login',{method:'POST',body:JSON.stringify({username:u,password:p})}).then(function(d){
-        S.token=d.token; localStorage.setItem('aw_token',d.token); S.user=d.user; afterLogin();
-      }).catch(function(e){ renderLogin(e.message||'Login failed'); });
-    }
-    btn.onclick=submit;
-    document.getElementById('lg-pass').addEventListener('keydown',function(e){ if(e.key==='Enter') submit(); });
-  }
+      '<div class="inp-wrap"><label class="inp-lbl">Username</label><input class="inp" id="u" autocomplete="username" placeholder="your username"></div>'+
+      '<div class="inp-wrap"><label class="inp-lbl">Password</label><input class="inp" id="p" type="password" autocomplete="current-password" placeholder="••••••••"></div>'+
+      '<button class="btn btn-p btn-full btn-lg" id="go">Sign In &nbsp;→</button>'+
+      '<div style="text-align:center;margin-top:18px;font-size:12px;color:var(--t3)">🔒 Connected to your live database</div></div>');
+    var go=document.getElementById('go');
+    function submit(){var u=document.getElementById('u').value.trim(),p=document.getElementById('p').value;if(!u||!p){renderLogin('Enter username and password.');return;}
+      go.innerHTML='<span class="spin"></span>';go.disabled=true;
+      api('/api/auth/login',{method:'POST',body:JSON.stringify({username:u,password:p})}).then(function(d){S.token=d.token;localStorage.setItem('aw_token',d.token);S.user=d.user;afterLogin();}).catch(function(e){renderLogin(e.message||'Login failed');});}
+    go.onclick=submit;document.getElementById('p').addEventListener('keydown',function(e){if(e.key==='Enter')submit();});}
 
-  function afterLogin(){
-    // Load supporting data then route by role
-    Promise.all([
-      api('/api/transactions/withdrawal-settings').catch(function(){return{data:S.ws};})
-    ]).then(function(r){ S.ws=r[0].data||S.ws; route(); }).catch(route);
-  }
-  function route(){
-    var role=S.user&&S.user.role;
-    if(role==='Field Collector'){ loadCollectorHome(); }
-    else { renderOtherRole(); }
-  }
+  function afterLogin(){applyTheme();
+    Promise.all([api('/api/transactions/withdrawal-settings').catch(function(){return{data:S.ws};}),loadNotifs()]).then(function(r){S.ws=r[0].data||S.ws;home();}).catch(home);}
+  function loadNotifs(){return api('/api/notifications?limit=50').then(function(d){S.notifs=d.data||[];S.unread=d.unread||0;return d;}).catch(function(){return{};});}
 
-  function renderOtherRole(){
-    S.screen='other';
-    set('<div class="app-bar"><div class="ab-title">Awinbire Enterprise</div></div>'+
-      '<div class="empty" style="min-height:70vh;display:flex;flex-direction:column;justify-content:center"><div class="ei">🚧</div>'+
-      '<div style="font-size:16px;font-weight:800;color:var(--t2);margin-bottom:8px">Hi '+esc(S.user.name)+'</div>'+
-      '<div style="font-size:13px;line-height:1.6">The new '+esc(S.user.role)+' screens are being built next.<br>For now, please use the current app.</div>'+
-      '<div style="margin-top:20px;display:flex;gap:10px;justify-content:center"><a class="btn btn-p" href="/">Open current app</a><button class="btn btn-outline" id="lo">Sign out</button></div></div>');
-    document.getElementById('lo').onclick=logout;
-  }
+  function role(){return S.user&&S.user.role;}
+  function home(){var r=role();
+    if(r==='Field Collector')collectorHome();
+    else if(r==='Customer')customerHome();
+    else adminDash();}
 
-  // ---------- COLLECTOR HOME ----------
-  function loadCollectorHome(){
-    S.screen='home';
-    set('<div class="center-load"><div class="spin"></div>Loading your customers…</div>');
-    Promise.all([
-      api('/api/transactions/collector-summary').catch(function(){return{data:null};}),
-      api('/api/customers').catch(function(){return{data:[]};})
-    ]).then(function(r){
+  // ---------- COLLECTOR ----------
+  function collectorHome(){S.screen='home';set('<div class="center-load"><div class="spin"></div>Loading…</div>');
+    Promise.all([api('/api/transactions/collector-summary').catch(function(){return{data:null};}),api('/api/customers').catch(function(){return{data:[]};})]).then(function(r){
       S.summary=r[0].data||{collected:0,visited:0,remaining:0,totalAssigned:0,dailyTarget:0,progress:0};
-      var all=r[1].data||[];
       var myId=String(S.user.employeeId||'');
-      S.customers=all.filter(function(c){ var ae=c.assignedEmployee&&(c.assignedEmployee._id||c.assignedEmployee); return String(ae||'')===myId; });
-      renderCollectorHome();
-    }).catch(function(e){ toast(e.message,'err'); renderCollectorHome(); });
-  }
-  function renderCollectorHome(){
-    S.screen='home';
-    var sm=S.summary||{};
-    var custHtml=S.customers.length? S.customers.slice(0,20).map(custRow).join('') :
-      '<div class="empty"><div class="ei">👥</div>No customers assigned to you yet.</div>';
-    set(
-      '<div class="home-head"><div class="home-top"><div>'+
-      '<div class="home-greet">Welcome,</div><div class="home-name">'+esc(S.user.name)+'</div>'+
-      '<div class="hh-zone">📍 '+esc(S.user.zone||'Field Collector')+'</div></div>'+
-      '<div class="home-avatar">'+initials(S.user.name)+'</div></div>'+
-      '<div class="today-card"><div class="today-label">TODAY\'S COLLECTIONS</div>'+
-      '<div class="today-amount">'+money(sm.collected)+'</div>'+
-      '<div class="today-sub">'+(sm.dailyTarget>0?('Target: '+money(sm.dailyTarget)+' · '+sm.progress+'% reached'):'Keep collecting today')+'</div>'+
-      '<div class="today-pills"><div class="today-pill"><div class="tp-val">'+(sm.visited||0)+'</div><div class="tp-lbl">Visited</div></div>'+
-      '<div class="today-pill"><div class="tp-val">'+(sm.remaining||0)+'</div><div class="tp-lbl">Remaining</div></div>'+
-      '<div class="today-pill"><div class="tp-val">'+(sm.totalAssigned||0)+'</div><div class="tp-lbl">Total</div></div></div></div></div>'+
+      S.customers=(r[1].data||[]).filter(function(c){var ae=c.assignedEmployee&&(c.assignedEmployee._id||c.assignedEmployee);return String(ae||'')===myId;});
+      drawCollectorHome();}).catch(function(e){toast(e.message,'err');drawCollectorHome();});}
+  function drawCollectorHome(){S.screen='home';var sm=S.summary||{};
+    set('<div class="hdr"><div class="hdr-top"><div><div class="hdr-greet">Welcome,</div><div class="hdr-name">'+esc(S.user.name)+'</div><div class="hdr-sub">📍 '+esc(S.user.zone||'Field Collector')+'</div></div>'+avatarNotif()+'</div>'+
+      '<div class="hero-card"><div class="hc-label">TODAY\'S COLLECTIONS</div><div class="hc-amount">'+money(sm.collected)+'</div>'+
+      '<div class="hc-sub">'+(sm.dailyTarget>0?('Target: '+money(sm.dailyTarget)+' · '+sm.progress+'%'):'Keep collecting today')+'</div>'+
+      '<div class="pills"><div class="pill"><div class="pill-val">'+(sm.visited||0)+'</div><div class="pill-lbl">Visited</div></div><div class="pill"><div class="pill-val">'+(sm.remaining||0)+'</div><div class="pill-lbl">Remaining</div></div><div class="pill"><div class="pill-val">'+(sm.totalAssigned||0)+'</div><div class="pill-lbl">Total</div></div></div></div></div>'+
       '<div class="sc"><div class="body-pad">'+
-      (sm.dailyTarget>0?('<div class="prog-card"><div class="prog-head"><div class="prog-title">Daily Target Progress</div><div class="prog-pct">'+sm.progress+'%</div></div><div class="prog-bg"><div class="prog-fill" style="width:'+Math.min(100,sm.progress)+'%"></div></div></div>'):'')+
-      '<div class="qa-row"><div class="qa-btn qa-collect" id="qa-collect"><span class="qa-icon">💰</span><span class="qa-lbl">Collect</span></div>'+
-      '<div class="qa-btn qa-withdraw" id="qa-withdraw"><span class="qa-icon">🏧</span><span class="qa-lbl">Withdraw</span></div>'+
-      '<div class="qa-btn qa-scan" id="qa-scan"><span class="qa-icon">🔎</span><span class="qa-lbl">Find</span></div></div>'+
+      (sm.dailyTarget>0?('<div class="card"><div class="s-div" style="margin:0 0 10px"><span class="s-div-title">Daily Target</span><span class="s-div-link">'+sm.progress+'%</span></div><div class="prog-bg"><div class="prog-fill" style="width:'+Math.min(100,sm.progress)+'%"></div></div></div>'):'')+
+      '<div class="qa-row"><div class="qa-btn qa-collect" data-go="dep"><span class="qa-icon">💰</span><span class="qa-lbl">Collect</span></div><div class="qa-btn qa-withdraw" data-go="wit"><span class="qa-icon">🏧</span><span class="qa-lbl">Withdraw</span></div><div class="qa-btn qa-scan" data-go="find"><span class="qa-icon">🔎</span><span class="qa-lbl">Find</span></div></div>'+
       '<div class="s-div"><span class="s-div-title">My Customers</span><span style="font-size:12px;color:var(--t3)">'+S.customers.length+' total</span></div>'+
-      custHtml+'</div></div>'+ bottomNav('home')
-    );
-    document.getElementById('qa-collect').onclick=function(){ renderCustomers('deposit'); };
-    document.getElementById('qa-withdraw').onclick=function(){ renderCustomers('withdrawal'); };
-    document.getElementById('qa-scan').onclick=function(){ renderCustomers('deposit'); };
-    wireNav(); wireCustRows();
-  }
-  function custRow(c){
-    return '<div class="cli" data-cust="'+esc(c._id)+'"><div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div>'+
-      '<div class="cli-info"><div class="cli-name">'+esc(c.name)+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+(c.dailyAmount?(' · '+money(c.dailyAmount)+'/day'):'')+'</div></div>'+
-      '<div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';
-  }
-  function wireCustRows(){
-    Array.prototype.forEach.call(document.querySelectorAll('[data-cust]'),function(el){
-      el.onclick=function(){ var c=S.customers.filter(function(x){return x._id===el.getAttribute('data-cust');})[0]; if(c) startTxn(c, S.txnType||'deposit'); };
-    });
-  }
+      (S.customers.length?S.customers.slice(0,25).map(custRow).join(''):'<div class="empty"><div class="ei">👥</div>No customers assigned yet.</div>')+
+      '</div></div>'+bnav('home'));
+    q('[data-go="dep"]').onclick=function(){custList('deposit');};q('[data-go="wit"]').onclick=function(){custList('withdrawal');};q('[data-go="find"]').onclick=function(){custList('deposit');};
+    wireNav();wireCust();wireAvatar();}
+  function custRow(c){return '<div class="cli" data-c="'+esc(c._id)+'"><div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(c.name)+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+(c.dailyAmount?(' · '+money(c.dailyAmount)+'/day'):'')+'</div></div><div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';}
+  function wireCust(){all('[data-c]').forEach(function(el){el.onclick=function(){var c=S.customers.filter(function(x){return x._id===el.getAttribute('data-c');})[0];if(c)startTxn(c,S.txnType||'deposit');};});}
 
-  // ---------- CUSTOMER LIST ----------
-  function renderCustomers(type){
-    S.screen='customers'; S.txnType=type||'deposit';
-    set('<div class="app-bar"><div class="ab-back" id="bk">←</div><div class="ab-title">'+(S.txnType==='withdrawal'?'Withdraw — pick customer':'Collect — pick customer')+'</div></div>'+
-      '<div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="cust-search" placeholder="Search name, business, ID…"></div>'+
-      '<div id="cust-list">'+ (S.customers.length?S.customers.map(custRow).join(''):'<div class="empty"><div class="ei">👥</div>No customers assigned.</div>') +'</div></div></div>'+bottomNav('customers'));
-    document.getElementById('bk').onclick=function(){ loadCollectorHome(); };
-    var box=document.getElementById('cust-search');
-    box.oninput=function(){
-      var q=box.value.toLowerCase();
-      var list=S.customers.filter(function(c){ return (c.name||'').toLowerCase().indexOf(q)>=0 || (c.business||'').toLowerCase().indexOf(q)>=0 || acctNo(c).toLowerCase().indexOf(q)>=0; });
-      document.getElementById('cust-list').innerHTML= list.length?list.map(custRow).join(''):'<div class="empty"><div class="ei">🔍</div>No matches.</div>';
-      wireCustRows();
-    };
-    wireNav(); wireCustRows();
-  }
+  function custList(type){S.screen='customers';S.txnType=type||'deposit';
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+(S.txnType==='withdrawal'?'Withdraw — pick customer':'Collect — pick customer')+'</div></div>'+
+      '<div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="q" placeholder="Search name, business, ID…"></div><div id="list">'+(S.customers.length?S.customers.map(custRow).join(''):'<div class="empty"><div class="ei">👥</div>No customers assigned.</div>')+'</div></div></div>'+bnav('customers'));
+    q('[data-back]').onclick=collectorHome;
+    var box=q('#q');box.oninput=function(){var v=box.value.toLowerCase();var l=S.customers.filter(function(c){return (c.name||'').toLowerCase().indexOf(v)>=0||(c.business||'').toLowerCase().indexOf(v)>=0||acctNo(c).toLowerCase().indexOf(v)>=0;});q('#list').innerHTML=l.length?l.map(custRow).join(''):'<div class="empty"><div class="ei">🔍</div>No matches.</div>';wireCust();};
+    wireNav();wireCust();}
 
-  // ---------- TRANSACTION FLOW ----------
-  function startTxn(cust,type){
-    S.draft={ cust:cust, type:type||'deposit', amount:0, method:'Cash', note:'' };
-    renderAmount();
-  }
-  function renderAmount(){
-    S.screen='amount'; var d=S.draft, c=d.cust, isW=d.type==='withdrawal';
-    var chips=isW?[50,100,200,500]:[5,10,20,50,100];
-    set('<div class="app-bar"><div class="ab-back" id="bk">←</div><div class="ab-title">'+(isW?'Record Withdrawal':'Record Deposit')+'</div></div>'+
-      '<div class="step-ind"><div class="b on"></div><div class="b"></div><div class="b"></div><div style="font-size:11px;color:var(--t3);font-weight:700;margin-left:4px">1 of 2</div></div>'+
-      '<div class="cust-confirm'+(isW?' wit':'')+'"><div class="cc-av">'+initials(c.name)+'</div><div style="flex:1"><div class="cc-name">'+esc(c.name)+'</div><div class="cc-id">'+esc(acctNo(c))+'</div><div class="cc-bal'+(isW?'':'')+'" style="'+(isW?'color:var(--wit)':'')+'">Balance: '+money(c.balance)+'</div></div>'+(isW?'✏️':'✓')+'</div>'+
-      '<div class="type-toggle"><div class="type-btn '+(!isW?'sel-dep':'')+'" id="t-dep">💰 Deposit</div><div class="type-btn '+(isW?'sel-wit':'')+'" id="t-wit">🏧 Withdrawal</div></div>'+
-      '<div class="amt-display"><span class="amt-curr">GH₵</span><span class="amt-val'+(isW?' wit':'')+'" id="amt-show">'+(d.amount||0)+'</span></div>'+
-      '<div class="amt-chips">'+chips.map(function(v){return '<span class="ac'+(d.amount===v?' sel':'')+'" data-amt="'+v+'">'+money(v)+'</span>';}).join('')+'</div>'+
-      '<div style="padding:14px 16px 0"><input class="inp" id="amt-input" type="number" inputmode="decimal" placeholder="Or type exact amount" value="'+(d.amount||'')+'"></div>'+
-      '<div class="sec-lbl">Payment Method</div><div class="method-row">'+
-      ['Cash','MoMo','Bank Transfer'].map(function(m){var ic=m==='Cash'?'💵':m==='MoMo'?'📱':'🏦';return '<div class="meth-btn'+(d.method===m?' sel':'')+'" data-m="'+m+'"><span class="meth-ico">'+ic+'</span><span class="meth-lbl">'+m+'</span></div>';}).join('')+'</div>'+
-      '<div style="padding:14px 16px"><input class="inp" id="note-input" placeholder="Add note (optional)" value="'+esc(d.note)+'"></div>'+
-      '<div style="padding:0 16px 24px"><button class="btn '+(isW?'':'btn-p')+' btn-full btn-lg" id="next" style="'+(isW?'background:linear-gradient(135deg,#B91C1C,#DC2626);color:#fff;box-shadow:0 4px 18px rgba(220,38,38,.3)':'')+'">Next: Review →</button></div>');
-    document.getElementById('bk').onclick=function(){ renderCustomers(d.type); };
-    document.getElementById('t-dep').onclick=function(){ d.type='deposit'; renderAmount(); };
-    document.getElementById('t-wit').onclick=function(){ d.type='withdrawal'; renderAmount(); };
-    function setAmt(v){ d.amount=Number(v)||0; document.getElementById('amt-show').textContent=d.amount; document.getElementById('amt-input').value=d.amount||''; Array.prototype.forEach.call(document.querySelectorAll('.ac'),function(el){ el.classList.toggle('sel',Number(el.getAttribute('data-amt'))===d.amount); }); }
-    Array.prototype.forEach.call(document.querySelectorAll('.ac'),function(el){ el.onclick=function(){ setAmt(el.getAttribute('data-amt')); }; });
-    document.getElementById('amt-input').oninput=function(e){ d.amount=Number(e.target.value)||0; document.getElementById('amt-show').textContent=d.amount; Array.prototype.forEach.call(document.querySelectorAll('.ac'),function(el){ el.classList.toggle('sel',Number(el.getAttribute('data-amt'))===d.amount); }); };
-    Array.prototype.forEach.call(document.querySelectorAll('.meth-btn'),function(el){ el.onclick=function(){ d.method=el.getAttribute('data-m'); Array.prototype.forEach.call(document.querySelectorAll('.meth-btn'),function(x){x.classList.remove('sel');}); el.classList.add('sel'); }; });
-    document.getElementById('note-input').oninput=function(e){ d.note=e.target.value; };
-    document.getElementById('next').onclick=function(){
-      if(!d.amount||d.amount<=0){ toast('Enter an amount','err'); return; }
-      renderReview();
-    };
-  }
-  function feeFor(amt){ return Math.round(amt*(S.ws.feePercent||0)/100*100)/100; }
-  function renderReview(){
-    S.screen='review'; var d=S.draft, c=d.cust, isW=d.type==='withdrawal';
-    var fee=isW?feeFor(d.amount):0;
-    var newBal=isW?(c.balance-(d.amount+fee)):(c.balance+d.amount);
-    set('<div class="app-bar"><div class="ab-back" id="bk">←</div><div class="ab-title">Confirm '+(isW?'Withdrawal':'Deposit')+'</div></div>'+
-      '<div class="step-ind"><div class="b on"></div><div class="b on"></div><div class="b"></div><div style="font-size:11px;color:var(--t3);font-weight:700;margin-left:4px">2 of 2</div></div>'+
-      '<div class="confirm-card"><div class="confirm-top'+(isW?' wit':'')+'"><div class="conf-type">'+(isW?'🏧 WITHDRAWAL':'💰 DEPOSIT')+'</div><div class="conf-amt">'+money(d.amount)+'</div><div class="conf-fee">'+(isW?('Fee '+money(fee)+' · '):'No fee · ')+esc(d.method)+'</div></div>'+
-      '<div class="confirm-body">'+
-      row('Customer',esc(c.name))+row('Account',esc(acctNo(c)))+row('Method',esc(d.method))+
-      (isW?row('Fee ('+(S.ws.feePercent||0)+'%)',money(fee)):'')+
-      row('Current Balance','<span style="color:var(--t3)">'+money(c.balance)+'</span>')+
-      row('New Balance','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+';font-weight:900">'+money(newBal)+'</span>')+
-      (d.note?row('Note',esc(d.note)):'')+
-      row('Collector',esc(S.user.name))+
-      '</div></div>'+
-      (isW&&newBal<(S.ws.minBalance||0)?'<div class="fee-box" style="background:var(--wit-bg);color:var(--wit-txt)">⚠️ New balance is below the minimum required ('+money(S.ws.minBalance)+'). This may be rejected.</div>':'')+
-      '<div style="padding:0 16px 24px;display:flex;flex-direction:column;gap:10px"><button class="btn btn-p btn-full btn-lg" id="confirm" style="'+(isW?'background:linear-gradient(135deg,#B91C1C,#DC2626)':'')+'">✓ Confirm & Record</button><button class="btn btn-ghost btn-full" id="edit">← Edit</button></div>');
-    document.getElementById('bk').onclick=renderAmount;
-    document.getElementById('edit').onclick=renderAmount;
-    document.getElementById('confirm').onclick=submitTxn;
-  }
-  function row(k,v){ return '<div class="conf-row"><span class="conf-key">'+k+'</span><span class="conf-val">'+v+'</span></div>'; }
-
-  function submitTxn(){
-    var d=S.draft, c=d.cust;
-    var btn=document.getElementById('confirm'); btn.innerHTML='<span class="spin"></span>'; btn.disabled=true;
-    var body={ customerId:c._id, amount:d.amount, type:d.type, method:d.method, notes:d.note, idempotencyKey:uuid() };
-    api('/api/transactions',{method:'POST',body:JSON.stringify(body)}).then(function(r){
-      if(r.queued){ toast(r.message||'Saved offline — will sync','warn'); loadCollectorHome(); return; }
-      renderReceipt(r.data,c,d);
-    }).catch(function(e){ toast(e.message||'Failed','err'); renderReview(); });
-  }
-  function renderReceipt(tx,c,d){
-    S.screen='receipt'; var isW=d.type==='withdrawal';
-    var fee=tx.feeAmount||0;
-    var newBal=isW?(c.balance-(tx.amount+fee)):(c.balance+tx.amount);
-    var waText='Awinbire Enterprise Receipt%0AType: '+(isW?'WITHDRAWAL':'DEPOSIT')+'%0ACustomer: '+encodeURIComponent(c.name)+'%0AAmount: '+encodeURIComponent(money(tx.amount))+'%0AMethod: '+encodeURIComponent(d.method)+'%0ARef: '+encodeURIComponent(tx.receiptNumber||'')+'%0A%0AThank you for saving with Awinbire';
+  function startTxn(c,type){S.draft={cust:c,type:type||'deposit',amount:0,method:'Cash',note:''};amountScreen();}
+  function amountScreen(){S.screen='amount';var d=S.draft,c=d.cust,isW=d.type==='withdrawal';var chips=isW?[50,100,200,500]:[5,10,20,50,100];
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+(isW?'Record Withdrawal':'Record Deposit')+'</div></div>'+
+      '<div class="step-ind"><div class="b on"></div><div class="b"></div><div style="font-size:11px;color:var(--t3);font-weight:700;margin-left:4px">1 of 2</div></div>'+
+      '<div class="cust-confirm'+(isW?' wit':'')+'"><div class="cc-av">'+initials(c.name)+'</div><div style="flex:1"><div class="cc-name">'+esc(c.name)+'</div><div class="cc-id">'+esc(acctNo(c))+'</div><div class="cc-bal" style="'+(isW?'color:var(--wit)':'')+'">Balance: '+money(c.balance)+'</div></div>'+(isW?'✏️':'✓')+'</div>'+
+      '<div class="type-toggle"><div class="type-btn '+(!isW?'sel-dep':'')+'" data-t="deposit">💰 Deposit</div><div class="type-btn '+(isW?'sel-wit':'')+'" data-t="withdrawal">🏧 Withdrawal</div></div>'+
+      '<div class="amt-display"><span class="amt-curr">GH₵</span><span class="amt-val'+(isW?' wit':'')+'" id="show">'+(d.amount||0)+'</span></div>'+
+      '<div class="amt-chips">'+chips.map(function(v){return '<span class="ac'+(d.amount===v?' sel':'')+'" data-a="'+v+'">'+money(v)+'</span>';}).join('')+'</div>'+
+      '<div style="padding:14px 16px 0"><input class="inp" id="amt" type="number" inputmode="decimal" placeholder="Or type exact amount" value="'+(d.amount||'')+'"></div>'+
+      '<div class="sec-lbl">Payment Method</div><div class="method-row">'+['Cash','MoMo','Bank Transfer'].map(function(m){var ic=m==='Cash'?'💵':m==='MoMo'?'📱':'🏦';return '<div class="meth-btn'+(d.method===m?' sel':'')+'" data-m="'+m+'"><span class="meth-ico">'+ic+'</span><span class="meth-lbl">'+m+'</span></div>';}).join('')+'</div>'+
+      '<div style="padding:14px 16px"><input class="inp" id="note" placeholder="Add note (optional)" value="'+esc(d.note)+'"></div>'+
+      '<div style="padding:0 16px 24px"><button class="btn btn-full btn-lg '+(isW?'':'btn-p')+'" id="next" style="'+(isW?'background:linear-gradient(135deg,#B91C1C,#DC2626);color:#fff;box-shadow:0 4px 18px rgba(220,38,38,.3)':'')+'">Next: Review →</button></div>');
+    q('[data-back]').onclick=function(){custList(d.type);};
+    all('[data-t]').forEach(function(el){el.onclick=function(){d.type=el.getAttribute('data-t');amountScreen();};});
+    function upd(){q('#show').textContent=d.amount;all('.ac').forEach(function(el){el.classList.toggle('sel',Number(el.getAttribute('data-a'))===d.amount);});}
+    all('.ac').forEach(function(el){el.onclick=function(){d.amount=Number(el.getAttribute('data-a'))||0;q('#amt').value=d.amount||'';upd();};});
+    q('#amt').oninput=function(e){d.amount=Number(e.target.value)||0;upd();};
+    all('.meth-btn').forEach(function(el){el.onclick=function(){d.method=el.getAttribute('data-m');all('.meth-btn').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');};});
+    q('#note').oninput=function(e){d.note=e.target.value;};
+    q('#next').onclick=function(){if(!d.amount||d.amount<=0){toast('Enter an amount','err');return;}reviewScreen();};}
+  function feeFor(a){return Math.round(a*(S.ws.feePercent||0)/100*100)/100;}
+  function reviewScreen(){S.screen='review';var d=S.draft,c=d.cust,isW=d.type==='withdrawal';var fee=isW?feeFor(d.amount):0;var nb=isW?(c.balance-(d.amount+fee)):(c.balance+d.amount);
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Confirm '+(isW?'Withdrawal':'Deposit')+'</div></div>'+
+      '<div class="step-ind"><div class="b on"></div><div class="b on"></div><div style="font-size:11px;color:var(--t3);font-weight:700;margin-left:4px">2 of 2</div></div>'+
+      '<div class="confirm-card"><div class="confirm-top'+(isW?' wit':'')+'"><div class="conf-type">'+(isW?'🏧 WITHDRAWAL':'💰 DEPOSIT')+'</div><div class="conf-amt">'+money(d.amount)+'</div><div class="conf-fee">'+(isW?('Fee '+money(fee)+' · '):'No fee · ')+esc(d.method)+'</div></div><div class="confirm-body">'+
+      cr('Customer',esc(c.name))+cr('Account',esc(acctNo(c)))+cr('Method',esc(d.method))+(isW?cr('Fee ('+(S.ws.feePercent||0)+'%)',money(fee)):'')+cr('Current Balance','<span style="color:var(--t3)">'+money(c.balance)+'</span>')+cr('New Balance','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+';font-weight:900">'+money(nb)+'</span>')+(d.note?cr('Note',esc(d.note)):'')+cr('Collector',esc(S.user.name))+'</div></div>'+
+      (isW&&nb<(S.ws.minBalance||0)?'<div class="fee-box" style="background:var(--wit-bg);color:var(--wit-txt)">⚠️ New balance is below the minimum ('+money(S.ws.minBalance)+'). May be rejected.</div>':'')+
+      '<div style="padding:0 16px 24px;display:flex;flex-direction:column;gap:10px"><button class="btn btn-p btn-full btn-lg" id="ok" style="'+(isW?'background:linear-gradient(135deg,#B91C1C,#DC2626)':'')+'">✓ Confirm & Record</button><button class="btn btn-ghost btn-full" id="edit">← Edit</button></div>');
+    q('[data-back]').onclick=amountScreen;q('#edit').onclick=amountScreen;q('#ok').onclick=submitTxn;}
+  function cr(k,v){return '<div class="conf-row"><span class="conf-key">'+k+'</span><span class="conf-val">'+v+'</span></div>';}
+  function submitTxn(){var d=S.draft,c=d.cust,btn=q('#ok');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
+    api('/api/transactions',{method:'POST',body:JSON.stringify({customerId:c._id,amount:d.amount,type:d.type,method:d.method,notes:d.note,idempotencyKey:uuid()})}).then(function(r){if(r.queued){toast(r.message||'Saved offline — will sync','warn');collectorHome();return;}receiptScreen(r.data,c,d);}).catch(function(e){toast(e.message||'Failed','err');reviewScreen();});}
+  function receiptScreen(tx,c,d){S.screen='receipt';var isW=d.type==='withdrawal';var fee=tx.feeAmount||0;var nb=isW?(c.balance-(tx.amount+fee)):(c.balance+tx.amount);
+    var wa='Awinbire Receipt%0AType: '+(isW?'WITHDRAWAL':'DEPOSIT')+'%0ACustomer: '+encodeURIComponent(c.name)+'%0AAmount: '+encodeURIComponent(money(tx.amount))+'%0AMethod: '+encodeURIComponent(d.method)+'%0ARef: '+encodeURIComponent(tx.receiptNumber||'')+'%0A%0AThank you for saving with Awinbire';
     set('<div class="receipt-success'+(isW?' wit':'')+'"><div class="rcpt-check">✓</div><div class="rcpt-title">'+(isW?'Withdrawal Recorded!':'Deposit Recorded!')+'</div><div class="rcpt-sub">Saved to your database</div><div class="rcpt-amt">'+money(tx.amount)+'</div></div>'+
-      '<div class="sc"><div class="receipt-paper"><div class="rcpt-stripe"></div>'+
-      '<div class="rcpt-head"><div class="rcpt-logo-name">Awinbire Enterprise<br><span style="font-size:9px;color:var(--t3);font-weight:600">Savings Management</span></div><div class="rcpt-ref">Ref: <strong>'+esc(tx.receiptNumber||'—')+'</strong></div></div>'+
-      '<div class="rcpt-body">'+
-      rrow('Type',(isW?'🏧 Withdrawal':'💰 Deposit'))+rrow('Customer',esc(c.name))+rrow('Account #','<span style="font-family:monospace;color:var(--g-600)">'+esc(acctNo(c))+'</span>')+
-      rrow('Amount','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+'">'+money(tx.amount)+'</span>')+
-      (isW?rrow('Fee',money(fee)):'')+rrow('Method',esc(d.method))+
-      rrow('New Balance','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+';font-weight:900">'+money(newBal)+'</span>')+
-      rrow('Status',esc(tx.status||'approved'))+rrow('Collector',esc(S.user.name))+
+      '<div class="sc"><div class="receipt-paper"><div class="rcpt-stripe"></div><div class="rcpt-head"><div class="rcpt-logo-name">Awinbire Enterprise<br><span style="font-size:9px;color:var(--t3);font-weight:600">Savings Management</span></div><div class="rcpt-ref">Ref: <strong>'+esc(tx.receiptNumber||'—')+'</strong></div></div><div class="rcpt-body">'+
+      rr('Type',(isW?'🏧 Withdrawal':'💰 Deposit'))+rr('Customer',esc(c.name))+rr('Account #','<span style="font-family:monospace;color:var(--g-600)">'+esc(acctNo(c))+'</span>')+rr('Amount','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+'">'+money(tx.amount)+'</span>')+(isW?rr('Fee',money(fee)):'')+rr('Method',esc(d.method))+rr('New Balance','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+';font-weight:900">'+money(nb)+'</span>')+rr('Status',esc(tx.status||'approved'))+rr('Collector',esc(S.user.name))+
       '</div><div style="padding:14px 20px;background:var(--surf2);text-align:center;font-size:10px;color:var(--t3)">Thank you for saving with Awinbire Enterprise 🌿</div></div>'+
-      '<div class="rcpt-actions"><a class="btn btn-ghost btn-full" style="background:#25D366;color:#fff;text-decoration:none" href="https://wa.me/?text='+waText+'" target="_blank">📲 WhatsApp</a><button class="btn btn-ghost btn-full" id="print">🖨 Print</button></div>'+
-      '<div style="padding:0 16px 30px"><button class="btn btn-p btn-full" id="home">← Back to Home</button></div></div>');
-    document.getElementById('home').onclick=function(){ loadCollectorHome(); };
-    document.getElementById('print').onclick=function(){ window.print(); };
-  }
-  function rrow(k,v){ return '<div class="rcpt-row"><span class="rcpt-key">'+k+'</span><span class="rcpt-val">'+v+'</span></div>'; }
+      '<div class="rcpt-actions"><a class="btn btn-full" style="background:#25D366;color:#fff" href="https://wa.me/?text='+wa+'" target="_blank">📲 WhatsApp</a><button class="btn btn-ghost btn-full" id="pr">🖨 Print</button></div>'+
+      '<div style="padding:0 16px 30px"><button class="btn btn-p btn-full" id="hm">← Back to Home</button></div></div>');
+    q('#hm').onclick=collectorHome;q('#pr').onclick=function(){window.print();};}
+  function rr(k,v){return '<div class="rcpt-row"><span class="rcpt-key">'+k+'</span><span class="rcpt-val">'+v+'</span></div>';}
+
+  // ---------- ADMIN / MANAGER / ACCOUNTANT ----------
+  function adminDash(){S.screen='dash';set('<div class="center-load"><div class="spin"></div>Loading dashboard…</div>');
+    Promise.all([api('/api/dashboard').catch(function(){return{data:{}};}),api('/api/dashboard/timeseries?days=7').catch(function(){return{data:[]};}),api('/api/transactions?limit=6').catch(function(){return{data:[]};}),api('/api/transactions?status=pending&limit=100').catch(function(){return{data:[]};})]).then(function(r){
+      S.dash={kpi:r[0].data||{},series:r[1].data||[],recent:r[2].data||[],pending:r[3].data||[]};drawDash();}).catch(function(e){toast(e.message,'err');});}
+  function drawDash(){S.screen='dash';var k=S.dash.kpi,pend=(S.dash.pending||[]).filter(function(t){return t.type==='withdrawal';});
+    var td=(k.todayDeposits||{}).total||0,tw=(k.todayWithdrawals||{}).total||0;
+    set('<div class="hdr"><div class="hdr-top"><div><div class="hdr-name">Overview 📊</div><div class="hdr-sub">'+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</div></div>'+avatarNotif()+'</div>'+
+      '<div class="kpi-row"><div class="kpi"><div class="kpi-ic">💰</div><div class="kpi-val">'+money(td)+'</div><div class="kpi-lbl">Today\'s Deposits</div></div>'+
+      '<div class="kpi"><div class="kpi-ic">🏧</div><div class="kpi-val">'+money(tw)+'</div><div class="kpi-lbl">Today\'s Withdrawals</div></div>'+
+      '<div class="kpi"><div class="kpi-ic">👥</div><div class="kpi-val">'+(k.activeCustomers||0)+'</div><div class="kpi-lbl">Active Customers</div></div>'+
+      '<div class="kpi"><div class="kpi-ic">🏦</div><div class="kpi-val">'+money(k.totalBalance)+'</div><div class="kpi-lbl">Total Savings</div></div></div></div>'+
+      '<div class="sc"><div class="body-pad">'+
+      chartCard(S.dash.series)+
+      '<div style="display:flex;gap:10px;margin-bottom:14px"><div class="card" style="flex:1;margin:0" data-nav="approvals"><div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase">Pending Approvals</div><div style="font-size:28px;font-weight:900;color:var(--pend)">'+pend.length+'</div><div style="font-size:11px;color:var(--t3)">withdrawals →</div></div>'+
+      '<div class="card" style="flex:1;margin:0"><div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase">Active Collectors</div><div style="font-size:28px;font-weight:900;color:var(--g-600)">'+(k.activeEmployees||0)+'</div><div style="font-size:11px;color:var(--t3)">on the team</div></div></div>'+
+      '<div class="s-div"><span class="s-div-title">Recent Transactions</span><span class="s-div-link" data-nav="txns">View all →</span></div>'+
+      ((S.dash.recent||[]).length?S.dash.recent.map(txnRow).join(''):'<div class="empty"><div class="ei">🧾</div>No transactions yet.</div>')+
+      '</div></div>'+bnav('dash'));
+    var pa=q('[data-nav="approvals"]');if(pa)pa.onclick=approvalsScreen;var tv=q('[data-nav="txns"]');if(tv)tv.onclick=function(){txnsScreen();};
+    wireNav();wireAvatar();}
+  function chartCard(series){series=series||[];var max=1;series.forEach(function(x){max=Math.max(max,x.deposits||0,x.withdrawals||0);});
+    var bars=series.map(function(x){var dh=Math.round((x.deposits||0)/max*84);var wh=Math.round((x.withdrawals||0)/max*84);return '<div class="bar-grp"><div class="bar d" style="height:'+dh+'px"></div><div class="bar w" style="height:'+wh+'px"></div></div>';}).join('');
+    var lbls=series.map(function(x){var d=new Date(x.date);return '<span>'+d.toLocaleDateString('en-US',{weekday:'short'}).slice(0,2)+'</span>';}).join('');
+    return '<div class="card"><div class="s-div" style="margin:0 0 6px"><span class="s-div-title">Deposits vs Withdrawals</span><span style="font-size:11px;color:var(--t3)">7 days</span></div><div class="bars">'+(bars||'')+'</div><div class="bar-lbls">'+lbls+'</div><div class="legend"><span><i style="background:var(--g-600)"></i>Deposits</span><span><i style="background:var(--wit)"></i>Withdrawals</span></div></div>';}
+  function txnRow(t){var isW=t.type==='withdrawal';var name=t.customerName||(t.customer&&t.customer.name)||'—';
+    return '<div class="txn"><div class="txn-ic '+(isW?'wit':'dep')+'">'+(isW?'🏧':'💰')+'</div><div class="txn-mid"><div class="txn-name">'+esc(name)+'</div><div class="txn-meta">'+esc(t.type)+' · '+esc(t.method||'Cash')+(t.status==='pending'?' · pending':'')+'</div></div><div class="txn-right"><div class="txn-amt '+(isW?'wit':'dep')+'">'+(isW?'-':'+')+money(t.amount)+'</div><div class="txn-time">'+esc(t.time||'')+'</div></div></div>';}
+
+  function approvalsScreen(){S.screen='approvals';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Withdrawal Approvals</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/transactions?status=pending&limit=100').then(function(d){var list=(d.data||[]).filter(function(t){return t.type==='withdrawal';});
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Withdrawal Approvals</div></div><div class="sc"><div class="body-pad">'+
+        (list.length?('<div style="background:var(--pend-bg);color:var(--pend-txt);border-radius:var(--r12);padding:12px 14px;font-size:13px;font-weight:700;margin-bottom:14px">⏳ '+list.length+' request'+(list.length>1?'s':'')+' pending approval</div>'+list.map(apprCard).join('')):'<div class="empty"><div class="ei">✅</div>No pending withdrawals.</div>')+
+        '</div></div>'+bnav('approvals'));
+      q('[data-back]').onclick=adminDash;wireNav();wireAppr(list);}).catch(function(e){toast(e.message,'err');});}
+  function apprCard(t){var name=t.customerName||(t.customer&&t.customer.name)||'—';
+    return '<div class="appr" id="ap-'+esc(t._id)+'"><div class="appr-head"><div><div class="appr-cust">'+esc(name)+'</div><div class="appr-meta">'+esc(t.employeeName||'')+'</div><div class="appr-meta">🕐 '+esc(t.date||'')+' '+esc(t.time||'')+'</div></div><div class="appr-amt">'+money(t.amount)+'</div></div>'+
+      '<div class="appr-body"><div class="r"><span style="color:var(--t3)">Method</span><span style="font-weight:700">'+esc(t.method||'Cash')+'</span></div>'+(t.feeAmount?('<div class="r"><span style="color:var(--t3)">Fee</span><span style="font-weight:700">'+money(t.feeAmount)+'</span></div>'):'')+'</div>'+
+      '<div class="appr-acts"><button class="btn btn-danger btn-full btn-sm" data-rej="'+esc(t._id)+'">✕ Reject</button><button class="btn btn-p btn-sm" style="flex:1.4" data-app="'+esc(t._id)+'">✓ Approve</button></div></div>';}
+  function wireAppr(list){all('[data-app]').forEach(function(el){el.onclick=function(){decide(el.getAttribute('data-app'),'approved');};});all('[data-rej]').forEach(function(el){el.onclick=function(){decide(el.getAttribute('data-rej'),'rejected');};});}
+  function decide(id,status){var card=q('#ap-'+id);if(card)card.style.opacity='.5';
+    api('/api/transactions/'+id+'/status',{method:'PATCH',body:JSON.stringify({status:status})}).then(function(){toast('Withdrawal '+status,'ok');if(card)card.remove();}).catch(function(e){toast(e.message,'err');if(card)card.style.opacity='1';});}
+
+  function txnsScreen(){S.screen='txns';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Transactions</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/transactions?limit=50').then(function(d){var list=d.data||[];
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Transactions</div></div><div class="sc"><div class="body-pad">'+(list.length?list.map(txnRow).join(''):'<div class="empty"><div class="ei">🧾</div>No transactions.</div>')+'</div></div>'+bnav(role()==='Field Collector'?'':'txns'));
+      q('[data-back]').onclick=home;wireNav();}).catch(function(e){toast(e.message,'err');});}
+
+  // ---------- CUSTOMER ----------
+  function customerHome(){S.screen='home';set('<div class="center-load"><div class="spin"></div>Loading your account…</div>');
+    Promise.all([api('/api/customers/me').catch(function(){return{data:null};}),api('/api/transactions?limit=8').catch(function(){return{data:[]};})]).then(function(r){var c=r[0].data;
+      if(!c){set('<div class="empty" style="min-height:80vh;display:flex;flex-direction:column;justify-content:center"><div class="ei">🙋</div>No customer profile linked to this account.<div style="margin-top:16px"><button class="btn btn-outline" id="lo">Sign out</button></div></div>');q('#lo').onclick=logout;return;}
+      var tgt=c.savingsTarget||0;var pct=tgt>0?Math.min(100,Math.round((c.balance/tgt)*100)):0;
+      set('<div class="hdr" style="padding-bottom:28px"><div class="hdr-top"><div class="ab-title" style="font-size:17px">My Account</div>'+avatarNotif()+'</div>'+
+        '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px"><div class="set-av">'+initials(c.name)+'</div><div style="flex:1"><div class="hdr-name">'+esc(c.name)+'</div><div class="hdr-sub" style="font-family:monospace">🪪 '+esc(acctNo(c))+'</div></div></div>'+
+        '<div class="hero-card"><div class="hc-label">CURRENT BALANCE</div><div class="hc-amount">'+money(c.balance)+'</div>'+
+        (tgt>0?('<div style="background:rgba(0,0,0,.15);border-radius:var(--r12);padding:12px 14px;margin-top:14px"><div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.6);margin-bottom:8px"><span>Savings Target</span><span style="color:var(--a-400);font-weight:800">'+pct+'%</span></div><div class="prog-bg gold"><div class="prog-fill" style="width:'+pct+'%"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:rgba(255,255,255,.55)"><span>'+money(c.balance)+' saved</span><span>Target: '+money(tgt)+'</span></div></div>'):'')+
+        '</div></div>'+
+        '<div class="sc"><div class="body-pad"><div style="display:flex;gap:10px;margin-bottom:14px"><div class="card" style="flex:1;margin:0;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--dep)">'+money(c.totalDeposits)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">TOTAL DEPOSITS</div></div><div class="card" style="flex:1;margin:0;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--wit)">'+money(c.totalWithdrawals)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">TOTAL WITHDRAWN</div></div></div>'+
+        '<div class="card" id="req" style="background:linear-gradient(135deg,var(--wit),#EF4444);color:#fff;display:flex;align-items:center;justify-content:space-between;cursor:pointer"><div style="display:flex;align-items:center;gap:12px"><span style="font-size:24px">🏧</span><div><div style="font-size:15px;font-weight:800">Request Withdrawal</div><div style="font-size:11px;color:rgba(255,255,255,.7)">Sent to your manager for approval</div></div></div><span style="font-size:20px;color:rgba(255,255,255,.6)">→</span></div>'+
+        '<div class="s-div"><span class="s-div-title">Recent Activity</span></div>'+
+        ((r[1].data||[]).length?r[1].data.map(txnRow).join(''):'<div class="empty"><div class="ei">🧾</div>No activity yet.</div>')+
+        '</div></div>'+bnav('home'));
+      S.me=c;q('#req').onclick=function(){reqWithdrawal(c);};wireNav();wireAvatar();}).catch(function(e){toast(e.message,'err');});}
+  function reqWithdrawal(c){modal('<h3>Request Withdrawal</h3><div class="inp-wrap"><label class="inp-lbl">Amount (GH₵)</label><input class="inp" id="wa" type="number" inputmode="decimal" placeholder="0.00"></div><div class="inp-wrap"><label class="inp-lbl">Method</label><select class="inp" id="wm"><option>Cash</option><option>MoMo</option><option>Bank Transfer</option></select></div><button class="btn btn-p btn-full btn-lg" id="ws">Submit Request</button><button class="btn btn-ghost btn-full" style="margin-top:8px" id="wc">Cancel</button>');
+    q('#wc').onclick=closeModal;q('#ws').onclick=function(){var a=Number(q('#wa').value)||0;if(a<=0){toast('Enter an amount','err');return;}var b=q('#ws');b.innerHTML='<span class="spin"></span>';b.disabled=true;
+      api('/api/transactions',{method:'POST',body:JSON.stringify({amount:a,type:'withdrawal',method:q('#wm').value,idempotencyKey:uuid()})}).then(function(){closeModal();toast('Request submitted for approval','ok');customerHome();}).catch(function(e){toast(e.message,'err');closeModal();});};}
+
+  // ---------- NOTIFICATIONS ----------
+  function notifsScreen(){S.screen='notifs';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Notifications</div>'+(S.unread?'<div class="ab-back" id="mark" style="width:auto;padding:0 12px;font-size:12px;font-weight:700">Mark all</div>':'')+'</div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    loadNotifs().then(function(){
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Notifications</div>'+(S.unread?'<div class="ab-back" id="mark" style="width:auto;padding:0 12px;font-size:12px;font-weight:700">Mark all</div>':'')+'</div><div class="sc"><div class="body-pad">'+
+        (S.notifs.length?S.notifs.map(nRow).join(''):'<div class="empty"><div class="ei">🔔</div>No notifications yet.</div>')+'</div></div>'+bnav('notifs'));
+      q('[data-back]').onclick=home;var m=q('#mark');if(m)m.onclick=function(){api('/api/notifications/read-all',{method:'PATCH'}).then(function(){S.unread=0;notifsScreen();});};wireNav();});}
+  function nRow(n){var ic=n.type==='deposit'?'💰':n.type==='withdrawal'?'🏧':n.type==='approval'?'✓':n.type==='milestone'?'🎯':'🔔';
+    return '<div class="nrow'+(n.read?'':' unread')+'"><div class="n-ic">'+ic+'</div><div style="flex:1"><div class="n-title">'+esc(n.title||'Notification')+'</div><div class="n-body">'+esc(n.body||'')+'</div><div class="n-time">'+timeAgo(n.createdAt)+'</div></div></div>';}
+
+  // ---------- SETTINGS ----------
+  function settingsScreen(){S.screen='settings';var p=(S.user.preferences)||{};
+    set('<div class="set-hero"><div class="set-av">'+initials(S.user.name)+'</div><div style="flex:1"><div class="set-name">'+esc(S.user.name)+'</div><div class="set-role">'+esc(S.user.role)+'</div></div></div>'+
+      '<div class="sc"><div class="body-pad">'+
+      '<div class="set-sec-title">Account</div><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)">'+
+      '<div class="set-item"><div class="set-ic">👤</div><span class="set-lbl">Name</span><span class="set-val">'+esc(S.user.name)+'</span></div>'+
+      '<div class="set-item"><div class="set-ic">📱</div><span class="set-lbl">Phone</span><span class="set-val">'+esc(S.user.phone||'—')+'</span></div>'+
+      '<div class="set-item" id="chpw"><div class="set-ic">🔑</div><span class="set-lbl">Change Password</span><span class="set-val">›</span></div></div>'+
+      '<div class="set-sec-title">Appearance</div><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)">'+
+      '<div class="set-item"><div class="set-ic">🌙</div><span class="set-lbl">Dark Mode</span><div class="tgl'+(p.darkMode?' on':'')+'" id="dm"><b></b></div></div></div>'+
+      '<div class="set-sec-title">About</div><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)">'+
+      '<div class="set-item"><div class="set-ic">ℹ️</div><span class="set-lbl">Version</span><span class="set-val">Awinbire · new UI</span></div>'+
+      '<div class="set-item" id="lo"><div class="set-ic">🚪</div><span class="set-lbl" style="color:var(--wit)">Sign Out</span><span class="set-val" style="color:var(--wit)">›</span></div></div>'+
+      '</div></div>'+bnav('settings'));
+    q('#dm').onclick=function(){var on=!(S.user.preferences&&S.user.preferences.darkMode);S.user.preferences=Object.assign({},S.user.preferences,{darkMode:on});applyTheme();q('#dm').classList.toggle('on',on);api('/api/auth/preferences',{method:'PATCH',body:JSON.stringify({darkMode:on})}).catch(function(){});};
+    q('#lo').onclick=logout;q('#chpw').onclick=changePw;wireNav();}
+  function changePw(){modal('<h3>Change Password</h3><div class="inp-wrap"><label class="inp-lbl">Current Password</label><input class="inp" id="cp" type="password"></div><div class="inp-wrap"><label class="inp-lbl">New Password (min 6)</label><input class="inp" id="np" type="password"></div><button class="btn btn-p btn-full btn-lg" id="sv">Update</button><button class="btn btn-ghost btn-full" style="margin-top:8px" id="cc">Cancel</button>');
+    q('#cc').onclick=closeModal;q('#sv').onclick=function(){var cp=q('#cp').value,np=q('#np').value;if(np.length<6){toast('New password too short','err');return;}var b=q('#sv');b.innerHTML='<span class="spin"></span>';b.disabled=true;
+      api('/api/auth/change-password',{method:'PATCH',body:JSON.stringify({currentPassword:cp,newPassword:np})}).then(function(){closeModal();toast('Password changed','ok');}).catch(function(e){toast(e.message,'err');closeModal();});};}
 
   // ---------- NAV ----------
-  function bottomNav(active){
-    function item(id,ic,lbl){ return '<div class="bnav-item'+(active===id?' act':'')+'" data-nav="'+id+'"><div class="bnav-icon">'+ic+'</div><div class="bnav-lbl">'+lbl+'</div></div>'; }
-    return '<div class="bnav">'+item('home','🏠','Home')+item('customers','👥','Customers')+item('logout','🚪','Sign out')+'</div>';
-  }
-  function wireNav(){
-    Array.prototype.forEach.call(document.querySelectorAll('[data-nav]'),function(el){
-      el.onclick=function(){ var n=el.getAttribute('data-nav'); if(n==='home')loadCollectorHome(); else if(n==='customers')renderCustomers('deposit'); else if(n==='logout')logout(); };
-    });
-  }
-  function logout(){ localStorage.removeItem('aw_token'); S.token=null; S.user=null; renderLogin(); }
+  function avatarNotif(){return '<div class="hdr-av" id="av">'+initials(S.user.name)+(S.unread?'<div class="notif-badge">'+(S.unread>9?'9+':S.unread)+'</div>':'')+'</div>';}
+  function wireAvatar(){var a=q('#av');if(a)a.onclick=notifsScreen;}
+  function bnav(active){var r=role();var items;
+    if(r==='Field Collector')items=[['home','🏠','Home'],['customers','👥','Customers'],['notifs','🔔','Alerts'],['settings','⚙️','Settings']];
+    else if(r==='Customer')items=[['home','🏠','Account'],['txns','🧾','History'],['notifs','🔔','Alerts'],['settings','⚙️','Settings']];
+    else items=[['dash','📊','Dashboard'],['approvals','✅','Approvals'],['txns','🧾','Txns'],['notifs','🔔','Alerts'],['settings','⚙️','Settings']];
+    return '<div class="bnav">'+items.map(function(it){return '<div class="bnav-item'+(active===it[0]?' act':'')+'" data-nav="'+it[0]+'"><div class="bnav-icon">'+it[1]+'</div><div class="bnav-lbl">'+it[2]+'</div>'+(it[0]==='notifs'&&S.unread?'<div class="bnav-dot">'+(S.unread>9?'9+':S.unread)+'</div>':'')+'</div>';}).join('')+'</div>';}
+  function wireNav(){all('[data-nav]').forEach(function(el){var n=el.getAttribute('data-nav');el.onclick=function(){nav(n);};});}
+  function nav(n){if(n==='home'||n==='dash')home();else if(n==='customers')custList('deposit');else if(n==='approvals')approvalsScreen();else if(n==='txns')txnsScreen();else if(n==='notifs')notifsScreen();else if(n==='settings')settingsScreen();}
+  function logout(){localStorage.removeItem('aw_token');S.token=null;S.user=null;document.documentElement.setAttribute('data-theme','light');renderLogin();}
 
-  // ---------- BOOT ----------
-  if(S.token){
-    api('/api/auth/me').then(function(d){ S.user=d.user; afterLogin(); }).catch(function(){ localStorage.removeItem('aw_token'); S.token=null; renderLogin(); });
-  } else { renderLogin(); }
+  function q(s){return document.querySelector(s);}function all(s){return Array.prototype.slice.call(document.querySelectorAll(s));}
+
+  if(S.token){api('/api/auth/me').then(function(d){S.user=d.user;afterLogin();}).catch(function(){localStorage.removeItem('aw_token');S.token=null;renderLogin();});}else{renderLogin();}
 })();
 </script>
 </body>
