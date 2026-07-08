@@ -105,6 +105,7 @@ a{color:inherit;text-decoration:none;}
 .cli-right{text-align:right;flex-shrink:0;}
 .cli-bal{font-size:15px;font-weight:900;color:var(--dep);}
 .cli-id{font-size:10px;color:var(--t4);margin-top:2px;}
+.rownum{width:24px;min-width:24px;text-align:center;font-weight:800;color:var(--t3);font-size:12px;flex-shrink:0;}
 .app-bar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--g-700);color:#fff;}
 .ab-back{width:40px;height:40px;border-radius:var(--r12);display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,.15);flex-shrink:0;}
 .ab-title{flex:1;font-size:17px;font-weight:800;}
@@ -325,20 +326,25 @@ a{color:inherit;text-decoration:none;}
       (sm.dailyTarget>0?('<div class="card"><div class="s-div" style="margin:0 0 10px"><span class="s-div-title">Daily Target</span><span class="s-div-link">'+sm.progress+'%</span></div><div class="prog-bg"><div class="prog-fill" style="width:'+Math.min(100,sm.progress)+'%"></div></div></div>'):'')+
       '<div class="qa-row"><div class="qa-btn qa-collect" data-go="dep"><span class="qa-icon">💰</span><span class="qa-lbl">Collect</span></div><div class="qa-btn qa-withdraw" data-go="wit"><span class="qa-icon">🏧</span><span class="qa-lbl">Withdraw</span></div><div class="qa-btn qa-scan" data-go="find"><span class="qa-icon">🔎</span><span class="qa-lbl">Find</span></div></div>'+
       '<div class="s-div"><span class="s-div-title">All Customers</span><span class="s-div-link" data-go="all">'+S.customers.length+' total ›</span></div>'+
-      (S.customers.length?S.customers.slice(0,30).map(custRow).join(''):'<div class="empty"><div class="ei">👥</div>No customers found.</div>')+
+      (S.customers.length?S.customers.slice(0,30).map(function(c,i){return custRow(c,i+1);}).join(''):'<div class="empty"><div class="ei">👥</div>No customers found.</div>')+
       '</div></div>'+bnav('home'));
     q('[data-go="dep"]').onclick=function(){custList('deposit');};q('[data-go="wit"]').onclick=function(){custList('withdrawal');};q('[data-go="find"]').onclick=function(){custList('deposit');};
     var sa=q('[data-go="all"]');if(sa)sa.onclick=function(){custList('deposit');};
     wireNav();wireCust();wireAvatar();}
-  function custRow(c){return '<div class="cli" data-c="'+esc(c._id)+'"><div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(c.name)+(c._mine?' <span style="color:var(--a-500);font-size:11px">★ mine</span>':'')+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+(c.dailyAmount?(' · '+money(c.dailyAmount)+'/day'):'')+'</div></div><div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';}
+  function custRow(c,n){return '<div class="cli" data-c="'+esc(c._id)+'">'+(n?'<div class="rownum">'+n+'</div>':'')+'<div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(c.name)+(c._mine?' <span style="color:var(--a-500);font-size:11px">★ mine</span>':'')+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+(c.dailyAmount?(' · '+money(c.dailyAmount)+'/day'):'')+'</div></div><div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';}
   function wireCust(){all('[data-c]').forEach(function(el){el.onclick=function(){var c=S.customers.filter(function(x){return x._id===el.getAttribute('data-c');})[0];if(c)startTxn(c,S.txnType||'deposit');};});}
 
-  function custList(type){S.screen='customers';S.txnType=type||'deposit';
+  function custList(type){S.screen='customers';S.txnType=type||'deposit';S.cPage=1;S.cQ='';
     set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+(S.txnType==='withdrawal'?'Withdraw — pick customer':'Collect — pick customer')+'</div>'+(canRegisterCustomer()?'<div class="ab-back" id="addcust" style="width:auto;padding:0 12px;font-size:22px" title="Register customer">＋</div>':'')+'</div>'+
-      '<div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="q" placeholder="Search name, business, ID…"></div><div id="list">'+(S.customers.length?S.customers.map(custRow).join(''):'<div class="empty"><div class="ei">👥</div>No customers found.</div>')+'</div></div></div>'+bnav('customers'));
+      '<div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="q" placeholder="Search name, business, ID…"></div><div id="listwrap"></div></div></div>'+bnav('customers'));
     q('[data-back]').onclick=collectorHome;var ac=q('#addcust');if(ac)ac.onclick=function(){registerCustomerModal(collectorHome);};
-    var box=q('#q');box.oninput=function(){var v=box.value.toLowerCase();var l=S.customers.filter(function(c){return (c.name||'').toLowerCase().indexOf(v)>=0||(c.business||'').toLowerCase().indexOf(v)>=0||acctNo(c).toLowerCase().indexOf(v)>=0;});q('#list').innerHTML=l.length?l.map(custRow).join(''):'<div class="empty"><div class="ei">🔍</div>No matches.</div>';wireCust();};
-    wireNav();wireCust();}
+    var box=q('#q');box.oninput=function(){S.cQ=box.value;S.cPage=1;updateCList();};
+    wireNav();updateCList();}
+  function updateCList(){var qv=(S.cQ||'').toLowerCase();
+    var full=(S.customers||[]).filter(function(c){return !qv||(c.name||'').toLowerCase().indexOf(qv)>=0||(c.business||'').toLowerCase().indexOf(qv)>=0||acctNo(c).toLowerCase().indexOf(qv)>=0;});
+    var size=25,pages=Math.max(1,Math.ceil(full.length/size));if(S.cPage>pages)S.cPage=pages;if(S.cPage<1)S.cPage=1;var start=(S.cPage-1)*size,slice=full.slice(start,start+size);
+    q('#listwrap').innerHTML=(slice.length?slice.map(function(c,i){return custRow(c,start+i+1);}).join(''):'<div class="empty"><div class="ei">🔍</div>No customers.</div>')+(pages>1?pager(S.cPage,pages,full.length):'');
+    var pp=q('#pp');if(pp)pp.onclick=function(){S.cPage--;updateCList();};var pn=q('#pn');if(pn)pn.onclick=function(){S.cPage++;updateCList();};wireCust();}
 
   function startTxn(c,type){S.draft={cust:c,type:type||'deposit',amount:0,method:'Cash',note:''};amountScreen();}
   function amountScreen(){S.screen='amount';var d=S.draft,c=d.cust,isW=d.type==='withdrawal';var chips=isW?[50,100,200,500]:[5,10,20,50,100];
@@ -511,11 +517,17 @@ a{color:inherit;text-decoration:none;}
     q('[data-back]').onclick=home;all('[data-go]').forEach(function(el){el.onclick=function(){nav(el.getAttribute('data-go'));};});q('#lo').onclick=logout;wireNav();}
 
   // ---------- ADMIN: CUSTOMERS ----------
-  function adminCustomers(){S.screen='customers';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
-    api('/api/customers').then(function(d){var list=d.data||[];S.allCustomers=list;
-      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers ('+list.length+')</div>'+(canRegisterCustomer()?'<div class="ab-back" id="addcust" style="width:auto;padding:0 12px;font-size:22px" title="Register customer">＋</div>':'')+'</div><div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="q" placeholder="Search name, business, ID…"></div><div id="list">'+(list.length?list.map(acRow).join(''):'<div class="empty"><div class="ei">👥</div>No customers.</div>')+'</div></div></div>'+bnav('customers'));
-      q('[data-back]').onclick=home;var ac=q('#addcust');if(ac)ac.onclick=function(){registerCustomerModal(adminCustomers);};var box=q('#q');box.oninput=function(){var v=box.value.toLowerCase();var l=list.filter(function(c){return (c.name||'').toLowerCase().indexOf(v)>=0||(c.business||'').toLowerCase().indexOf(v)>=0||acctNo(c).toLowerCase().indexOf(v)>=0;});q('#list').innerHTML=l.length?l.map(acRow).join(''):'<div class="empty">No matches.</div>';wireAdminCust();};wireNav();wireAdminCust();}).catch(function(e){toast(e.message,'err');});}
-  function acRow(c){return '<div class="cli" data-cust="'+esc(c._id)+'"><div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(c.name)+(c.status&&c.status!=='active'?' <span style="color:var(--t3);font-size:11px">('+esc(c.status)+')</span>':'')+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+' · '+esc((c.assignedEmployee&&c.assignedEmployee.name)||'unassigned')+'</div></div><div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';}
+  function adminCustomers(){S.screen='customers';S.custPage=1;S.custQ='';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/customers').then(function(d){S.allCustomers=d.data||[];
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers ('+(S.allCustomers.length)+')</div>'+(canRegisterCustomer()?'<div class="ab-back" id="addcust" style="width:auto;padding:0 12px;font-size:22px" title="Register customer">＋</div>':'')+'</div><div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="q" placeholder="Search name, business, ID…"></div><div id="listwrap"></div></div></div>'+bnav('customers'));
+      q('[data-back]').onclick=home;var ac=q('#addcust');if(ac)ac.onclick=function(){registerCustomerModal(adminCustomers);};var box=q('#q');box.oninput=function(){S.custQ=box.value;S.custPage=1;updateAcList();};wireNav();updateAcList();}).catch(function(e){toast(e.message,'err');});}
+  function updateAcList(){var qv=(S.custQ||'').toLowerCase();
+    var full=(S.allCustomers||[]).filter(function(c){return !qv||(c.name||'').toLowerCase().indexOf(qv)>=0||(c.business||'').toLowerCase().indexOf(qv)>=0||acctNo(c).toLowerCase().indexOf(qv)>=0;});
+    var size=25,pages=Math.max(1,Math.ceil(full.length/size));if(S.custPage>pages)S.custPage=pages;if(S.custPage<1)S.custPage=1;var start=(S.custPage-1)*size,slice=full.slice(start,start+size);
+    q('#listwrap').innerHTML=(slice.length?slice.map(function(c,i){return acRow(c,start+i+1);}).join(''):'<div class="empty"><div class="ei">🔍</div>No matches.</div>')+(pages>1?pager(S.custPage,pages,full.length):'');
+    var pp=q('#pp');if(pp)pp.onclick=function(){S.custPage--;updateAcList();};var pn=q('#pn');if(pn)pn.onclick=function(){S.custPage++;updateAcList();};wireAdminCust();}
+  function acRow(c,n){return '<div class="cli" data-cust="'+esc(c._id)+'">'+(n?'<div class="rownum">'+n+'</div>':'')+'<div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(c.name)+(c.status&&c.status!=='active'?' <span style="color:var(--t3);font-size:11px">('+esc(c.status)+')</span>':'')+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+' · '+esc((c.assignedEmployee&&c.assignedEmployee.name)||'unassigned')+'</div></div><div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';}
+  function pager(page,pages,total){return '<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 0"><button class="btn btn-ghost btn-sm" id="pp"'+(page<=1?' disabled style="opacity:.4"':'')+'>‹ Prev</button><span style="font-size:12px;color:var(--t3);font-weight:700">Page '+page+' of '+pages+(total?(' · '+total+' total'):'')+'</span><button class="btn btn-ghost btn-sm" id="pn"'+(page>=pages?' disabled style="opacity:.4"':'')+'>Next ›</button></div>';}
 
   // ---------- EMPLOYEES ----------
   function employeesScreen(){S.screen='employees';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Employees</div><div class="ab-back" id="addemp" style="width:auto;padding:0 12px;font-size:22px">＋</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
