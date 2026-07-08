@@ -39,8 +39,10 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Serve frontend
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve frontend — the redesigned mobile app is the default; classic web app at /web
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/app.html')));
+app.get(['/web', '/classic'], (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+app.use(express.static(path.join(__dirname, '../public'), { index: false }));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -64,9 +66,9 @@ app.use('/api', (req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found.` });
 });
 
-// SPA fallback
+// SPA fallback → redesigned mobile app (the new default)
 app.use((req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.sendFile(path.join(__dirname, '../public/app.html'));
 });
 
 // Global error handler
