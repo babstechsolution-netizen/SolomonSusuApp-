@@ -299,7 +299,11 @@ a{color:inherit;text-decoration:none;}
     Promise.all([api('/api/transactions/collector-summary').catch(function(){return{data:null};}),api('/api/customers').catch(function(){return{data:[]};})]).then(function(r){
       S.summary=r[0].data||{collected:0,visited:0,remaining:0,totalAssigned:0,dailyTarget:0,progress:0};
       var myId=String(S.user.employeeId||'');
-      S.customers=(r[1].data||[]).filter(function(c){var ae=c.assignedEmployee&&(c.assignedEmployee._id||c.assignedEmployee);return String(ae||'')===myId;});
+      // Field collectors see ALL customers (like the manager). Mark the ones assigned to them and show those first.
+      var all=r[1].data||[];
+      all.forEach(function(c){ c._mine = String((c.assignedEmployee&&(c.assignedEmployee._id||c.assignedEmployee))||'')===myId; });
+      all.sort(function(a,b){ return (b._mine?1:0)-(a._mine?1:0); });
+      S.customers=all;
       drawCollectorHome();}).catch(function(e){toast(e.message,'err');drawCollectorHome();});}
   function drawCollectorHome(){S.screen='home';var sm=S.summary||{};
     set('<div class="hdr"><div class="hdr-top"><div><div class="hdr-greet">Welcome,</div><div class="hdr-name">'+esc(S.user.name)+'</div><div class="hdr-sub">📍 '+esc(S.user.zone||'Field Collector')+'</div></div>'+avatarNotif()+'</div>'+
@@ -309,12 +313,13 @@ a{color:inherit;text-decoration:none;}
       '<div class="sc"><div class="body-pad">'+
       (sm.dailyTarget>0?('<div class="card"><div class="s-div" style="margin:0 0 10px"><span class="s-div-title">Daily Target</span><span class="s-div-link">'+sm.progress+'%</span></div><div class="prog-bg"><div class="prog-fill" style="width:'+Math.min(100,sm.progress)+'%"></div></div></div>'):'')+
       '<div class="qa-row"><div class="qa-btn qa-collect" data-go="dep"><span class="qa-icon">💰</span><span class="qa-lbl">Collect</span></div><div class="qa-btn qa-withdraw" data-go="wit"><span class="qa-icon">🏧</span><span class="qa-lbl">Withdraw</span></div><div class="qa-btn qa-scan" data-go="find"><span class="qa-icon">🔎</span><span class="qa-lbl">Find</span></div></div>'+
-      '<div class="s-div"><span class="s-div-title">My Customers</span><span style="font-size:12px;color:var(--t3)">'+S.customers.length+' total</span></div>'+
-      (S.customers.length?S.customers.slice(0,25).map(custRow).join(''):'<div class="empty"><div class="ei">👥</div>No customers assigned yet.</div>')+
+      '<div class="s-div"><span class="s-div-title">All Customers</span><span class="s-div-link" data-go="all">'+S.customers.length+' total ›</span></div>'+
+      (S.customers.length?S.customers.slice(0,30).map(custRow).join(''):'<div class="empty"><div class="ei">👥</div>No customers found.</div>')+
       '</div></div>'+bnav('home'));
     q('[data-go="dep"]').onclick=function(){custList('deposit');};q('[data-go="wit"]').onclick=function(){custList('withdrawal');};q('[data-go="find"]').onclick=function(){custList('deposit');};
+    var sa=q('[data-go="all"]');if(sa)sa.onclick=function(){custList('deposit');};
     wireNav();wireCust();wireAvatar();}
-  function custRow(c){return '<div class="cli" data-c="'+esc(c._id)+'"><div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(c.name)+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+(c.dailyAmount?(' · '+money(c.dailyAmount)+'/day'):'')+'</div></div><div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';}
+  function custRow(c){return '<div class="cli" data-c="'+esc(c._id)+'"><div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(c.name)+(c._mine?' <span style="color:var(--a-500);font-size:11px">★ mine</span>':'')+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+(c.dailyAmount?(' · '+money(c.dailyAmount)+'/day'):'')+'</div></div><div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';}
   function wireCust(){all('[data-c]').forEach(function(el){el.onclick=function(){var c=S.customers.filter(function(x){return x._id===el.getAttribute('data-c');})[0];if(c)startTxn(c,S.txnType||'deposit');};});}
 
   function custList(type){S.screen='customers';S.txnType=type||'deposit';
