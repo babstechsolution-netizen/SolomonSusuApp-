@@ -317,7 +317,7 @@ a{color:inherit;text-decoration:none;}
       S.customers=all;
       drawCollectorHome();}).catch(function(e){toast(e.message,'err');drawCollectorHome();});}
   function drawCollectorHome(){S.screen='home';var sm=S.summary||{};
-    set('<div class="hdr"><div class="hdr-top"><div><div class="hdr-greet">Welcome,</div><div class="hdr-name">'+esc(S.user.name)+'</div><div class="hdr-sub">📍 '+esc(S.user.zone||'Field Collector')+'</div></div>'+avatarNotif()+'</div>'+
+    set('<div class="hdr"><div class="hdr-top">'+menuBtn()+'<div style="flex:1;padding-left:12px"><div class="hdr-greet">Welcome,</div><div class="hdr-name">'+esc(S.user.name)+'</div><div class="hdr-sub">📍 '+esc(S.user.zone||'Field Collector')+'</div></div>'+avatarNotif()+'</div>'+
       '<div class="hero-card"><div class="hc-label">TODAY\'S COLLECTIONS</div><div class="hc-amount">'+money(sm.collected)+'</div>'+
       '<div class="hc-sub">'+(sm.dailyTarget>0?('Target: '+money(sm.dailyTarget)+' · '+sm.progress+'%'):'Keep collecting today')+'</div>'+
       '<div class="pills"><div class="pill"><div class="pill-val">'+(sm.visited||0)+'</div><div class="pill-lbl">Visited</div></div><div class="pill"><div class="pill-val">'+(sm.remaining||0)+'</div><div class="pill-lbl">Remaining</div></div><div class="pill"><div class="pill-val">'+(sm.totalAssigned||0)+'</div><div class="pill-lbl">Total</div></div></div></div></div>'+
@@ -389,7 +389,7 @@ a{color:inherit;text-decoration:none;}
       S.dash={kpi:r[0].data||{},series:r[1].data||[],recent:r[2].data||[],pending:r[3].data||[]};drawDash();}).catch(function(e){toast(e.message,'err');});}
   function drawDash(){S.screen='dash';var k=S.dash.kpi,pend=(S.dash.pending||[]).filter(function(t){return t.type==='withdrawal';});
     var td=(k.todayDeposits||{}).total||0,tw=(k.todayWithdrawals||{}).total||0;
-    set('<div class="hdr"><div class="hdr-top"><div><div class="hdr-name">Overview 📊</div><div class="hdr-sub">'+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</div></div>'+avatarNotif()+'</div>'+
+    set('<div class="hdr"><div class="hdr-top">'+menuBtn()+'<div style="flex:1;padding-left:12px"><div class="hdr-name">Overview 📊</div><div class="hdr-sub">'+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</div></div>'+avatarNotif()+'</div>'+
       '<div class="kpi-row"><div class="kpi"><div class="kpi-ic">💰</div><div class="kpi-val">'+money(td)+'</div><div class="kpi-lbl">Today\'s Deposits</div></div>'+
       '<div class="kpi"><div class="kpi-ic">🏧</div><div class="kpi-val">'+money(tw)+'</div><div class="kpi-lbl">Today\'s Withdrawals</div></div>'+
       '<div class="kpi"><div class="kpi-ic">👥</div><div class="kpi-val">'+(k.activeCustomers||0)+'</div><div class="kpi-lbl">Active Customers</div></div>'+
@@ -434,7 +434,7 @@ a{color:inherit;text-decoration:none;}
     Promise.all([api('/api/customers/me').catch(function(){return{data:null};}),api('/api/transactions?limit=8').catch(function(){return{data:[]};})]).then(function(r){var c=r[0].data;
       if(!c){set('<div class="empty" style="min-height:80vh;display:flex;flex-direction:column;justify-content:center"><div class="ei">🙋</div>No customer profile linked to this account.<div style="margin-top:16px"><button class="btn btn-outline" id="lo">Sign out</button></div></div>');q('#lo').onclick=logout;return;}
       var tgt=c.savingsTarget||0;var pct=tgt>0?Math.min(100,Math.round((c.balance/tgt)*100)):0;
-      set('<div class="hdr" style="padding-bottom:28px"><div class="hdr-top"><div class="ab-title" style="font-size:17px">My Account</div>'+avatarNotif()+'</div>'+
+      set('<div class="hdr" style="padding-bottom:28px"><div class="hdr-top">'+menuBtn()+'<div class="ab-title" style="font-size:17px;flex:1;padding-left:12px">My Account</div>'+avatarNotif()+'</div>'+
         '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px"><div class="set-av">'+initials(c.name)+'</div><div style="flex:1"><div class="hdr-name">'+esc(c.name)+'</div><div class="hdr-sub" style="font-family:monospace">🪪 '+esc(acctNo(c))+'</div></div></div>'+
         '<div class="hero-card"><div class="hc-label">CURRENT BALANCE</div><div class="hc-amount">'+money(c.balance)+'</div>'+
         (tgt>0?('<div style="background:rgba(0,0,0,.15);border-radius:var(--r12);padding:12px 14px;margin-top:14px"><div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.6);margin-bottom:8px"><span>Savings Target</span><span style="color:var(--a-400);font-weight:800">'+pct+'%</span></div><div class="prog-bg gold"><div class="prog-fill" style="width:'+pct+'%"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:rgba(255,255,255,.55)"><span>'+money(c.balance)+' saved</span><span>Target: '+money(tgt)+'</span></div></div>'):'')+
@@ -489,13 +489,26 @@ a{color:inherit;text-decoration:none;}
   function defaultPrivs(role){return DEFAULT_PRIVS[role]||[];}
 
   // ---------- MORE HUB ----------
-  function moreScreen(){S.screen='more';
-    var items=[['customers','👥','Customers','All customer records'],['collections','💰','Collections','Deposits recorded'],['withdrawals','🏧','Withdrawals','Withdrawals & payouts'],['employees','🧑‍💼','Employees','Staff & performance'],['assignments','🔗','Assignments','Assign customers to collectors'],['roles','🛡️','Roles & Privileges','Control staff access'],['reports','📈','Reports','Totals & breakdowns'],['leaderboard','🏆','Leaderboard','Top collectors'],['loans','💳','Loans','Customer loans'],['txns','🧾','Transactions','All transactions']];
-    if(role()==='Super Admin')items.push(['activity','🕐','Activity Log','Audit trail of every action']);
-    set('<div class="app-bar"><div class="ab-title">More</div></div><div class="sc"><div class="body-pad"><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)">'+
-      items.map(function(it){return '<div class="set-item" data-go="'+it[0]+'"><div class="set-ic">'+it[1]+'</div><div style="flex:1"><div class="set-lbl">'+it[2]+'</div><div class="set-val">'+it[3]+'</div></div><span class="set-val">›</span></div>';}).join('')+
-      '</div></div></div>'+bnav('more'));
-    all('[data-go]').forEach(function(el){el.onclick=function(){nav(el.getAttribute('data-go'));};});wireNav();}
+  // Full role-based module menu — mirrors the web sidebar so every module is present for every role.
+  function menuFor(){var r=role();
+    if(r==='Super Admin'||r==='Branch Manager'){
+      var m=[['dash','🏠','Dashboard'],['txns','🔁','Transactions'],['collections','💳','Collections'],['withdrawals','🏧','Withdrawals'],['approvals','✅','Approvals'],['employees','🧑‍💼','Employees'],['customers','👥','Customers'],['assignments','🔗','Assignments'],['loans','💵','Loans'],['leaderboard','📈','Leaderboard'],['roles','👑','Roles & Privileges'],['reports','📊','Reports']];
+      if(r==='Super Admin')m.push(['activity','🕐','Activity Log']);
+      m.push(['notifs','🔔','Notifications']);m.push(['settings','⚙️','Settings']);return m;
+    }
+    if(r==='Field Collector')return [['home','🏠','Dashboard'],['txns','🔁','Transactions'],['collections','💳','Collections'],['withdrawals','🏧','Withdrawals'],['customers','👥','Customers'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];
+    if(r==='Accountant')return [['dash','🏠','Dashboard'],['txns','🔁','Transactions'],['withdrawals','🏧','Withdrawals'],['approvals','✅','Approvals'],['reports','📊','Reports'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];
+    if(r==='Customer')return [['home','🏠','My Account'],['txns','🧾','Transactions'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];
+    return [['home','🏠','Home'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];
+  }
+  function moreScreen(){S.screen='more';var items=menuFor();
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Menu</div></div>'+
+      '<div class="sc"><div class="set-hero" style="margin-bottom:0"><div class="set-av">'+initials(S.user.name)+'</div><div style="flex:1"><div class="set-name">'+esc(S.user.name)+'</div><div class="set-role">'+esc(S.user.role)+'</div></div></div>'+
+      '<div class="body-pad"><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)">'+
+      items.map(function(it){return '<div class="set-item" data-go="'+it[0]+'"><div class="set-ic">'+it[1]+'</div><span class="set-lbl">'+it[2]+'</span>'+(it[0]==='notifs'&&S.unread?'<span class="set-val" style="color:var(--wit);font-weight:800">'+(S.unread>9?'9+':S.unread)+'</span>':'')+'<span class="set-val">›</span></div>';}).join('')+
+      '</div><div style="margin-top:14px;border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)"><div class="set-item" id="lo"><div class="set-ic">🚪</div><span class="set-lbl" style="color:var(--wit)">Logout</span></div></div>'+
+      '</div></div>'+bnav('more'));
+    q('[data-back]').onclick=home;all('[data-go]').forEach(function(el){el.onclick=function(){nav(el.getAttribute('data-go'));};});q('#lo').onclick=logout;wireNav();}
 
   // ---------- ADMIN: CUSTOMERS ----------
   function adminCustomers(){S.screen='customers';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
@@ -623,7 +636,8 @@ a{color:inherit;text-decoration:none;}
 
   // ---------- NAV ----------
   function avatarNotif(){return '<div class="hdr-av" id="av">'+initials(S.user.name)+(S.unread?'<div class="notif-badge">'+(S.unread>9?'9+':S.unread)+'</div>':'')+'</div>';}
-  function wireAvatar(){var a=q('#av');if(a)a.onclick=notifsScreen;}
+  function menuBtn(){return '<div class="hdr-av" id="menu" style="background:rgba(255,255,255,.15);font-size:22px">☰</div>';}
+  function wireAvatar(){var a=q('#av');if(a)a.onclick=notifsScreen;var m=q('#menu');if(m)m.onclick=moreScreen;}
   function bnav(active){var r=role();var items;
     if(r==='Field Collector')items=[['home','🏠','Home'],['customers','👥','Customers'],['notifs','🔔','Alerts'],['settings','⚙️','Settings']];
     else if(r==='Customer')items=[['home','🏠','Account'],['txns','🧾','History'],['notifs','🔔','Alerts'],['settings','⚙️','Settings']];
