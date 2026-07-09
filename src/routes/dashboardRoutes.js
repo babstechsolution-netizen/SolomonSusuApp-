@@ -79,6 +79,42 @@ router.get('/timeseries', async (req, res) => {
   }
 });
 
+// GET /api/dashboard/period-summary?period=today|week|month|year|all
+router.get('/period-summary', async (req, res) => {
+  try {
+    const period = (req.query.period || 'today').toLowerCase();
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    let from = null;
+    if (period === 'today') from = ymd(now);
+    else if (period === 'week') { const d = new Date(now); d.setDate(now.getDate() - 6); from = ymd(d); }
+    else if (period === 'month') from = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-01';
+    else if (period === 'year') from = now.getFullYear() + '-01-01';
+    // 'all' -> no date filter
+
+    const match = { status: 'approved' };
+    if (from) match.date = { $gte: from };
+    const agg = await Transaction.aggregate([
+      { $match: match },
+      { $group: { _id: '$type', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+    ]);
+    const dep = agg.find((a) => a._id === 'deposit') || { total: 0, count: 0 };
+    const wit = agg.find((a) => a._id === 'withdrawal') || { total: 0, count: 0 };
+    res.json({
+      success: true,
+      data: {
+        period, from,
+        deposits: { total: dep.total || 0, count: dep.count || 0 },
+        withdrawals: { total: wit.total || 0, count: wit.count || 0 },
+        net: (dep.total || 0) - (wit.total || 0),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // GET /api/dashboard/reports  — monthly aggregated data
 router.get('/reports', async (req, res) => {
   try {
