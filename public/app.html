@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}</script>
 <style>
 :root{
   --g-900:#0A2E15;--g-800:#0F3D1C;--g-700:#155228;--g-600:#1A5C2E;--g-500:#216B36;--g-400:#2E7D44;--g-300:#3A9455;--g-100:#A8D8B5;--g-50:#E0F2E7;--g-25:#F0F9F3;
