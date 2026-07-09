@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.awinbere.savings",
+      "sha256_cert_fingerprints": [
+        "25:6C:2C:27:F4:45:FE:AD:D4:BA:3A:2B:28:8A:A2:21:7B:E5:1A:74:BE:C0:78:A0:74:C8:43:77:DB:E4:5B:74"
+      ]
+    }
+  }
+]

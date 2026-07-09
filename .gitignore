@@ -5,3 +5,7 @@ node_modules/
 db details.txt
 _tmp_check.js
 index.html.html
+
+apk-build/
+build-apk.js
+sign-apk.js

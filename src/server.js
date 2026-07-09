@@ -42,6 +42,11 @@ app.use(express.urlencoded({ extended: true }));
 // Serve frontend — the redesigned mobile app is the default; classic web app at /web
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/app.html')));
 app.get(['/web', '/classic'], (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+// Digital Asset Links — verifies the Android app (TWA) so it opens full-screen without a URL bar
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  res.type('application/json');
+  res.sendFile(path.join(__dirname, '../public/.well-known/assetlinks.json'));
+});
 app.use(express.static(path.join(__dirname, '../public'), { index: false }));
 
 // Health check
