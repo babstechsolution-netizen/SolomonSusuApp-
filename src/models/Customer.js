@@ -13,6 +13,8 @@ const customerSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 },
   totalDeposits: { type: Number, default: 0 },
   totalWithdrawals: { type: Number, default: 0 },
+  // Susu commission: the first deposit of each month (YYYY-MM) is taken as company profit
+  lastCommissionMonth: { type: String, default: '' },
   savingsTarget: { type: Number, default: 10000 },
   dailyAmount: { type: Number, default: 50 },
   startDate: { type: String },

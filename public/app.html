@@ -347,11 +347,11 @@ a{color:inherit;text-decoration:none;}
     q('#listwrap').innerHTML=(slice.length?slice.map(function(c,i){return custRow(c,start+i+1);}).join(''):'<div class="empty"><div class="ei">🔍</div>No customers.</div>')+(pages>1?pager(S.cPage,pages,full.length):'');
     var pp=q('#pp');if(pp)pp.onclick=function(){S.cPage--;updateCList();};var pn=q('#pn');if(pn)pn.onclick=function(){S.cPage++;updateCList();};wireCust();}
 
-  function startTxn(c,type){S.draft={cust:c,type:type||'deposit',amount:0,method:'Cash',note:''};amountScreen();}
+  function startTxn(c,type){type=type||'deposit';S.draft={cust:c,type:type,amount:(type==='deposit'&&c.dailyAmount>0?c.dailyAmount:0),method:'Cash',note:''};amountScreen();}
   function amountScreen(){S.screen='amount';var d=S.draft,c=d.cust,isW=d.type==='withdrawal';var chips=isW?[50,100,200,500]:[5,10,20,50,100];
     set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+(isW?'Record Withdrawal':'Record Deposit')+'</div></div>'+
       '<div class="step-ind"><div class="b on"></div><div class="b"></div><div style="font-size:11px;color:var(--t3);font-weight:700;margin-left:4px">1 of 2</div></div>'+
-      '<div class="cust-confirm'+(isW?' wit':'')+'"><div class="cc-av">'+initials(c.name)+'</div><div style="flex:1"><div class="cc-name">'+esc(c.name)+'</div><div class="cc-id">'+esc(acctNo(c))+'</div><div class="cc-bal" style="'+(isW?'color:var(--wit)':'')+'">Balance: '+money(c.balance)+'</div></div>'+(isW?'✏️':'✓')+'</div>'+
+      '<div class="cust-confirm'+(isW?' wit':'')+'"><div class="cc-av">'+initials(c.name)+'</div><div style="flex:1"><div class="cc-name">'+esc(c.name)+'</div><div class="cc-id">'+esc(acctNo(c))+'</div><div class="cc-bal" style="'+(isW?'color:var(--wit)':'')+'">Balance: '+money(c.balance)+'</div><div style="font-size:11px;color:var(--t3);margin-top:2px">Daily susu: '+money(c.dailyAmount||0)+(canSetDaily()?' · <span id="setdaily" style="color:var(--g-600);font-weight:700">set</span>':'')+'</div></div>'+(isW?'✏️':'✓')+'</div>'+
       '<div class="type-toggle"><div class="type-btn '+(!isW?'sel-dep':'')+'" data-t="deposit">💰 Deposit</div><div class="type-btn '+(isW?'sel-wit':'')+'" data-t="withdrawal">🏧 Withdrawal</div></div>'+
       '<div class="amt-display"><span class="amt-curr">GH₵</span><span class="amt-val'+(isW?' wit':'')+'" id="show">'+(d.amount||0)+'</span></div>'+
       '<div class="amt-chips">'+chips.map(function(v){return '<span class="ac'+(d.amount===v?' sel':'')+'" data-a="'+v+'">'+money(v)+'</span>';}).join('')+'</div>'+
@@ -360,6 +360,7 @@ a{color:inherit;text-decoration:none;}
       '<div style="padding:14px 16px"><input class="inp" id="note" placeholder="Add note (optional)" value="'+esc(d.note)+'"></div>'+
       '<div style="padding:0 16px 24px"><button class="btn btn-full btn-lg '+(isW?'':'btn-p')+'" id="next" style="'+(isW?'background:linear-gradient(135deg,#B91C1C,#DC2626);color:#fff;box-shadow:0 4px 18px rgba(220,38,38,.3)':'')+'">Next: Review →</button></div>');
     q('[data-back]').onclick=function(){ if(role()==='Field Collector')custList(d.type); else home(); };
+    var sd=q('#setdaily');if(sd)sd.onclick=function(){setDailyAmountModal(c);};
     all('[data-t]').forEach(function(el){el.onclick=function(){d.type=el.getAttribute('data-t');amountScreen();};});
     function upd(){q('#show').textContent=d.amount;all('.ac').forEach(function(el){el.classList.toggle('sel',Number(el.getAttribute('data-a'))===d.amount);});}
     all('.ac').forEach(function(el){el.onclick=function(){d.amount=Number(el.getAttribute('data-a'))||0;q('#amt').value=d.amount||'';upd();};});
@@ -379,11 +380,15 @@ a{color:inherit;text-decoration:none;}
   function cr(k,v){return '<div class="conf-row"><span class="conf-key">'+k+'</span><span class="conf-val">'+v+'</span></div>';}
   function submitTxn(){var d=S.draft,c=d.cust,btn=q('#ok');btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
     api('/api/transactions',{method:'POST',body:JSON.stringify({customerId:c._id,amount:d.amount,type:d.type,method:d.method,notes:d.note,idempotencyKey:uuid()})}).then(function(r){if(r.queued){toast(r.message||'Saved offline — will sync','warn');collectorHome();return;}receiptScreen(r.data,c,d);}).catch(function(e){toast(e.message||'Failed','err');reviewScreen();});}
-  function receiptScreen(tx,c,d){S.screen='receipt';var isW=d.type==='withdrawal';var fee=tx.feeAmount||0;var nb=isW?(c.balance-(tx.amount+fee)):(c.balance+tx.amount);
-    var wa='Awinbire Receipt%0AType: '+(isW?'WITHDRAWAL':'DEPOSIT')+'%0ACustomer: '+encodeURIComponent(c.name)+'%0AAmount: '+encodeURIComponent(money(tx.amount))+'%0AMethod: '+encodeURIComponent(d.method)+'%0ARef: '+encodeURIComponent(tx.receiptNumber||'')+'%0A%0AThank you for saving with Awinbire';
-    set('<div class="receipt-success'+(isW?' wit':'')+'"><div class="rcpt-check">✓</div><div class="rcpt-title">'+(isW?'Withdrawal Recorded!':'Deposit Recorded!')+'</div><div class="rcpt-sub">Saved to your database</div><div class="rcpt-amt">'+money(tx.amount)+'</div></div>'+
+  function receiptScreen(tx,c,d){S.screen='receipt';var isW=d.type==='withdrawal';var fee=tx.feeAmount||0;
+    var pending=tx.status==='pending';var comm=!!tx.isCommission;
+    var nb=pending?c.balance:(isW?(c.balance-(tx.amount+fee)):(comm?c.balance:c.balance+tx.amount));
+    var title=pending?'Withdrawal Requested':(isW?'Withdrawal Recorded!':'Deposit Recorded!');
+    var sub=pending?'⏳ Awaiting manager approval':(comm?'Monthly susu commission taken':'Saved to your database');
+    var wa='Awinbire Receipt%0AType: '+(isW?'WITHDRAWAL':'DEPOSIT')+'%0ACustomer: '+encodeURIComponent(c.name)+'%0AAmount: '+encodeURIComponent(money(tx.amount))+'%0AMethod: '+encodeURIComponent(d.method)+'%0AStatus: '+(pending?'PENDING APPROVAL':'DONE')+'%0ARef: '+encodeURIComponent(tx.receiptNumber||'')+'%0A%0AThank you for saving with Awinbire';
+    set('<div class="receipt-success'+(isW||pending?' wit':'')+'"><div class="rcpt-check">'+(pending?'⏳':'✓')+'</div><div class="rcpt-title">'+title+'</div><div class="rcpt-sub">'+sub+'</div><div class="rcpt-amt">'+money(tx.amount)+'</div></div>'+
       '<div class="sc"><div class="receipt-paper"><div class="rcpt-stripe"></div><div class="rcpt-head"><div class="rcpt-logo-name">Awinbire Enterprise<br><span style="font-size:9px;color:var(--t3);font-weight:600">Savings Management</span></div><div class="rcpt-ref">Ref: <strong>'+esc(tx.receiptNumber||'—')+'</strong></div></div><div class="rcpt-body">'+
-      rr('Type',(isW?'🏧 Withdrawal':'💰 Deposit'))+rr('Customer',esc(c.name))+rr('Account #','<span style="font-family:monospace;color:var(--g-600)">'+esc(acctNo(c))+'</span>')+rr('Amount','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+'">'+money(tx.amount)+'</span>')+(isW?rr('Fee',money(fee)):'')+rr('Method',esc(d.method))+rr('New Balance','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+';font-weight:900">'+money(nb)+'</span>')+rr('Status',esc(tx.status||'approved'))+rr('Collector',esc(S.user.name))+
+      rr('Type',(isW?'🏧 Withdrawal':'💰 Deposit'))+rr('Customer',esc(c.name))+rr('Account #','<span style="font-family:monospace;color:var(--g-600)">'+esc(acctNo(c))+'</span>')+rr('Amount','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+'">'+money(tx.amount)+'</span>')+(isW?rr('Fee',money(fee)):'')+(comm?rr('Note','<span style="color:var(--a-600)">Monthly susu commission → company profit</span>'):'')+rr('Method',esc(d.method))+rr(pending?'Balance (unchanged)':'New Balance','<span style="color:'+(isW?'var(--wit)':'var(--dep)')+';font-weight:900">'+money(nb)+'</span>')+rr('Status',pending?'⏳ Pending approval':esc(tx.status||'approved'))+rr('Collector',esc(S.user.name))+
       '</div><div style="padding:14px 20px;background:var(--surf2);text-align:center;font-size:10px;color:var(--t3)">Thank you for saving with Awinbire Enterprise 🌿</div></div>'+
       '<div class="rcpt-actions"><a class="btn btn-full" style="background:#25D366;color:#fff" href="https://wa.me/?text='+wa+'" target="_blank">📲 WhatsApp</a><button class="btn btn-ghost btn-full" id="pr">🖨 Print</button></div>'+
       '<div style="padding:0 16px 30px"><button class="btn btn-p btn-full" id="hm">← Back to Home</button></div></div>');
@@ -404,7 +409,8 @@ a{color:inherit;text-decoration:none;}
       '<div class="kpi"><div class="kpi-ic">🏧</div><div class="kpi-val">'+money(ps.withdrawals.total)+'</div><div class="kpi-lbl">Withdrawals · '+pl+'</div></div>'+
       '<div class="kpi"><div class="kpi-ic">⚖️</div><div class="kpi-val">'+money(net)+'</div><div class="kpi-lbl">Net · '+pl+'</div></div>'+
       '<div class="kpi"><div class="kpi-ic">👥</div><div class="kpi-val">'+(k.activeCustomers||0)+'</div><div class="kpi-lbl">Active Customers</div></div>'+
-      '<div class="kpi"><div class="kpi-ic">🏦</div><div class="kpi-val">'+money(k.totalBalance)+'</div><div class="kpi-lbl">Total Savings</div></div></div></div>'+
+      '<div class="kpi"><div class="kpi-ic">🏦</div><div class="kpi-val">'+money(k.totalBalance)+'</div><div class="kpi-lbl">Total Savings</div></div>'+
+      '<div class="kpi"><div class="kpi-ic">🏆</div><div class="kpi-val">'+money(k.companyProfit||0)+'</div><div class="kpi-lbl">Company Net Profit</div></div></div></div>'+
       '<div class="sc"><div class="body-pad">'+
       '<div class="chip-row" style="margin-bottom:8px">'+['today','week','month','year','all'].map(function(p){return '<span class="chip'+(S.dashPeriod===p?' on':'')+'" data-per="'+p+'">'+({today:'Today',week:'Week',month:'Month',year:'Year',all:'All'})[p]+'</span>';}).join('')+'</div>'+
       '<div style="font-size:11px;color:var(--t3);margin-bottom:12px">'+pl+': '+(ps.deposits.count||0)+' deposits · '+(ps.withdrawals.count||0)+' withdrawals</div>'+
@@ -498,7 +504,7 @@ a{color:inherit;text-decoration:none;}
   // ---------- SHARED REFERENCE DATA ----------
   var ROLES=[{key:'field_collector',name:'Field Collector'},{key:'branch_manager',name:'Branch Manager'},{key:'accountant',name:'Accountant'},{key:'team_lead',name:'Team Lead'},{key:'cashier',name:'Cashier'},{key:'supervisor',name:'Supervisor'}];
   function roleLabel(k){var r=ROLES.filter(function(x){return x.key===k;})[0];return r?r.name:(k||'Staff');}
-  var PRIVS=[{id:'collect_money',n:'Collect Money',c:'Transactions'},{id:'process_withdrawal',n:'Process Withdrawals',c:'Transactions'},{id:'approve_transactions',n:'Approve Transactions',c:'Transactions'},{id:'manage_customers',n:'Manage Customers',c:'Customers'},{id:'assign_customers',n:'Assign Customers',c:'Customers'},{id:'view_reports',n:'View Reports',c:'Data & Reports'},{id:'export_data',n:'Export Data',c:'Data & Reports'},{id:'manage_employees',n:'Manage Employees',c:'Management'},{id:'view_all_transactions',n:'View All Transactions',c:'Access'},{id:'view_own_transactions',n:'View Own Transactions',c:'Access'},{id:'generate_receipts',n:'Generate Receipts',c:'Operations'},{id:'system_settings',n:'System Settings',c:'Administration'}];
+  var PRIVS=[{id:'collect_money',n:'Collect Money',c:'Transactions'},{id:'process_withdrawal',n:'Process Withdrawals',c:'Transactions'},{id:'approve_transactions',n:'Approve Transactions (incl. withdrawals)',c:'Transactions'},{id:'enroll_customers',n:'Enroll New Customers',c:'Customers'},{id:'manage_customers',n:'Manage Customers',c:'Customers'},{id:'set_daily_amount',n:'Set Daily Susu Amount',c:'Customers'},{id:'assign_customers',n:'Assign Customers',c:'Customers'},{id:'view_reports',n:'View Reports',c:'Data & Reports'},{id:'export_data',n:'Export Data',c:'Data & Reports'},{id:'manage_employees',n:'Edit / Manage Users',c:'Management'},{id:'view_all_transactions',n:'View All Transactions',c:'Access'},{id:'view_own_transactions',n:'View Own Transactions',c:'Access'},{id:'generate_receipts',n:'Generate Receipts',c:'Operations'},{id:'system_settings',n:'System Settings',c:'Administration'}];
   var DEFAULT_PRIVS={field_collector:['collect_money','process_withdrawal','view_own_transactions','generate_receipts'],branch_manager:['collect_money','process_withdrawal','approve_transactions','view_reports','export_data','manage_customers','assign_customers','manage_employees','view_all_transactions','generate_receipts'],accountant:['view_reports','export_data','view_all_transactions','approve_transactions'],team_lead:['collect_money','process_withdrawal','view_reports','assign_customers','view_all_transactions','generate_receipts'],cashier:['collect_money','process_withdrawal','generate_receipts','view_own_transactions'],supervisor:['collect_money','process_withdrawal','approve_transactions','view_reports','assign_customers','view_all_transactions','generate_receipts']};
   function defaultPrivs(role){return DEFAULT_PRIVS[role]||[];}
 
@@ -510,7 +516,7 @@ a{color:inherit;text-decoration:none;}
       if(r==='Super Admin')m.push(['activity','🕐','Activity Log']);
       m.push(['notifs','🔔','Notifications']);m.push(['settings','⚙️','Settings']);return m;
     }
-    if(r==='Field Collector')return [['home','🏠','Dashboard'],['txns','🔁','Transactions'],['collections','💳','Collections'],['withdrawals','🏧','Withdrawals'],['customers','👥','Customers'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];
+    if(r==='Field Collector'){var fm=[['home','🏠','Dashboard'],['txns','🔁','Transactions'],['collections','💳','Collections'],['withdrawals','🏧','Withdrawals'],['customers','👥','Customers']];if((S.user.privileges||[]).indexOf('approve_transactions')>=0)fm.push(['approvals','✅','Approvals']);fm.push(['notifs','🔔','Notifications']);fm.push(['settings','⚙️','Settings']);return fm;}
     if(r==='Accountant')return [['dash','🏠','Dashboard'],['txns','🔁','Transactions'],['withdrawals','🏧','Withdrawals'],['approvals','✅','Approvals'],['reports','📊','Reports'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];
     if(r==='Customer')return [['home','🏠','My Account'],['txns','🧾','Transactions'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];
     return [['home','🏠','Home'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];
@@ -613,15 +619,19 @@ a{color:inherit;text-decoration:none;}
       q('[data-back]').onclick=moreScreen;wireNav();}).catch(function(e){toast(e.message,'err');});}
 
   // ---------- REGISTER CUSTOMER ----------
-  function canRegisterCustomer(){var r=role();return r==='Super Admin'||r==='Branch Manager'||(r==='Field Collector'&&(S.user.privileges||[]).indexOf('manage_customers')>=0);}
-  function registerCustomerModal(onDone){modal('<h3>Register New Customer</h3><div class="inp-wrap"><input class="inp" id="cn" placeholder="Full name *"></div><div class="inp-wrap"><input class="inp" id="cp" placeholder="Phone *"></div><div class="inp-wrap"><input class="inp" id="cb" placeholder="Business / Occupation"></div><div class="inp-wrap"><input class="inp" id="cl" placeholder="Location / Market"></div><div class="inp-wrap"><input class="inp" id="cid" placeholder="National ID (optional)"></div><button class="btn btn-p btn-full btn-lg" id="cs">Register</button><button class="btn btn-ghost btn-full" style="margin-top:8px" id="cc">Cancel</button>');
+  function canRegisterCustomer(){var r=role();var p=S.user.privileges||[];return r==='Super Admin'||r==='Branch Manager'||(r==='Field Collector'&&(p.indexOf('manage_customers')>=0||p.indexOf('enroll_customers')>=0));}
+  function canSetDaily(){var r=role();var p=S.user.privileges||[];return r==='Super Admin'||r==='Branch Manager'||(r==='Field Collector'&&(p.indexOf('set_daily_amount')>=0||p.indexOf('manage_customers')>=0));}
+  function registerCustomerModal(onDone){modal('<h3>Register New Customer</h3><div class="inp-wrap"><input class="inp" id="cn" placeholder="Full name *"></div><div class="inp-wrap"><input class="inp" id="cp" placeholder="Phone *"></div><div class="inp-wrap"><input class="inp" id="cb" placeholder="Business / Occupation"></div><div class="inp-wrap"><input class="inp" id="cl" placeholder="Location / Market"></div><div class="inp-wrap"><label class="inp-lbl">Daily Susu Amount (GH₵)</label><input class="inp" id="cd" type="number" inputmode="decimal" placeholder="e.g. 10"></div><div class="inp-wrap"><input class="inp" id="cid" placeholder="National ID (optional)"></div><button class="btn btn-p btn-full btn-lg" id="cs">Register</button><button class="btn btn-ghost btn-full" style="margin-top:8px" id="cc">Cancel</button>');
     q('#cc').onclick=closeModal;q('#cs').onclick=function(){var name=q('#cn').value.trim(),phone=q('#cp').value.trim();if(!name||!phone){toast('Name and phone are required','err');return;}var b=q('#cs');b.innerHTML='<span class="spin"></span>';b.disabled=true;
-      var payload={name:name,phone:phone,business:q('#cb').value.trim(),location:q('#cl').value.trim(),status:'active'};var nid=q('#cid').value.trim();if(nid)payload.nationalId=nid;
+      var payload={name:name,phone:phone,business:q('#cb').value.trim(),location:q('#cl').value.trim(),status:'active'};var nid=q('#cid').value.trim();if(nid)payload.nationalId=nid;var da=Number(q('#cd').value);if(da>0)payload.dailyAmount=da;
       api('/api/customers',{method:'POST',body:JSON.stringify(payload)}).then(function(){closeModal();toast('Customer registered','ok');if(onDone)onDone();}).catch(function(e){toast(e.message,'err');closeModal();});};}
+  function setDailyAmountModal(c){modal('<h3>Daily Susu Amount</h3><div style="font-size:12px;color:var(--t3);margin-bottom:12px">'+esc(c.name)+' — the fixed amount collected each day.</div><div class="inp-wrap"><label class="inp-lbl">Amount (GH₵)</label><input class="inp" id="da" type="number" inputmode="decimal" value="'+(c.dailyAmount||0)+'"></div><button class="btn btn-p btn-full btn-lg" id="ds">Save</button><button class="btn btn-ghost btn-full" style="margin-top:8px" id="dc">Cancel</button>');
+    q('#dc').onclick=closeModal;q('#ds').onclick=function(){var v=Number(q('#da').value)||0;var b=q('#ds');b.innerHTML='<span class="spin"></span>';b.disabled=true;api('/api/customers/'+c._id,{method:'PATCH',body:JSON.stringify({dailyAmount:v})}).then(function(){closeModal();toast('Daily amount set to '+money(v),'ok');}).catch(function(e){toast(e.message,'err');closeModal();});};}
 
   // ---------- CUSTOMER ACTIONS ----------
   function wireAdminCust(){all('[data-cust]').forEach(function(el){el.onclick=function(){var c=(S.allCustomers||[]).filter(function(x){return x._id===el.getAttribute('data-cust');})[0];if(c)customerActions(c);};});}
   function customerActions(c){var r=role();var acts=[['dep','💰','Record Deposit'],['wit','🏧','Record Withdrawal']];
+    if(canSetDaily())acts.push(['daily','💵','Set Daily Susu Amount ('+money(c.dailyAmount||0)+')']);
     if(r==='Super Admin'||r==='Branch Manager'){acts.push(['edit','✏️','Edit Details']);acts.push(['login','🔑','Create Login']);acts.push(['assign','🔗','Reassign Collector']);}
     acts.push([c.status==='active'?'suspend':'activate',c.status==='active'?'⏸️':'▶️',c.status==='active'?'Suspend':'Activate']);
     if(r==='Super Admin')acts.push(['del','🗑️','Delete Customer']);
@@ -629,6 +639,7 @@ a{color:inherit;text-decoration:none;}
     q('#cx').onclick=closeModal;
     all('[data-x]').forEach(function(el){el.onclick=function(){var a=el.getAttribute('data-x');closeModal();
       if(a==='dep')startTxn(c,'deposit');else if(a==='wit')startTxn(c,'withdrawal');
+      else if(a==='daily')setDailyAmountModal(c);
       else if(a==='edit')editCustomerModal(c);else if(a==='login')createLoginModal(c);
       else if(a==='assign')api('/api/employees').then(function(d){S.asgEmps=d.data||[];assignModal(c);}).catch(function(e){toast(e.message,'err');});
       else if(a==='suspend')setCustStatus(c,'inactive');else if(a==='activate')setCustStatus(c,'active');

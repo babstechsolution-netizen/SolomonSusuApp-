@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
       totalCustomers, activeCustomers,
       totalEmployees, activeEmployees,
       todayDeposits, todayWithdrawals,
-      totalBalance, activeLoans, overdueLoans,
+      totalBalance, activeLoans, overdueLoans, profit,
     ] = await Promise.all([
       Customer.countDocuments(),
       Customer.countDocuments({ status: 'active' }),
@@ -27,8 +27,14 @@ router.get('/', async (req, res) => {
       Customer.aggregate([{ $group: { _id: null, total: { $sum: '$balance' } } }]),
       Loan.countDocuments({ status: 'active' }),
       Loan.countDocuments({ status: 'overdue' }),
+      // Company net profit = susu commissions (first deposit each month) + withdrawal fees
+      Transaction.aggregate([
+        { $match: { status: 'approved' } },
+        { $group: { _id: null, commissions: { $sum: { $cond: ['$isCommission', '$amount', 0] } }, fees: { $sum: '$feeAmount' } } },
+      ]),
     ]);
 
+    const p = profit[0] || { commissions: 0, fees: 0 };
     res.json({
       success: true,
       data: {
@@ -38,6 +44,9 @@ router.get('/', async (req, res) => {
         todayWithdrawals: todayWithdrawals[0] || { total: 0, count: 0 },
         totalBalance: (totalBalance[0] || {}).total || 0,
         activeLoans, overdueLoans,
+        companyProfit: (p.commissions || 0) + (p.fees || 0),
+        commissionTotal: p.commissions || 0,
+        feeTotal: p.fees || 0,
       },
     });
   } catch (err) {

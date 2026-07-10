@@ -4,7 +4,7 @@ const Customer = require('../models/Customer');
 const Employee = require('../models/Employee');
 const Setting = require('../models/Setting');
 const User = require('../models/User');
-const { protect, requireRole } = require('../middleware/auth');
+const { protect, requireRole, requireRoleOrPriv } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
 const { createNotification } = require('../utils/notify');
 const { sync } = require('../socket');
@@ -128,38 +128,41 @@ router.post('/', async (req, res) => {
     if (!customer) return res.status(404).json({ success: false, message: 'Customer not found.' });
 
     const employee = isCustomer ? null : await Employee.findOne({ userId: req.user._id });
-    const txStatus = isCustomer ? 'pending' : 'approved';
     const ws = await getWithdrawalSettings();
     const amt = Number(amount);
 
-    if (type === 'withdrawal') {
-      const fee = Math.round(amt * ws.feePercent / 100 * 100) / 100;
-      const totalDeduction = amt + fee;
+    // Approval policy: deposits go through immediately; withdrawals need admin/manager
+    // approval unless the recorder is an admin/manager or has the approve_transactions privilege.
+    const canApprove = req.user.role === 'Super Admin' || req.user.role === 'Branch Manager'
+      || (employee && Array.isArray(employee.privileges) && employee.privileges.includes('approve_transactions'));
+    let txStatus;
+    if (isCustomer) txStatus = 'pending';
+    else if (type === 'deposit') txStatus = 'approved';
+    else txStatus = canApprove ? 'approved' : 'pending';
 
+    const fee = type === 'withdrawal' ? Math.round(amt * ws.feePercent / 100 * 100) / 100 : 0;
+
+    if (type === 'withdrawal') {
+      const totalDeduction = amt + fee;
       // Customers: validate min balance and fee
       if (isCustomer) {
         if (customer.balance <= ws.minBalance) {
-          return res.status(400).json({
-            success: false,
-            message: `Your balance (GH₵${customer.balance.toLocaleString()}) is at or below the minimum required balance of GH₵${ws.minBalance.toLocaleString()}. Withdrawal not allowed.`,
-          });
+          return res.status(400).json({ success: false, message: `Your balance (GH₵${customer.balance.toLocaleString()}) is at or below the minimum required balance of GH₵${ws.minBalance.toLocaleString()}. Withdrawal not allowed.` });
         }
         if (totalDeduction > customer.balance - ws.minBalance) {
           const maxAllowed = Math.max(0, (customer.balance - ws.minBalance) / (1 + ws.feePercent / 100));
-          return res.status(400).json({
-            success: false,
-            message: `Amount too high. With a ${ws.feePercent}% fee and minimum balance of GH₵${ws.minBalance}, you can withdraw up to GH₵${maxAllowed.toFixed(2)}.`,
-          });
+          return res.status(400).json({ success: false, message: `Amount too high. With a ${ws.feePercent}% fee and minimum balance of GH₵${ws.minBalance}, you can withdraw up to GH₵${maxAllowed.toFixed(2)}.` });
         }
       }
-
-      // Employees/admin immediate approval: check balance
-      if (!isCustomer && totalDeduction > customer.balance) {
+      // Only block immediately-approved withdrawals for insufficient balance; pending ones re-check at approval.
+      if (txStatus === 'approved' && totalDeduction > customer.balance) {
         return res.status(400).json({ success: false, message: 'Insufficient balance.' });
       }
     }
 
-    const fee = type === 'withdrawal' ? Math.round(amt * ws.feePercent / 100 * 100) / 100 : 0;
+    // Susu commission: the FIRST deposit of each calendar month is taken as company profit.
+    const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+    const isCommission = (type === 'deposit' && txStatus === 'approved' && customer.lastCommissionMonth !== currentMonth);
 
     const tx = await Transaction.create({
       customer: customer._id,
@@ -170,17 +173,25 @@ router.post('/', async (req, res) => {
       type,
       method: method || 'Cash',
       status: txStatus,
-      notes,
+      notes: isCommission ? ((notes ? notes + ' · ' : '') + 'First deposit — susu commission') : notes,
       feePercent: type === 'withdrawal' ? ws.feePercent : 0,
       feeAmount: fee,
+      isCommission,
       ...(idempotencyKey ? { idempotencyKey } : {}),
     });
 
-    // Only update balance immediately for approved transactions
+    // Update balances only for approved transactions
     if (txStatus === 'approved') {
       if (type === 'deposit') {
-        customer.balance += amt;
-        customer.totalDeposits += amt;
+        if (isCommission) {
+          // Monthly susu commission: taken as company profit, NOT added to savings balance.
+          // Recorded on the account (totalDeposits) and shown in history so the deduction is visible.
+          customer.lastCommissionMonth = currentMonth;
+          customer.totalDeposits += amt;
+        } else {
+          customer.balance += amt;
+          customer.totalDeposits += amt;
+        }
       } else {
         customer.balance -= (amt + fee);
         customer.totalWithdrawals += amt;
@@ -188,8 +199,8 @@ router.post('/', async (req, res) => {
       await customer.save();
 
       if (employee) {
-        if (type === 'deposit') employee.collections += Number(amount);
-        else employee.withdrawals += Number(amount);
+        if (type === 'deposit') employee.collections += amt;
+        else employee.withdrawals += amt;
         await employee.save();
       }
     }
@@ -238,7 +249,7 @@ router.post('/', async (req, res) => {
 });
 
 // PATCH /api/transactions/:id/status
-router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager', 'Accountant'), async (req, res) => {
+router.patch('/:id/status', requireRoleOrPriv(['Super Admin', 'Branch Manager', 'Accountant'], 'approve_transactions'), async (req, res) => {
   try {
     const { status } = req.body;
     const tx = await Transaction.findById(req.params.id);

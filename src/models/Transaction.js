@@ -12,6 +12,7 @@ const transactionSchema = new mongoose.Schema({
   notes: { type: String },
   feePercent: { type: Number, default: 0 },
   feeAmount: { type: Number, default: 0 },
+  isCommission: { type: Boolean, default: false }, // first-deposit susu commission (company profit)
   receiptNumber: { type: String, unique: true },
   // De-duplication key for offline retries: a queued transaction re-sent with the same key
   // returns the original record instead of being recorded twice.

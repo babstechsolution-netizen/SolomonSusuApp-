@@ -1,7 +1,7 @@
 const express = require('express');
 const Employee = require('../models/Employee');
 const User = require('../models/User');
-const { protect, requireRole } = require('../middleware/auth');
+const { protect, requireRole, requireRoleOrPriv } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
 const { sync } = require('../socket');
 
@@ -37,7 +37,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/employees
-router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
+router.post('/', requireRoleOrPriv(['Super Admin', 'Branch Manager'], 'manage_employees'), async (req, res) => {
   try {
     const { name, phone, zone, role, privileges, color, photo, email, username, password, nationalId } = req.body;
 
@@ -86,7 +86,7 @@ router.post('/', requireRole('Super Admin', 'Branch Manager'), async (req, res) 
 });
 
 // PATCH /api/employees/:id/credentials — change login username/password
-router.patch('/:id/credentials', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
+router.patch('/:id/credentials', requireRoleOrPriv(['Super Admin', 'Branch Manager'], 'manage_employees'), async (req, res) => {
   try {
     const { username, password } = req.body;
     const emp = await Employee.findById(req.params.id);
@@ -118,7 +118,7 @@ router.patch('/:id/credentials', requireRole('Super Admin', 'Branch Manager'), a
 });
 
 // PATCH /api/employees/:id
-router.patch('/:id', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
+router.patch('/:id', requireRoleOrPriv(['Super Admin', 'Branch Manager'], 'manage_employees'), async (req, res) => {
   try {
     const emp = await Employee.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!emp) return res.status(404).json({ success: false, message: 'Employee not found.' });
@@ -129,7 +129,7 @@ router.patch('/:id', requireRole('Super Admin', 'Branch Manager'), async (req, r
 });
 
 // PATCH /api/employees/:id/status
-router.patch('/:id/status', requireRole('Super Admin', 'Branch Manager'), async (req, res) => {
+router.patch('/:id/status', requireRoleOrPriv(['Super Admin', 'Branch Manager'], 'manage_employees'), async (req, res) => {
   try {
     const { status } = req.body;
     const emp = await Employee.findByIdAndUpdate(req.params.id, { status }, { new: true });
