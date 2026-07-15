@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const Customer = require('../models/Customer');
 const Employee = require('../models/Employee');
@@ -107,7 +108,14 @@ router.get('/', async (req, res) => {
         .lean(),
       Transaction.countDocuments(filter),
       Transaction.aggregate([
-        { $match: { ...filter, status: 'approved' } },
+        // aggregate() doesn't auto-cast query strings to ObjectId like find()/countDocuments() do,
+        // so employee/customer ids must be cast explicitly or the $match silently matches nothing.
+        { $match: {
+          ...filter,
+          status: 'approved',
+          ...(filter.employee && mongoose.Types.ObjectId.isValid(filter.employee) ? { employee: new mongoose.Types.ObjectId(filter.employee) } : {}),
+          ...(filter.customer && mongoose.Types.ObjectId.isValid(filter.customer) ? { customer: new mongoose.Types.ObjectId(filter.customer) } : {}),
+        } },
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ]),
     ]);

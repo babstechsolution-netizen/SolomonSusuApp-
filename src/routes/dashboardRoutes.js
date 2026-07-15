@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const Customer = require('../models/Customer');
 const Employee = require('../models/Employee');
@@ -131,7 +132,11 @@ router.get('/reports', requireRoleOrPriv(['Super Admin', 'Branch Manager', 'Acco
       if (from) match.date.$gte = from;
       if (to) match.date.$lte = to;
     }
-    if (req.query.employee) match.employee = req.query.employee;
+    // aggregate() does not auto-cast query strings to ObjectId the way find() does — cast explicitly
+    // or the $match silently matches nothing.
+    if (req.query.employee && mongoose.Types.ObjectId.isValid(req.query.employee)) {
+      match.employee = new mongoose.Types.ObjectId(req.query.employee);
+    }
 
     const byMonth = await Transaction.aggregate([
       { $match: match },
