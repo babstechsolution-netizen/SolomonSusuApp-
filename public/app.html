@@ -545,8 +545,20 @@ a{color:inherit;text-decoration:none;}
   function pager(page,pages,total){return '<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 0"><button class="btn btn-ghost btn-sm" id="pp"'+(page<=1?' disabled style="opacity:.4"':'')+'>‹ Prev</button><span style="font-size:12px;color:var(--t3);font-weight:700">Page '+page+' of '+pages+(total?(' · '+total+' total'):'')+'</span><button class="btn btn-ghost btn-sm" id="pn"'+(page>=pages?' disabled style="opacity:.4"':'')+'>Next ›</button></div>';}
 
   // ---------- EMPLOYEES ----------
+  // Employee.collections/withdrawals are running counters bumped as transactions are created —
+  // they can drift from the real ledger (e.g. a pending withdrawal only gets counted once
+  // approved). Pull the live, transaction-computed totals for display so the numbers shown here
+  // always agree with Reports and the dashboard.
+  function withLiveTotals(list){
+    return api('/api/dashboard/reports?period=all').then(function(r){
+      var top=(r.data&&r.data.topEmployees)||[];var map={};
+      top.forEach(function(t){map[t._id]={collections:t.collections,withdrawals:t.withdrawals};});
+      list.forEach(function(e){var m=map[e._id];e.collections=m?m.collections:0;e.withdrawals=m?m.withdrawals:0;});
+      return list;
+    }).catch(function(){return list;});
+  }
   function employeesScreen(){S.screen='employees';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Employees</div><div class="ab-back" id="addemp" style="width:auto;padding:0 12px;font-size:22px">＋</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
-    api('/api/employees').then(function(d){var list=d.data||[];S.emps=list;
+    api('/api/employees').then(function(d){return withLiveTotals(d.data||[]);}).then(function(list){S.emps=list;
       set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Employees ('+list.length+')</div><div class="ab-back" id="addemp" style="width:auto;padding:0 12px;font-size:22px">＋</div></div><div class="sc"><div class="body-pad">'+(list.length?list.map(empRow).join(''):'<div class="empty"><div class="ei">🧑‍💼</div>No employees.</div>')+'</div></div>'+bnav('more'));
       q('[data-back]').onclick=moreScreen;q('#addemp').onclick=addEmpModal;wireNav();wireEmp();}).catch(function(e){toast(e.message,'err');});}
   function empRow(e){return '<div class="cli" data-emp2="'+esc(e._id)+'"><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+initials(e.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+(e.status&&e.status!=='active'?' <span style="color:var(--t3);font-size:11px">('+esc(e.status)+')</span>':'')+'</div><div class="cli-meta">'+esc(roleLabel(e.role))+' · '+esc(e.zone||'')+'</div></div><div class="cli-right"><div class="cli-bal" style="color:var(--g-600)">'+money(e.collections)+'</div><div class="cli-id">'+(e.performance||0)+'% perf</div></div></div>';}
@@ -612,7 +624,7 @@ a{color:inherit;text-decoration:none;}
 
   // ---------- LEADERBOARD ----------
   function leaderboardScreen(){S.screen='leaderboard';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Leaderboard 🏆</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
-    api('/api/employees').then(function(d){var list=(d.data||[]).slice().sort(function(a,b){return (b.collections||0)-(a.collections||0);});var max=(list[0]&&list[0].collections)||1;
+    api('/api/employees').then(function(d){return withLiveTotals(d.data||[]);}).then(function(list){list=list.slice().sort(function(a,b){return (b.collections||0)-(a.collections||0);});var max=(list[0]&&list[0].collections)||1;
       set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Leaderboard 🏆</div></div><div class="sc"><div class="body-pad">'+(list.length?list.map(function(e,i){var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':('#'+(i+1));return '<div class="cli"><div style="width:28px;text-align:center;font-weight:900;flex-shrink:0">'+medal+'</div><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+initials(e.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(e.zone||'')+'</div><div class="prog-bg" style="margin-top:5px"><div class="prog-fill" style="width:'+Math.round((e.collections||0)/max*100)+'%"></div></div></div><div class="cli-bal" style="color:var(--g-600)">'+money(e.collections)+'</div></div>';}).join(''):'<div class="empty">No employees.</div>')+'</div></div>'+bnav('more'));
       q('[data-back]').onclick=moreScreen;wireNav();}).catch(function(e){toast(e.message,'err');});}
 

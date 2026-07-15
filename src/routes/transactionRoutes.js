@@ -295,6 +295,12 @@ router.patch('/:id/status', requireRoleOrPriv(['Super Admin', 'Branch Manager', 
         }
         await customer.save();
       }
+      // Keep the employee's running collected/withdrawn totals in sync — they were skipped at
+      // creation time because the transaction wasn't approved yet.
+      if (tx.employee) {
+        const field = tx.type === 'withdrawal' ? 'withdrawals' : 'collections';
+        await Employee.findByIdAndUpdate(tx.employee, { $inc: { [field]: tx.amount } });
+      }
     }
 
     tx.status = status;

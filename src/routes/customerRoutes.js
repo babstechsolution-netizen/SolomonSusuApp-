@@ -200,10 +200,18 @@ router.post('/import', requireRole('Super Admin', 'Branch Manager'), upload.sing
   }
 });
 
+// Fields safe to set directly from the register/edit forms. balance/totalDeposits/totalWithdrawals
+// are excluded on purpose — they must only ever move via a recorded transaction, so every cedi is
+// traceable and reflected consistently in the dashboard, Reports and employee collection totals.
+// (Bulk Excel import is the one sanctioned exception, for seeding opening balances — see /import.)
+const CUSTOMER_EDITABLE_FIELDS = ['name', 'phone', 'business', 'location', 'status', 'dailyAmount', 'savingsTarget', 'photo', 'nationalId', 'color', 'startDate'];
+
 // POST /api/customers
 router.post('/', requireRole('Super Admin', 'Branch Manager', 'Field Collector'), async (req, res) => {
   try {
-    const cust = await Customer.create(req.body);
+    const payload = {};
+    CUSTOMER_EDITABLE_FIELDS.forEach((f) => { if (req.body[f] !== undefined) payload[f] = req.body[f]; });
+    const cust = await Customer.create(payload);
     logActivity('customer_add', req.user.name, req.user.role, `${req.user.name} registered customer ${cust.name}`, { customer: cust.name, phone: cust.phone });
     sync('customers', 'create', cust);
     res.status(201).json({ success: true, data: cust });
@@ -212,10 +220,12 @@ router.post('/', requireRole('Super Admin', 'Branch Manager', 'Field Collector')
   }
 });
 
-// PATCH /api/customers/:id
+// PATCH /api/customers/:id — profile-only edit, same field allowlist as create.
 router.patch('/:id', async (req, res) => {
   try {
-    const cust = await Customer.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const updates = {};
+    CUSTOMER_EDITABLE_FIELDS.forEach((f) => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+    const cust = await Customer.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
     if (!cust) return res.status(404).json({ success: false, message: 'Customer not found.' });
     logActivity('customer_edit', req.user.name, req.user.role, `${req.user.name} updated profile for customer ${cust.name}`, { customer: cust.name });
     sync('customers', 'update', cust);
