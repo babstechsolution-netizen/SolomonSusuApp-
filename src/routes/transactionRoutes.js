@@ -7,6 +7,7 @@ const User = require('../models/User');
 const { protect, requireRole, requireRoleOrPriv } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
 const { createNotification } = require('../utils/notify');
+const { resolveDateRange } = require('../utils/dateRange');
 const { sync } = require('../socket');
 
 async function getWithdrawalSettings() {
@@ -66,7 +67,8 @@ router.get('/collector-summary', async (req, res) => {
   }
 });
 
-// GET /api/transactions
+// GET /api/transactions  — supports ?period=today|week|month|year|all or ?from=&to= for a
+// custom date range, plus ?employee= to scope to one collector (admin/manager filtering).
 router.get('/', async (req, res) => {
   try {
     const filter = {};
@@ -74,7 +76,16 @@ router.get('/', async (req, res) => {
     if (req.query.status) filter.status = req.query.status;
     if (req.query.method) filter.method = req.query.method;
     if (req.query.employee) filter.employee = req.query.employee;
-    if (req.query.date) filter.date = req.query.date;
+    if (req.query.date) {
+      filter.date = req.query.date;
+    } else if (req.query.period || req.query.from || req.query.to) {
+      const { from, to } = resolveDateRange(req.query);
+      if (from || to) {
+        filter.date = {};
+        if (from) filter.date.$gte = from;
+        if (to) filter.date.$lte = to;
+      }
+    }
     // Customers can only see their own transactions
     if (req.user.role === 'Customer') {
       filter.customer = req.user.customerId;
@@ -86,7 +97,7 @@ router.get('/', async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [data, total] = await Promise.all([
+    const [data, total, sumAgg] = await Promise.all([
       Transaction.find(filter)
         .populate('customer', 'name phone')
         .populate('employee', 'name zone')
@@ -95,9 +106,13 @@ router.get('/', async (req, res) => {
         .limit(limit)
         .lean(),
       Transaction.countDocuments(filter),
+      Transaction.aggregate([
+        { $match: { ...filter, status: 'approved' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
     ]);
 
-    res.json({ success: true, data, total, page, pages: Math.ceil(total / limit) });
+    res.json({ success: true, data, total, page, pages: Math.ceil(total / limit), sum: (sumAgg[0] || {}).total || 0 });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

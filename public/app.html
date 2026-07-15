@@ -584,16 +584,28 @@ a{color:inherit;text-decoration:none;}
     q('#ac').onclick=closeModal;all('[data-pick]').forEach(function(el){el.onclick=function(){var empId=el.getAttribute('data-pick');api('/api/customers/'+c._id+'/assign',{method:'PATCH',body:JSON.stringify({employeeId:empId})}).then(function(){closeModal();toast('Customer assigned','ok');assignmentsScreen();}).catch(function(e){toast(e.message,'err');closeModal();});};});}
 
   // ---------- REPORTS ----------
-  function reportsScreen(){S.screen='reports';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Reports</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
-    api('/api/dashboard/reports').then(function(r){var rep=r.data||{};var bm=rep.byMethod||[];var top=rep.topEmployees||[];
-      var totalDep=0,totalWit=0;(rep.byMonth||[]).forEach(function(m){if(m._id.type==='deposit')totalDep+=m.total;else if(m._id.type==='withdrawal')totalWit+=m.total;});
-      var methodTotal=bm.reduce(function(s,m){return s+(m.amount||0);},0)||1;
-      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Reports</div></div><div class="sc"><div class="body-pad">'+
-        '<div class="card"><div style="display:flex;gap:12px;text-align:center"><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--dep)">'+money(totalDep)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">TOTAL DEPOSITS</div></div><div style="width:1px;background:var(--border-l)"></div><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--wit)">'+money(totalWit)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">TOTAL WITHDRAWALS</div></div></div></div>'+
-        '<div class="card"><div class="s-div" style="margin:0 0 10px"><span class="s-div-title">By Payment Method</span></div>'+(bm.length?bm.map(function(m){var pct=Math.round((m.amount||0)/methodTotal*100);return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>'+esc(m._id||'—')+'</span><span style="font-weight:700">'+money(m.amount)+' ('+pct+'%)</span></div><div class="prog-bg"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>';}).join(''):'<div style="font-size:12px;color:var(--t3)">No data.</div>')+'</div>'+
-        '<div class="s-div"><span class="s-div-title">Top Collectors</span></div>'+(top.length?top.map(function(e,i){return '<div class="cli"><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+(i+1)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(e.zone||'')+'</div></div><div class="cli-bal" style="color:var(--g-600)">'+money(e.collections)+'</div></div>';}).join(''):'<div class="empty">No data.</div>')+
-        '</div></div>'+bnav('more'));
-      q('[data-back]').onclick=moreScreen;wireNav();}).catch(function(e){toast(e.message,'err');});}
+  var RPERIODS=['today','week','month','year','all'];
+  var RPLABELS={today:'Today',week:'Week',month:'Month',year:'Year',all:'All'};
+  function reportsScreen(){S.screen='reports';if(!S.repPeriod)S.repPeriod='month';if(S.repEmp===undefined)S.repEmp='';
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Reports</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/employees').then(function(r){S.repEmps=r.data||[];loadReports();}).catch(function(){S.repEmps=[];loadReports();});}
+  function reportsQS(){var qs='period='+S.repPeriod;if(S.repEmp)qs+='&employee='+S.repEmp;return qs;}
+  function loadReports(){api('/api/dashboard/reports?'+reportsQS()).then(function(r){drawReports(r.data||{});}).catch(function(e){toast(e.message,'err');});}
+  function drawReports(rep){var bm=rep.byMethod||[];var top=rep.topEmployees||[];
+    var totalDep=0,totalWit=0;(rep.byMonth||[]).forEach(function(m){if(m._id.type==='deposit')totalDep+=m.total;else if(m._id.type==='withdrawal')totalWit+=m.total;});
+    var methodTotal=bm.reduce(function(s,m){return s+(m.amount||0);},0)||1;
+    var empOpts='<option value="">All Employees</option>'+(S.repEmps||[]).map(function(e){return '<option value="'+esc(e._id)+'"'+(S.repEmp===e._id?' selected':'')+'>'+esc(e.name)+'</option>';}).join('');
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Reports</div></div><div class="sc"><div class="body-pad">'+
+      '<div class="chip-row" style="margin-bottom:10px">'+RPERIODS.map(function(p){return '<span class="chip'+(S.repPeriod===p?' on':'')+'" data-per="'+p+'">'+RPLABELS[p]+'</span>';}).join('')+'</div>'+
+      '<div class="inp-wrap" style="margin-bottom:12px"><select class="inp" id="repemp">'+empOpts+'</select></div>'+
+      '<div class="card"><div style="display:flex;gap:12px;text-align:center"><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--dep)">'+money(totalDep)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">COLLECTED</div></div><div style="width:1px;background:var(--border-l)"></div><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--wit)">'+money(totalWit)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">WITHDRAWN</div></div></div></div>'+
+      '<div class="card"><div class="s-div" style="margin:0 0 10px"><span class="s-div-title">By Payment Method</span></div>'+(bm.length?bm.map(function(m){var pct=Math.round((m.amount||0)/methodTotal*100);return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>'+esc(m._id||'—')+'</span><span style="font-weight:700">'+money(m.amount)+' ('+pct+'%)</span></div><div class="prog-bg"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>';}).join(''):'<div style="font-size:12px;color:var(--t3)">No data.</div>')+'</div>'+
+      '<div class="s-div"><span class="s-div-title">Employee Performance'+(S.repEmp?'':' (by Collections)')+'</span></div>'+(top.length?top.map(function(e,i){return '<div class="cli"><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+(i+1)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(e.zone||'')+'</div></div><div style="text-align:right"><div class="cli-bal" style="color:var(--g-600)">'+money(e.collections)+' in</div><div style="font-size:10px;color:var(--wit);font-weight:700">'+money(e.withdrawals)+' out</div></div></div>';}).join(''):'<div class="empty">No collections or withdrawals for this period.</div>')+
+      '</div></div>'+bnav('more'));
+    q('[data-back]').onclick=moreScreen;
+    all('[data-per]').forEach(function(el){el.onclick=function(){S.repPeriod=el.getAttribute('data-per');loadReports();};});
+    var se=q('#repemp');if(se)se.onchange=function(){S.repEmp=se.value;loadReports();};
+    wireNav();}
 
   // ---------- LEADERBOARD ----------
   function leaderboardScreen(){S.screen='leaderboard';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Leaderboard 🏆</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
@@ -608,10 +620,30 @@ a{color:inherit;text-decoration:none;}
       q('[data-back]').onclick=moreScreen;wireNav();}).catch(function(e){toast(e.message,'err');});}
 
   // ---------- COLLECTIONS / WITHDRAWALS (filtered transaction lists) ----------
-  function txnList(type,title){S.screen=(type==='deposit'?'collections':'withdrawals');set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+title+'</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
-    api('/api/transactions?type='+type+'&limit=50').then(function(d){var list=d.data||[];
-      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+title+' ('+(d.total||list.length)+')</div></div><div class="sc"><div class="body-pad">'+(list.length?list.map(txnRow).join(''):'<div class="empty"><div class="ei">🧾</div>No '+title.toLowerCase()+' yet.</div>')+'</div></div>'+bnav('more'));
-      q('[data-back]').onclick=moreScreen;wireNav();}).catch(function(e){toast(e.message,'err');});}
+  // Admin/manager can narrow either list by period and by employee, same filters as Reports.
+  function canFilterTxnList(){var r=role();return r==='Super Admin'||r==='Branch Manager'||r==='Accountant'||(S.user.privileges||[]).indexOf('view_reports')>=0;}
+  function txnList(type,title){S.screen=(type==='deposit'?'collections':'withdrawals');S.tlType=type;S.tlTitle=title;
+    if(!S.tlPeriod)S.tlPeriod='all';if(S.tlEmp===undefined)S.tlEmp='';
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+title+'</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    if(canFilterTxnList())api('/api/employees').then(function(r){S.tlEmps=r.data||[];loadTxnList();}).catch(function(){S.tlEmps=[];loadTxnList();});
+    else loadTxnList();}
+  function txnListQS(){var qs='type='+S.tlType+'&limit=50&period='+S.tlPeriod;if(S.tlEmp)qs+='&employee='+S.tlEmp;return qs;}
+  function loadTxnList(){api('/api/transactions?'+txnListQS()).then(function(d){drawTxnList(d);}).catch(function(e){toast(e.message,'err');});}
+  function drawTxnList(d){var list=d.data||[];var title=S.tlTitle;var canFilter=canFilterTxnList();
+    var filterHtml='';
+    if(canFilter){
+      var empOpts='<option value="">All Employees</option>'+(S.tlEmps||[]).map(function(e){return '<option value="'+esc(e._id)+'"'+(S.tlEmp===e._id?' selected':'')+'>'+esc(e.name)+'</option>';}).join('');
+      filterHtml='<div class="chip-row" style="margin-bottom:10px">'+RPERIODS.map(function(p){return '<span class="chip'+(S.tlPeriod===p?' on':'')+'" data-tlper="'+p+'">'+RPLABELS[p]+'</span>';}).join('')+'</div>'+
+        '<div class="inp-wrap" style="margin-bottom:12px"><select class="inp" id="tlemp">'+empOpts+'</select></div>'+
+        '<div class="card" style="text-align:center"><div style="font-size:20px;font-weight:900;color:'+(S.tlType==='deposit'?'var(--dep)':'var(--wit)')+'">'+money(d.sum||0)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">TOTAL '+title.toUpperCase()+'</div></div>';
+    }
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+title+' ('+(d.total||list.length)+')</div></div><div class="sc"><div class="body-pad">'+filterHtml+(list.length?list.map(txnRow).join(''):'<div class="empty"><div class="ei">🧾</div>No '+title.toLowerCase()+' yet.</div>')+'</div></div>'+bnav('more'));
+    q('[data-back]').onclick=moreScreen;
+    if(canFilter){
+      all('[data-tlper]').forEach(function(el){el.onclick=function(){S.tlPeriod=el.getAttribute('data-tlper');loadTxnList();};});
+      var se=q('#tlemp');if(se)se.onchange=function(){S.tlEmp=se.value;loadTxnList();};
+    }
+    wireNav();}
 
   // ---------- ACTIVITY LOG (Super Admin) ----------
   function activityScreen(){S.screen='activity';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Activity Log</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');

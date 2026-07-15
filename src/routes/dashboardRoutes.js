@@ -3,7 +3,8 @@ const Transaction = require('../models/Transaction');
 const Customer = require('../models/Customer');
 const Employee = require('../models/Employee');
 const Loan = require('../models/Loan');
-const { protect } = require('../middleware/auth');
+const { protect, requireRoleOrPriv } = require('../middleware/auth');
+const { resolveDateRange } = require('../utils/dateRange');
 
 const router = express.Router();
 router.use(protect);
@@ -92,15 +93,7 @@ router.get('/timeseries', async (req, res) => {
 router.get('/period-summary', async (req, res) => {
   try {
     const period = (req.query.period || 'today').toLowerCase();
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-    let from = null;
-    if (period === 'today') from = ymd(now);
-    else if (period === 'week') { const d = new Date(now); d.setDate(now.getDate() - 6); from = ymd(d); }
-    else if (period === 'month') from = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-01';
-    else if (period === 'year') from = now.getFullYear() + '-01-01';
-    // 'all' -> no date filter
+    const { from } = resolveDateRange({ period });
 
     const match = { status: 'approved' };
     if (from) match.date = { $gte: from };
@@ -124,11 +117,24 @@ router.get('/period-summary', async (req, res) => {
   }
 });
 
-// GET /api/dashboard/reports  — monthly aggregated data
-router.get('/reports', async (req, res) => {
+// GET /api/dashboard/reports?period=today|week|month|year|all&from=&to=&employee=
+// Admin/manager view of collections & withdrawals, filterable by date period (or custom
+// from/to range) and by employee. Per-employee totals are computed live from transactions
+// in the selected range, not the employee's all-time running totals.
+router.get('/reports', requireRoleOrPriv(['Super Admin', 'Branch Manager', 'Accountant'], 'view_reports'), async (req, res) => {
   try {
+    const { from, to } = resolveDateRange(req.query);
+
+    const match = { status: 'approved' };
+    if (from || to) {
+      match.date = {};
+      if (from) match.date.$gte = from;
+      if (to) match.date.$lte = to;
+    }
+    if (req.query.employee) match.employee = req.query.employee;
+
     const byMonth = await Transaction.aggregate([
-      { $match: { status: 'approved' } },
+      { $match: match },
       { $group: {
         _id: { month: { $substr: ['$date', 0, 7] }, type: '$type' },
         total: { $sum: '$amount' },
@@ -138,13 +144,44 @@ router.get('/reports', async (req, res) => {
     ]);
 
     const byMethod = await Transaction.aggregate([
-      { $match: { status: 'approved' } },
+      { $match: match },
       { $group: { _id: '$method', count: { $sum: 1 }, amount: { $sum: '$amount' } } },
     ]);
 
-    const topEmployees = await Employee.find().sort({ collections: -1 }).limit(5).select('name zone collections performance color');
+    // Per-employee collected/withdrawn for the selected range (excludes customer self-service
+    // transactions, which have no employee attached).
+    const byEmployeeMatch = { ...match, employee: match.employee || { $ne: null } };
+    const byEmployee = await Transaction.aggregate([
+      { $match: byEmployeeMatch },
+      { $group: { _id: { employee: '$employee', type: '$type' }, total: { $sum: '$amount' } } },
+    ]);
 
-    res.json({ success: true, data: { byMonth, byMethod, topEmployees } });
+    const empIds = [...new Set(byEmployee.map((r) => String(r._id.employee)))];
+    const emps = await Employee.find({ _id: { $in: empIds } }).select('name zone color performance').lean();
+    const empMap = {};
+    emps.forEach((e) => { empMap[e._id] = e; });
+
+    const statsByEmp = {};
+    byEmployee.forEach((r) => {
+      const id = String(r._id.employee);
+      if (!statsByEmp[id]) statsByEmp[id] = { collected: 0, withdrawn: 0 };
+      if (r._id.type === 'deposit') statsByEmp[id].collected = r.total;
+      else if (r._id.type === 'withdrawal') statsByEmp[id].withdrawn = r.total;
+    });
+
+    const topEmployees = Object.keys(statsByEmp)
+      .map((id) => ({
+        _id: id,
+        name: (empMap[id] || {}).name || 'Unknown',
+        zone: (empMap[id] || {}).zone || '',
+        color: (empMap[id] || {}).color,
+        performance: (empMap[id] || {}).performance,
+        collections: statsByEmp[id].collected,
+        withdrawals: statsByEmp[id].withdrawn,
+      }))
+      .sort((a, b) => b.collections - a.collections);
+
+    res.json({ success: true, data: { byMonth, byMethod, topEmployees, range: { from, to } } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
