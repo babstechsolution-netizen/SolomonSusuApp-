@@ -298,7 +298,10 @@ a{color:inherit;text-decoration:none;}
     _socket.on('notification:new',function(){ loadNotifs().then(function(){ updateBadges(); if(S.screen==='notifs') notifsScreen(); }); });
   }
   function scheduleRefresh(){ if(document.getElementById('modal-host').innerHTML)return; if(_rt)clearTimeout(_rt); _rt=setTimeout(refreshCurrent,700); }
-  function refreshCurrent(){ var f={dash:adminDash,home:home,approvals:approvalsScreen,txns:txnsScreen,notifs:notifsScreen,reports:reportsScreen,leaderboard:leaderboardScreen,activity:activityScreen,collections:function(){txnList('deposit','Collections');},withdrawals:function(){txnList('withdrawal','Withdrawals');}}; if(f[S.screen])f[S.screen](); }
+  function refreshCurrent(){ var f={dash:adminDash,home:home,approvals:approvalsScreen,txns:txnsScreen,notifs:notifsScreen,reports:reportsScreen,leaderboard:leaderboardScreen,activity:activityScreen,collections:function(){txnList('deposit','Collections');},withdrawals:function(){txnList('withdrawal','Withdrawals');},
+    // Live add/edit/delete of a customer refreshes the open customer list in place, keeping the
+    // user's current search text and page. Without this the list drifts stale across devices.
+    customers:function(){ if(!document.getElementById('q'))return; reloadCustomers().then(function(){ if(S.screen!=='customers')return; if(role()==='Field Collector')updateCList(); else updateAcList(); }).catch(function(){}); }}; if(f[S.screen])f[S.screen](); }
   function updateBadges(){ var n=S.unread,txt=n>9?'9+':String(n); var av=document.getElementById('av'); if(av){var b=av.querySelector('.notif-badge'); if(n>0){if(b)b.textContent=txt;else av.insertAdjacentHTML('beforeend','<div class="notif-badge">'+txt+'</div>');}else if(b)b.remove();} var it=document.querySelector('.bnav-item[data-nav="notifs"]'); if(it){var d=it.querySelector('.bnav-dot'); if(n>0){if(d)d.textContent=txt;else it.insertAdjacentHTML('beforeend','<div class="bnav-dot">'+txt+'</div>');}else if(d)d.remove();} }
 
   function role(){return S.user&&S.user.role;}
@@ -335,12 +338,24 @@ a{color:inherit;text-decoration:none;}
   function custRow(c,n){return '<div class="cli" data-c="'+esc(c._id)+'">'+(n?'<div class="rownum">'+n+'</div>':'')+'<div class="cli-av" style="background:'+colorFor(c._id)+'">'+initials(c.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(c.name)+(c._mine?' <span style="color:var(--a-500);font-size:11px">★ mine</span>':'')+'</div><div class="cli-meta">'+esc(c.business||c.location||'—')+(c.dailyAmount?(' · '+money(c.dailyAmount)+'/day'):'')+'</div></div><div class="cli-right"><div class="cli-bal">'+money(c.balance)+'</div><div class="cli-id">'+esc(acctNo(c))+'</div></div></div>';}
   function wireCust(){all('[data-c]').forEach(function(el){el.onclick=function(){var c=S.customers.filter(function(x){return x._id===el.getAttribute('data-c');})[0];if(c)startTxn(c,S.txnType||'deposit');};});}
 
+  // Always pull the LIVE customer list so every device shows the same, current set.
+  // Fixes stale-snapshot drift where one user saw names another didn't (added/deleted
+  // customers not reflected until a full Home reload). Feeds both collector and admin views.
+  function reloadCustomers(){return api('/api/customers').then(function(d){
+    var all=d.data||[];var myId=String((S.user&&S.user.employeeId)||'');
+    all.forEach(function(c){c._mine=String((c.assignedEmployee&&(c.assignedEmployee._id||c.assignedEmployee))||'')===myId;});
+    all.sort(function(a,b){return (b._mine?1:0)-(a._mine?1:0);});
+    S.customers=all;S.allCustomers=all;return all;});}
+
   function custList(type){S.screen='customers';S.txnType=type||'deposit';S.cPage=1;S.cQ='';
     set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+(S.txnType==='withdrawal'?'Withdraw — pick customer':'Collect — pick customer')+'</div>'+(canRegisterCustomer()?'<div class="ab-back" id="addcust" style="width:auto;padding:0 12px;font-size:22px" title="Register customer">＋</div>':'')+'</div>'+
       '<div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="q" placeholder="Search name, business, ID…"></div><div id="listwrap"></div></div></div>'+bnav('customers'));
     q('[data-back]').onclick=collectorHome;var ac=q('#addcust');if(ac)ac.onclick=function(){registerCustomerModal(collectorHome);};
     var box=q('#q');box.oninput=function(){S.cQ=box.value;S.cPage=1;updateCList();};
-    wireNav();updateCList();}
+    wireNav();updateCList();
+    // Refresh from the server every time this screen opens so collectors always work off the
+    // current customer list (and current balances), not a snapshot from their last Home visit.
+    reloadCustomers().then(function(){if(S.screen==='customers')updateCList();}).catch(function(){});}
   function updateCList(){var qv=(S.cQ||'').toLowerCase();
     var full=(S.customers||[]).filter(function(c){return !qv||(c.name||'').toLowerCase().indexOf(qv)>=0||(c.business||'').toLowerCase().indexOf(qv)>=0||acctNo(c).toLowerCase().indexOf(qv)>=0;});
     var size=25,pages=Math.max(1,Math.ceil(full.length/size));if(S.cPage>pages)S.cPage=pages;if(S.cPage<1)S.cPage=1;var start=(S.cPage-1)*size,slice=full.slice(start,start+size);
@@ -398,11 +413,12 @@ a{color:inherit;text-decoration:none;}
 
   // ---------- ADMIN / MANAGER / ACCOUNTANT ----------
   function adminDash(){S.screen='dash';if(!S.dashPeriod)S.dashPeriod='today';set('<div class="center-load"><div class="spin"></div>Loading dashboard…</div>');
-    Promise.all([api('/api/dashboard').catch(function(){return{data:{}};}),api('/api/dashboard/timeseries?days=7').catch(function(){return{data:[]};}),api('/api/transactions?limit=6').catch(function(){return{data:[]};}),api('/api/transactions?status=pending&limit=100').catch(function(){return{data:[]};}),api('/api/dashboard/period-summary?period='+S.dashPeriod).catch(function(){return{data:null};})]).then(function(r){
-      S.dash={kpi:r[0].data||{},series:r[1].data||[],recent:r[2].data||[],pending:r[3].data||[],ps:r[4].data||null};drawDash();}).catch(function(e){toast(e.message,'err');});}
+    Promise.all([api('/api/dashboard').catch(function(){return{data:{}};}),api('/api/dashboard/timeseries?days=7').catch(function(){return{data:[]};}),api('/api/transactions?limit=6').catch(function(){return{data:[]};}),api('/api/transactions?status=pending&limit=100').catch(function(){return{data:[]};}),api('/api/dashboard/period-summary?period='+S.dashPeriod).catch(function(){return{data:null};}),api('/api/dashboard/reports?period=today').catch(function(){return{data:null};})]).then(function(r){
+      S.dash={kpi:r[0].data||{},series:r[1].data||[],recent:r[2].data||[],pending:r[3].data||[],ps:r[4].data||null,today:r[5].data||null};drawDash();}).catch(function(e){toast(e.message,'err');});}
   function setDashPeriod(p){S.dashPeriod=p;api('/api/dashboard/period-summary?period='+p).then(function(r){S.dash.ps=r.data;drawDash();}).catch(function(e){toast(e.message,'err');});}
   var PLABELS={today:'Today',week:'This Week',month:'This Month',year:'This Year',all:'All Time'};
   function drawDash(){S.screen='dash';var k=S.dash.kpi,pend=(S.dash.pending||[]).filter(function(t){return t.type==='withdrawal';});
+    var todayCols=(S.dash.today&&S.dash.today.topEmployees)||[];
     var ps=S.dash.ps||{deposits:{total:(k.todayDeposits||{}).total||0,count:0},withdrawals:{total:(k.todayWithdrawals||{}).total||0,count:0}};
     var pl=PLABELS[S.dashPeriod]||'Today';var net=(ps.deposits.total||0)-(ps.withdrawals.total||0);
     set('<div class="hdr"><div class="hdr-top">'+menuBtn()+'<div style="flex:1;padding-left:12px"><div class="hdr-name">Overview 📊</div><div class="hdr-sub">'+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</div></div>'+avatarNotif()+'</div>'+
@@ -418,10 +434,15 @@ a{color:inherit;text-decoration:none;}
       chartCard(S.dash.series)+
       '<div style="display:flex;gap:10px;margin-bottom:14px"><div class="card" style="flex:1;margin:0" data-nav="approvals"><div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase">Pending Approvals</div><div style="font-size:28px;font-weight:900;color:var(--pend)">'+pend.length+'</div><div style="font-size:11px;color:var(--t3)">withdrawals →</div></div>'+
       '<div class="card" style="flex:1;margin:0"><div style="font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase">Active Collectors</div><div style="font-size:28px;font-weight:900;color:var(--g-600)">'+(k.activeEmployees||0)+'</div><div style="font-size:11px;color:var(--t3)">on the team</div></div></div>'+
+      // Today's Collectors — each collector's money in/out for TODAY, so Solomon sees every
+      // collector's daily summary at a glance. Full breakdown/other periods live in Reports.
+      '<div class="s-div"><span class="s-div-title">Today\'s Collectors</span><span class="s-div-link" data-nav="reports">Full report →</span></div>'+
+      (todayCols.length?todayCols.map(function(e){return '<div class="cli"><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+initials(e.name)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(e.zone||'')+'</div></div><div style="text-align:right"><div class="cli-bal" style="color:var(--g-600)">'+money(e.collections)+' in</div><div style="font-size:10px;color:var(--wit);font-weight:700">'+money(e.withdrawals)+' out</div></div></div>';}).join(''):'<div class="empty"><div class="ei">🧑‍💼</div>No collections yet today.</div>')+
       '<div class="s-div"><span class="s-div-title">Recent Transactions</span><span class="s-div-link" data-nav="txns">View all →</span></div>'+
       ((S.dash.recent||[]).length?S.dash.recent.map(txnRow).join(''):'<div class="empty"><div class="ei">🧾</div>No transactions yet.</div>')+
       '</div></div>'+bnav('dash'));
     var pa=q('[data-nav="approvals"]');if(pa)pa.onclick=approvalsScreen;var tv=q('[data-nav="txns"]');if(tv)tv.onclick=function(){txnsScreen();};
+    var rp=q('[data-nav="reports"]');if(rp)rp.onclick=function(){reportsScreen();};
     all('[data-per]').forEach(function(el){el.onclick=function(){setDashPeriod(el.getAttribute('data-per'));};});
     wireNav();wireAvatar();}
   function chartCard(series){series=series||[];var max=1;series.forEach(function(x){max=Math.max(max,x.deposits||0,x.withdrawals||0);});
