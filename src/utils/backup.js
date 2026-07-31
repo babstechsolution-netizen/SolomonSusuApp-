@@ -46,16 +46,18 @@ async function tryGoogleDriveUpload(name, dataStr) {
     const setting = await Setting.findOne({ key: 'googleDrive' });
     if (!setting?.value?.enabled || !setting.value.serviceAccountKey || !setting.value.folderId) return;
 
-    const { google } = require('googleapis');
+    // Use the lightweight @googleapis/drive package instead of the full googleapis
+    // meta-package — same Drive API, far smaller install (much faster deploys).
+    const { drive: driveApi, auth: googleAuth } = require('@googleapis/drive');
     const { Readable } = require('stream');
 
     const credentials = JSON.parse(setting.value.serviceAccountKey);
-    const auth = new google.auth.GoogleAuth({
+    const auth = new googleAuth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/drive.file'],
     });
 
-    const drive = google.drive({ version: 'v3', auth });
+    const drive = driveApi({ version: 'v3', auth });
     const stream = Readable.from([dataStr]);
 
     await drive.files.create({
