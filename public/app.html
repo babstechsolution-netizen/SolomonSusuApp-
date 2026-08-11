@@ -239,8 +239,8 @@ a{color:inherit;text-decoration:none;}
 .legend{display:flex;gap:16px;margin-top:12px;}
 .legend span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);}
 .legend i{width:8px;height:8px;border-radius:2px;display:inline-block;}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:flex-end;justify-content:center;}
-.modal{background:var(--surf);width:100%;max-width:520px;border-radius:var(--r20) var(--r20) 0 0;padding:22px 20px 30px;max-height:85vh;max-height:85dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.modal-bg{position:fixed;left:0;right:0;top:0;height:100vh;height:var(--vvh,100vh);background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:flex-end;justify-content:center;}
+.modal{background:var(--surf);width:100%;max-width:520px;border-radius:var(--r20) var(--r20) 0 0;padding:22px 20px 30px;max-height:85vh;max-height:calc(var(--vvh,100vh)*0.85);overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .modal h3{font-size:17px;font-weight:800;margin-bottom:14px;}
 </style>
 </head>
@@ -265,6 +265,27 @@ a{color:inherit;text-decoration:none;}
   function api(path,opts){opts=opts||{};var h=Object.assign({'Content-Type':'application/json'},opts.headers||{});if(S.token)h['Authorization']='Bearer '+S.token;
     return fetch(path,Object.assign({},opts,{headers:h})).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.message||'Request failed');return j;});});}
   function toast(m,k){var h=document.getElementById('toast-host');h.innerHTML='<div class="toast '+(k||'ok')+'">'+(k==='err'?'⚠️':k==='warn'?'📡':'✅')+'<span>'+esc(m)+'</span></div>';setTimeout(function(){h.innerHTML='';},3200);}
+
+  // Android WebViews resize position:fixed elements to the LAYOUT viewport, not the
+  // visible one, so a bottom-sheet modal doesn't shrink when the keyboard opens — its
+  // top can end up pushed above the visible screen. Track the real visible height via
+  // VisualViewport and feed it in as a CSS var the modal sizes itself against.
+  function syncVisibleHeight(){
+    var vv=window.visualViewport;
+    var h=vv?vv.height:window.innerHeight;
+    document.documentElement.style.setProperty('--vvh',h+'px');
+  }
+  if(window.visualViewport){visualViewport.addEventListener('resize',syncVisibleHeight);visualViewport.addEventListener('scroll',syncVisibleHeight);}
+  window.addEventListener('resize',syncVisibleHeight);
+  syncVisibleHeight();
+  // When a field inside the modal gets focus, make sure it's actually scrolled into
+  // view above the keyboard once it finishes animating in.
+  document.addEventListener('focusin',function(e){
+    if(e.target&&e.target.classList&&e.target.classList.contains('inp')&&e.target.closest('.modal')){
+      setTimeout(function(){e.target.scrollIntoView({block:'center',behavior:'smooth'});},250);
+    }
+  });
+
   function modal(html){document.getElementById('modal-host').innerHTML='<div class="modal-bg" id="mbg"><div class="modal">'+html+'</div></div>';document.getElementById('mbg').onclick=function(e){if(e.target.id==='mbg')closeModal();};}
   function closeModal(){document.getElementById('modal-host').innerHTML='';}
   var app=document.getElementById('app');
