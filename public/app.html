@@ -559,7 +559,12 @@ a{color:inherit;text-decoration:none;}
       if(r==='Super Admin')m.push(['activity','🕐','Activity Log']);
       m.push(['notifs','🔔','Notifications']);m.push(['settings','⚙️','Settings']);return m;
     }
-    if(r==='Field Collector'){var fm=[['home','🏠','Dashboard'],['txns','🔁','Transactions'],['collections','💳','Collections'],['withdrawals','🏧','Withdrawals'],['customers','👥','Customers']];if((S.user.privileges||[]).indexOf('approve_transactions')>=0)fm.push(['approvals','✅','Approvals']);fm.push(['notifs','🔔','Notifications']);fm.push(['settings','⚙️','Settings']);return fm;}
+    if(r==='Field Collector'){var fm=[['home','🏠','Dashboard'],['txns','🔁','Transactions'],['collections','💳','Collections'],['withdrawals','🏧','Withdrawals'],['customers','👥','Customers']];if((S.user.privileges||[]).indexOf('approve_transactions')>=0)fm.push(['approvals','✅','Approvals']);
+      // A collector delegated the "View Reports" privilege (e.g. given the Branch Manager
+      // job title via Roles & Privileges) still logs in with the Field Collector role, so
+      // this is the only place a Reports entry point exists for them.
+      if((S.user.privileges||[]).indexOf('view_reports')>=0)fm.push(['reports','📊','Reports']);
+      fm.push(['notifs','🔔','Notifications']);fm.push(['settings','⚙️','Settings']);return fm;}
     if(r==='Accountant')return [['dash','🏠','Dashboard'],['txns','🔁','Transactions'],['withdrawals','🏧','Withdrawals'],['approvals','✅','Approvals'],['reports','📊','Reports'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];
     if(r==='Customer')return [['home','🏠','My Account'],['txns','🧾','Transactions'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];
     return [['home','🏠','Home'],['notifs','🔔','Notifications'],['settings','⚙️','Settings']];

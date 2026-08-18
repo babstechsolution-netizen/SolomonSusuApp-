@@ -837,6 +837,10 @@ function applyTheme(t) {
           { id: 'collections', label: 'Collect Money', icon: _lucidereact.CreditCard },
           { id: 'withdrawals', label: 'Withdrawals', icon: _lucidereact.Wallet },
           { id: 'customers', label: 'My Customers', icon: _lucidereact.UserPlus },
+          // A collector delegated the "View Reports" privilege (e.g. given the Branch Manager
+          // job title via Roles & Privileges) still logs in with the Field Collector role, so
+          // this is the only place a Reports entry point exists for them.
+          ...((currentUser.privileges || []).includes('view_reports') ? [{ id: 'reports', label: 'Reports', icon: _lucidereact.BarChart2 }] : []),
           { id: 'notifications', label: 'Notifications', icon: _lucidereact.Bell },
           { id: 'settings', label: 'Settings', icon: _lucidereact.Settings },
         ];

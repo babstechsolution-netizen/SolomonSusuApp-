@@ -86,14 +86,25 @@ router.get('/', async (req, res) => {
         if (to) filter.date.$lte = to;
       }
     }
-    // Role-based scoping is enforced here, server-side — a Customer or Field Collector must
-    // never be able to see another person's records just by sending a different ?employee=
-    // or ?customer= id. Only admin/manager/accountant roles may pass those filters freely.
+    // Role-based scoping is enforced here, server-side — a Customer or plain Field Collector
+    // must never be able to see another person's records just by sending a different
+    // ?employee= or ?customer= id. Admin/manager/accountant roles pass those filters freely.
+    // A Field Collector who has been delegated 'view_all_transactions' or 'view_reports'
+    // (e.g. given the "Branch Manager" job title via Roles & Privileges, without changing
+    // their login role) is exempted the same way — otherwise the privilege grant would be
+    // silently ineffective, since this scoping would still clamp them to their own records.
     if (req.user.role === 'Customer') {
       filter.customer = req.user.customerId;
     } else if (req.user.role === 'Field Collector') {
-      const emp = await Employee.findOne({ userId: req.user._id }).select('_id');
-      filter.employee = emp ? emp._id : new mongoose.Types.ObjectId();
+      const emp = await Employee.findOne({ userId: req.user._id }).select('_id privileges');
+      const privs = (emp && emp.privileges) || [];
+      const canSeeAll = privs.includes('view_all_transactions') || privs.includes('view_reports');
+      if (canSeeAll) {
+        if (req.query.employee) filter.employee = req.query.employee;
+        if (req.query.customer) filter.customer = req.query.customer;
+      } else {
+        filter.employee = emp ? emp._id : new mongoose.Types.ObjectId();
+      }
     } else {
       if (req.query.employee) filter.employee = req.query.employee;
       if (req.query.customer) filter.customer = req.query.customer;
@@ -431,8 +442,15 @@ router.get('/stats', async (req, res) => {
     if (req.user.role === 'Customer') {
       filter.customer = req.user.customerId;
     } else if (req.user.role === 'Field Collector') {
-      const emp = await Employee.findOne({ userId: req.user._id }).select('_id');
-      filter.employee = emp ? emp._id : new mongoose.Types.ObjectId();
+      const emp = await Employee.findOne({ userId: req.user._id }).select('_id privileges');
+      const privs = (emp && emp.privileges) || [];
+      const canSeeAll = privs.includes('view_all_transactions') || privs.includes('view_reports');
+      if (canSeeAll) {
+        if (req.query.employee) filter.employee = req.query.employee;
+        if (req.query.customer) filter.customer = req.query.customer;
+      } else {
+        filter.employee = emp ? emp._id : new mongoose.Types.ObjectId();
+      }
     } else {
       if (req.query.employee) filter.employee = req.query.employee;
       if (req.query.customer) filter.customer = req.query.customer;
