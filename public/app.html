@@ -319,7 +319,7 @@ a{color:inherit;text-decoration:none;}
     _socket.on('notification:new',function(){ loadNotifs().then(function(){ updateBadges(); if(S.screen==='notifs') notifsScreen(); }); });
   }
   function scheduleRefresh(){ if(document.getElementById('modal-host').innerHTML)return; if(_rt)clearTimeout(_rt); _rt=setTimeout(refreshCurrent,700); }
-  function refreshCurrent(){ var f={dash:adminDash,home:home,approvals:approvalsScreen,txns:txnsScreen,notifs:notifsScreen,reports:reportsScreen,leaderboard:leaderboardScreen,activity:activityScreen,collections:function(){txnList('deposit','Collections');},withdrawals:function(){txnList('withdrawal','Withdrawals');},
+  function refreshCurrent(){ var f={dash:adminDash,home:home,approvals:approvalsScreen,txns:txnsScreen,notifs:notifsScreen,reports:reportsScreen,leaderboard:leaderboardScreen,activity:activityScreen,collections:function(){txnList('deposit','Collections');},withdrawals:function(){txnList('withdrawal','Withdrawals');},empreport:function(){loadTxnList(true);},
     // Live add/edit/delete of a customer refreshes the open customer list in place, keeping the
     // user's current search text and page. Without this the list drifts stale across devices.
     customers:function(){ if(!document.getElementById('q'))return; reloadCustomers().then(function(){ if(S.screen!=='customers')return; if(role()==='Field Collector')updateCList(); else updateAcList(); }).catch(function(){}); }}; if(f[S.screen])f[S.screen](); }
@@ -655,13 +655,16 @@ a{color:inherit;text-decoration:none;}
       '<div class="inp-wrap" style="margin-bottom:12px"><select class="inp" id="repemp">'+empOpts+'</select></div>'+
       '<div class="card"><div style="display:flex;gap:12px;text-align:center"><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--dep)">'+money(totalDep)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">COLLECTED</div></div><div style="width:1px;background:var(--border-l)"></div><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--wit)">'+money(totalWit)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">WITHDRAWN</div></div></div></div>'+
       '<div class="card"><div class="s-div" style="margin:0 0 10px"><span class="s-div-title">By Payment Method</span></div>'+(bm.length?bm.map(function(m){var pct=Math.round((m.amount||0)/methodTotal*100);return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>'+esc(m._id||'—')+'</span><span style="font-weight:700">'+money(m.amount)+' ('+pct+'%)</span></div><div class="prog-bg"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>';}).join(''):'<div style="font-size:12px;color:var(--t3)">No data.</div>')+'</div>'+
-      '<div class="s-div"><span class="s-div-title">Employee Performance'+(S.repEmp?'':' (by Collections)')+'</span></div>'+(top.length?top.map(function(e,i){return '<div class="cli"><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+(i+1)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(e.zone||'')+'</div></div><div style="text-align:right"><div class="cli-bal" style="color:var(--g-600)">'+money(e.collections)+' in</div><div style="font-size:10px;color:var(--wit);font-weight:700">'+money(e.withdrawals)+' out</div></div></div>';}).join(''):'<div class="empty">No collections or withdrawals for this period.</div>')+
+      '<div class="s-div"><span class="s-div-title">Employee Performance'+(S.repEmp?'':' (by Collections)')+'</span></div>'+(top.length?top.map(function(e,i){return '<div class="cli" data-repemp="'+esc(e._id)+'" style="cursor:pointer"><div class="cli-av" style="background:'+(e.color||colorFor(e._id))+'">'+(i+1)+'</div><div class="cli-info"><div class="cli-name">'+esc(e.name)+'</div><div class="cli-meta">'+esc(e.zone||'')+'</div></div><div style="text-align:right"><div class="cli-bal" style="color:var(--g-600)">'+money(e.collections)+' in</div><div style="font-size:10px;color:var(--wit);font-weight:700">'+money(e.withdrawals)+' out</div></div><div style="margin-left:6px;color:var(--t3)">›</div></div>';}).join(''):'<div class="empty">No collections or withdrawals for this period.</div>')+
       '</div></div>'+bnav('more'));
     q('[data-back]').onclick=moreScreen;
     all('[data-per]').forEach(function(el){el.onclick=function(){var p=el.getAttribute('data-per');S.repPeriod=p;if(p==='custom')drawReports(S.repData||{});else loadReports();};});
     var rf=q('#repfrom');if(rf)rf.onchange=function(){S.repFrom=rf.value;loadReports();};
     var rt=q('#repto');if(rt)rt.onchange=function(){S.repTo=rt.value;loadReports();};
     var se=q('#repemp');if(se)se.onchange=function(){S.repEmp=se.value;loadReports();};
+    // Tap an employee to drill into that person's individual transactions for the same
+    // period — who they collected from/paid out to, and when, not just the totals.
+    all('[data-repemp]').forEach(function(el){el.onclick=function(){var id=el.getAttribute('data-repemp');var e=(top||[]).filter(function(x){return x._id===id;})[0];if(e)employeeReportDrill(e);};});
     wireNav();}
 
   // ---------- LEADERBOARD ----------
@@ -678,30 +681,53 @@ a{color:inherit;text-decoration:none;}
 
   // ---------- COLLECTIONS / WITHDRAWALS (filtered transaction lists) ----------
   // Admin/manager can narrow either list by period and by employee, same filters as Reports.
+  // Lists page in via "Load more" (server-paginated, 50/page) so a busy day's transactions
+  // are never silently capped — same list engine also powers the per-employee drill-down
+  // opened from Reports (see employeeReportDrill below).
   function canFilterTxnList(){var r=role();return r==='Super Admin'||r==='Branch Manager'||r==='Accountant'||(S.user.privileges||[]).indexOf('view_reports')>=0;}
-  function txnList(type,title){S.screen=(type==='deposit'?'collections':'withdrawals');S.tlType=type;S.tlTitle=title;
+  function txnList(type,title){S.screen=(type==='deposit'?'collections':'withdrawals');S.tlType=type;S.tlTitle=title;S.tlBack=moreScreen;S.tlLockEmp=false;
     if(!S.tlPeriod)S.tlPeriod='all';if(S.tlEmp===undefined)S.tlEmp='';
+    S.tlPage=1;S.tlAccum=[];S.tlStats=null;
     set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+title+'</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
-    if(canFilterTxnList())api('/api/employees').then(function(r){S.tlEmps=r.data||[];loadTxnList();}).catch(function(){S.tlEmps=[];loadTxnList();});
-    else loadTxnList();}
-  function txnListQS(){var qs='type='+S.tlType+'&limit=50&';if(S.tlPeriod==='custom'){qs+=(S.tlFrom?'from='+S.tlFrom:'')+(S.tlTo?(S.tlFrom?'&':'')+'to='+S.tlTo:'');if(!/from=|to=/.test(qs))qs+='period=all';}else qs+='period='+S.tlPeriod;if(S.tlEmp)qs+='&employee='+S.tlEmp;return qs;}
-  function loadTxnList(){api('/api/transactions?'+txnListQS()).then(function(d){S.tlData=d;drawTxnList(d);}).catch(function(e){toast(e.message,'err');});}
-  function drawTxnList(d){var list=d.data||[];var title=S.tlTitle;var canFilter=canFilterTxnList();
+    if(canFilterTxnList())api('/api/employees').then(function(r){S.tlEmps=r.data||[];loadTxnList(true);}).catch(function(){S.tlEmps=[];loadTxnList(true);});
+    else loadTxnList(true);}
+  // Employee drill-down from Reports: same list, but locked to one employee/period and both
+  // transaction types combined, with an accurate split totals card via /transactions/stats
+  // (a plain sum would otherwise net deposits against withdrawals, which is meaningless).
+  function employeeReportDrill(emp){S.screen='empreport';S.tlType='all';S.tlTitle=emp.name;S.tlEmp=emp._id;S.tlLockEmp=true;S.tlBack=reportsScreen;
+    S.tlPeriod=S.repPeriod;S.tlFrom=S.repFrom;S.tlTo=S.repTo;S.tlPage=1;S.tlAccum=[];S.tlStats=null;
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+esc(emp.name)+'</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    if(S.tlEmps)loadTxnList(true);else api('/api/employees').then(function(r){S.tlEmps=r.data||[];loadTxnList(true);}).catch(function(){S.tlEmps=[];loadTxnList(true);});}
+  function txnListQS(page){var qs='limit=50&page='+(page||1)+'&';if(S.tlType&&S.tlType!=='all')qs+='type='+S.tlType+'&';if(S.tlPeriod==='custom'){qs+=(S.tlFrom?'from='+S.tlFrom:'')+(S.tlTo?(S.tlFrom?'&':'')+'to='+S.tlTo:'');if(!/from=|to=/.test(qs))qs+='period=all';}else qs+='period='+S.tlPeriod;if(S.tlEmp)qs+='&employee='+S.tlEmp;return qs;}
+  function tlStatsQS(){var qs;if(S.tlPeriod==='custom'){qs=(S.tlFrom?'from='+S.tlFrom:'')+(S.tlTo?(S.tlFrom?'&':'')+'to='+S.tlTo:'');if(!qs)qs='period=all';}else qs='period='+S.tlPeriod;if(S.tlEmp)qs+='&employee='+S.tlEmp;return qs;}
+  function loadTxnList(reset){if(reset){S.tlPage=1;S.tlAccum=[];}var page=S.tlPage||1;
+    api('/api/transactions?'+txnListQS(page)).then(function(d){
+      S.tlAccum=(page===1)?(d.data||[]):(S.tlAccum||[]).concat(d.data||[]);
+      S.tlMeta={total:d.total||0,pages:d.pages||1,sum:d.sum||0};
+      if(!S.tlType||S.tlType==='all'){
+        api('/api/transactions/stats?'+tlStatsQS()).then(function(sr){S.tlStats=sr.data||null;drawTxnList();}).catch(function(){S.tlStats=null;drawTxnList();});
+      } else { S.tlStats=null; drawTxnList(); }
+    }).catch(function(e){toast(e.message,'err');});}
+  function drawTxnList(){var list=S.tlAccum||[];var title=S.tlTitle;var canFilter=canFilterTxnList();var meta=S.tlMeta||{total:list.length,pages:1,sum:0};
     var filterHtml='';
     if(canFilter){
       var empOpts='<option value="">All Employees</option>'+(S.tlEmps||[]).map(function(e){return '<option value="'+esc(e._id)+'"'+(S.tlEmp===e._id?' selected':'')+'>'+esc(e.name)+'</option>';}).join('');
       filterHtml='<div class="chip-row" style="margin-bottom:10px">'+RPERIODS.map(function(p){return '<span class="chip'+(S.tlPeriod===p?' on':'')+'" data-tlper="'+p+'">'+RPLABELS[p]+'</span>';}).join('')+'</div>'+
         (S.tlPeriod==='custom'?('<div style="display:flex;gap:8px;margin-bottom:12px"><div class="inp-wrap" style="flex:1;margin-bottom:0"><label class="inp-lbl">From</label><input class="inp" type="date" id="tlfrom" value="'+(S.tlFrom||'')+'"></div><div class="inp-wrap" style="flex:1;margin-bottom:0"><label class="inp-lbl">To</label><input class="inp" type="date" id="tlto" value="'+(S.tlTo||'')+'"></div></div>'):'')+
-        '<div class="inp-wrap" style="margin-bottom:12px"><select class="inp" id="tlemp">'+empOpts+'</select></div>'+
-        '<div class="card" style="text-align:center"><div style="font-size:20px;font-weight:900;color:'+(S.tlType==='deposit'?'var(--dep)':'var(--wit)')+'">'+money(d.sum||0)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">TOTAL '+title.toUpperCase()+'</div></div>';
+        (S.tlLockEmp?'':'<div class="inp-wrap" style="margin-bottom:12px"><select class="inp" id="tlemp">'+empOpts+'</select></div>')+
+        (S.tlStats?
+          ('<div class="card"><div style="display:flex;gap:12px;text-align:center"><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--dep)">'+money(S.tlStats.totalDeposits)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">COLLECTED</div></div><div style="width:1px;background:var(--border-l)"></div><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--wit)">'+money(S.tlStats.totalWithdrawals)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">WITHDRAWN</div></div></div></div>')
+          :('<div class="card" style="text-align:center"><div style="font-size:20px;font-weight:900;color:'+(S.tlType==='deposit'?'var(--dep)':'var(--wit)')+'">'+money(meta.sum)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">TOTAL '+title.toUpperCase()+'</div></div>'));
     }
-    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+title+' ('+(d.total||list.length)+')</div></div><div class="sc"><div class="body-pad">'+filterHtml+(list.length?list.map(txnRow).join(''):'<div class="empty"><div class="ei">🧾</div>No '+title.toLowerCase()+' yet.</div>')+'</div></div>'+bnav('more'));
-    q('[data-back]').onclick=moreScreen;
+    var loadMore=((S.tlPage||1)<meta.pages)?'<button class="btn btn-ghost btn-full" id="tlmore" style="margin-top:10px">Load more ('+list.length+' of '+meta.total+')</button>':'';
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+esc(title)+' ('+meta.total+')</div></div><div class="sc"><div class="body-pad">'+filterHtml+(list.length?list.map(txnRow).join(''):'<div class="empty"><div class="ei">🧾</div>No '+esc(title.toLowerCase())+' yet.</div>')+loadMore+'</div></div>'+bnav('more'));
+    q('[data-back]').onclick=S.tlBack||moreScreen;
+    var lm=q('#tlmore');if(lm)lm.onclick=function(){lm.innerHTML='<span class="spin"></span>';S.tlPage=(S.tlPage||1)+1;loadTxnList(false);};
     if(canFilter){
-      all('[data-tlper]').forEach(function(el){el.onclick=function(){var p=el.getAttribute('data-tlper');S.tlPeriod=p;if(p==='custom')drawTxnList(S.tlData||{});else loadTxnList();};});
-      var tf=q('#tlfrom');if(tf)tf.onchange=function(){S.tlFrom=tf.value;loadTxnList();};
-      var tt=q('#tlto');if(tt)tt.onchange=function(){S.tlTo=tt.value;loadTxnList();};
-      var se=q('#tlemp');if(se)se.onchange=function(){S.tlEmp=se.value;loadTxnList();};
+      all('[data-tlper]').forEach(function(el){el.onclick=function(){var p=el.getAttribute('data-tlper');S.tlPeriod=p;if(p==='custom'){S.tlPage=1;drawTxnList();}else loadTxnList(true);};});
+      var tf=q('#tlfrom');if(tf)tf.onchange=function(){S.tlFrom=tf.value;loadTxnList(true);};
+      var tt=q('#tlto');if(tt)tt.onchange=function(){S.tlTo=tt.value;loadTxnList(true);};
+      var se=q('#tlemp');if(se)se.onchange=function(){S.tlEmp=se.value;loadTxnList(true);};
     }
     wireNav();}
 
