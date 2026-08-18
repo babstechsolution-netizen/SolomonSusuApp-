@@ -6,6 +6,7 @@ const User = require('../models/User');
 const Employee = require('../models/Employee');
 const { protect, requireRole } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
+const { createNotification } = require('../utils/notify');
 const { sync } = require('../socket');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -264,7 +265,17 @@ router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
 // DELETE /api/customers  — wipe all (Super Admin only)
 router.delete('/', requireRole('Super Admin'), async (req, res) => {
   try {
+    const count = await Customer.countDocuments({});
     await Customer.deleteMany({});
+    logActivity('customer_delete', req.user.name, req.user.role, `${req.user.name} wiped ALL ${count} customers from the system.`, { count });
+    ['Super Admin', 'Branch Manager'].forEach((role) => {
+      createNotification({
+        recipientRole: role,
+        type: 'customer_delete',
+        title: 'ALL Customers Wiped',
+        body: `${req.user.name} deleted all ${count} customer records from the system.`,
+      });
+    });
     res.json({ success: true, message: 'All customers deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

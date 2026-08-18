@@ -445,6 +445,24 @@ function applyTheme(t) {
   const [showCustomerAccount, setShowCustomerAccount] = _react.useState.call(void 0, null);
   const [customerAccountTxns, setCustomerAccountTxns] = _react.useState.call(void 0, []);
   const [customerAccountLoading, setCustomerAccountLoading] = _react.useState.call(void 0, false);
+  const [showEmployeeDetail, setShowEmployeeDetail] = _react.useState.call(void 0, null);
+  const [employeeDetailDate, setEmployeeDetailDate] = _react.useState.call(void 0, new Date().toISOString().substring(0, 10));
+  const [employeeDetailTxns, setEmployeeDetailTxns] = _react.useState.call(void 0, []);
+  const [employeeDetailLoading, setEmployeeDetailLoading] = _react.useState.call(void 0, false);
+  const [collectionsDate, setCollectionsDate] = _react.useState.call(void 0, new Date().toISOString().substring(0, 10));
+  const [collectionsTxns, setCollectionsTxns] = _react.useState.call(void 0, []);
+  const [collectionsLoading, setCollectionsLoading] = _react.useState.call(void 0, false);
+  const [dashboardStats, setDashboardStats] = _react.useState.call(void 0, { totalDeposits: 0, depositCount: 0, totalWithdrawals: 0, withdrawalCount: 0 });
+  const [dashboardStatsLoading, setDashboardStatsLoading] = _react.useState.call(void 0, false);
+  const [withdrawalsDate, setWithdrawalsDate] = _react.useState.call(void 0, new Date().toISOString().substring(0, 10));
+  const [withdrawalsTxns, setWithdrawalsTxns] = _react.useState.call(void 0, []);
+  const [withdrawalsLoading, setWithdrawalsLoading] = _react.useState.call(void 0, false);
+  const [withdrawalsPending, setWithdrawalsPending] = _react.useState.call(void 0, []);
+  const [withdrawalsPendingLoading, setWithdrawalsPendingLoading] = _react.useState.call(void 0, false);
+  const [customerBalanceSort, setCustomerBalanceSort] = _react.useState.call(void 0, 'none');
+  const [employeeCollectionsSort, setEmployeeCollectionsSort] = _react.useState.call(void 0, 'none');
+  const [activityLogPage, setActivityLogPage] = _react.useState.call(void 0, 1);
+  const [activityLogItemsPerPage, setActivityLogItemsPerPage] = _react.useState.call(void 0, 12);
   const [showCustomerLoginModal, setShowCustomerLoginModal] = _react.useState.call(void 0, null);
   const [customerLoginForm, setCustomerLoginForm] = _react.useState.call(void 0, { username: '', password: '' });
   const [showCustLoginPw, setShowCustLoginPw] = _react.useState.call(void 0, false);
@@ -481,6 +499,16 @@ function applyTheme(t) {
   const [transactionItemsPerPage, setTransactionItemsPerPage] = _react.useState.call(void 0, 8);
   const [employeePage, setEmployeePage] = _react.useState.call(void 0, 1);
   const [employeeItemsPerPage, setEmployeeItemsPerPage] = _react.useState.call(void 0, 6);
+  const [collectionsPage, setCollectionsPage] = _react.useState.call(void 0, 1);
+  const [collectionsItemsPerPage, setCollectionsItemsPerPage] = _react.useState.call(void 0, 10);
+  const [collectionsEmpPage, setCollectionsEmpPage] = _react.useState.call(void 0, 1);
+  const [collectionsEmpItemsPerPage, setCollectionsEmpItemsPerPage] = _react.useState.call(void 0, 8);
+  const [withdrawalsPage, setWithdrawalsPage] = _react.useState.call(void 0, 1);
+  const [withdrawalsItemsPerPage, setWithdrawalsItemsPerPage] = _react.useState.call(void 0, 8);
+  const [employeeDetailPage, setEmployeeDetailPage] = _react.useState.call(void 0, 1);
+  const [employeeDetailItemsPerPage, setEmployeeDetailItemsPerPage] = _react.useState.call(void 0, 8);
+  const [employeeDetailCustPage, setEmployeeDetailCustPage] = _react.useState.call(void 0, 1);
+  const [employeeDetailCustItemsPerPage, setEmployeeDetailCustItemsPerPage] = _react.useState.call(void 0, 8);
 
   const otpRefs = _react.useRef.call(void 0, []);
   const fileInputRef = _react.useRef.call(void 0, null);
@@ -639,6 +667,34 @@ function applyTheme(t) {
     return function() { document.removeEventListener('visibilitychange', handleVisibility); };
   }, [isAuthenticated]);
 
+  // Pull a fresh, server-side snapshot for the selected day every time the Collections tab
+  // is opened, so it never depends on whatever happens to be sitting in the live-synced cache.
+  _react.useEffect.call(void 0, function() {
+    if (!isAuthenticated) return;
+    if (currentPage !== 'collections') return;
+    loadCollectionsForDate(collectionsDate);
+  }, [isAuthenticated, currentPage]);
+
+  // Same for Withdrawals — fetch the selected day, and the always-visible pending queue,
+  // fresh whenever that tab is opened.
+  _react.useEffect.call(void 0, function() {
+    if (!isAuthenticated) return;
+    if (currentPage !== 'withdrawals') return;
+    loadWithdrawalsForDate(withdrawalsDate);
+    loadPendingWithdrawals();
+  }, [isAuthenticated, currentPage]);
+
+  // Authoritative headline stats for the dashboards, Transactions, and Withdrawals summary
+  // cards — recomputed whenever the visible page, the Today/Week/Month/Year filter, or the
+  // user changes.
+  _react.useEffect.call(void 0, function() {
+    if (!isAuthenticated || !currentUser) return;
+    if (['dashboard', 'transactions', 'withdrawals'].indexOf(currentPage) === -1) return;
+    const custId = currentUser.role === 'Customer' ? currentUser.customerId : null;
+    const empId = currentUser.role === 'Field Collector' ? currentUser.employeeId : null;
+    loadDashboardStats(timePeriodFilter, custId, empId);
+  }, [isAuthenticated, currentUser, currentPage, timePeriodFilter]);
+
   const activeTheme = APP_THEMES.find(function(t){ return t.id === selectedTheme; }) || APP_THEMES[0];
 
   const bg = darkMode ? 'bg-gray-900' : 'bg-gray-50';
@@ -750,20 +806,6 @@ function applyTheme(t) {
       loadBackupSettings();
     }
   }, [currentPage]);
-
-  const getTransactionStats = (filter, customerId = null, employeeId = null) => {
-    let filtered = [...transactions];
-    if (customerId) filtered = filtered.filter(t => t.customerId === customerId);
-    if (employeeId) filtered = filtered.filter(t => t.employeeId === employeeId);
-    const todayStr = new Date().toISOString().substring(0, 10);
-    const today = new Date(todayStr);
-    if (filter === 'today') filtered = filtered.filter(t => t.date === todayStr);
-    else if (filter === 'week') { const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7); filtered = filtered.filter(t => t.date && new Date(t.date) >= weekAgo); }
-    else if (filter === 'month') { const ym = todayStr.substring(0, 7); filtered = filtered.filter(t => t.date && t.date.startsWith(ym)); }
-    const deposits = filtered.filter(t => t.type === 'deposit' && t.status === 'approved');
-    const withdrawals = filtered.filter(t => t.type === 'withdrawal' && t.status === 'approved');
-    return { totalDeposits: deposits.reduce((s, t) => s + t.amount, 0), totalWithdrawals: withdrawals.reduce((s, t) => s + t.amount, 0), depositCount: deposits.length, withdrawalCount: withdrawals.length, transactions: filtered };
-  };
 
   const formatCurrency = (amount) => `GH₵${amount.toLocaleString()}`;
 
@@ -1563,6 +1605,85 @@ async function shareAsPDF(){
       .finally(function(){ setCustomerAccountLoading(false); });
   };
 
+  // Fresh, server-authoritative pull for one employee's transactions on one calendar day —
+  // deliberately bypasses the client-side `transactions` cache (capped at 200, socket-synced)
+  // so a stale/missed live-sync event can never hide same-day collections from admins.
+  const loadEmployeeDetail = function(empId, date) {
+    if (!empId) { setEmployeeDetailTxns([]); return; }
+    setEmployeeDetailLoading(true);
+    apiCall('/api/transactions?employee=' + empId + '&date=' + date + '&limit=500')
+      .then(function(res) { setEmployeeDetailTxns((res.data || []).map(mapTx)); })
+      .catch(function(){ setEmployeeDetailTxns([]); })
+      .finally(function(){ setEmployeeDetailLoading(false); });
+  };
+  const openEmployeeDetail = function(emp, date) {
+    if (!emp || !emp.id) return;
+    const d = date || employeeDetailDate || new Date().toISOString().substring(0, 10);
+    setShowEmployeeDetail(emp);
+    setEmployeeDetailDate(d);
+    setEmployeeDetailPage(1);
+    setEmployeeDetailCustPage(1);
+    loadEmployeeDetail(emp.id, d);
+  };
+  const changeEmployeeDetailDate = function(newDate) {
+    setEmployeeDetailDate(newDate);
+    setEmployeeDetailPage(1);
+    setEmployeeDetailCustPage(1);
+    if (showEmployeeDetail) loadEmployeeDetail(showEmployeeDetail.id, newDate);
+  };
+
+  // Same idea for the Collections tab: always fetch the selected day straight from the
+  // server instead of trusting the locally cached/live-synced transaction list.
+  const loadCollectionsForDate = function(date) {
+    setCollectionsLoading(true);
+    var qs = '/api/transactions?type=deposit&limit=500';
+    if (date) qs += '&date=' + date;
+    if (currentUser && currentUser.role === 'Field Collector') qs += '&employee=' + (currentUser.employeeId || '');
+    apiCall(qs)
+      .then(function(res) { setCollectionsTxns((res.data || []).map(mapTx)); })
+      .catch(function(){ setCollectionsTxns([]); })
+      .finally(function(){ setCollectionsLoading(false); });
+  };
+
+  // Same idea again for Withdrawals: always fetch the selected day straight from the server.
+  const loadWithdrawalsForDate = function(date) {
+    setWithdrawalsLoading(true);
+    var qs = '/api/transactions?type=withdrawal&limit=500';
+    if (date) qs += '&date=' + date;
+    if (currentUser && currentUser.role === 'Field Collector') qs += '&employee=' + (currentUser.employeeId || '');
+    apiCall(qs)
+      .then(function(res) { setWithdrawalsTxns((res.data || []).map(mapTx)); })
+      .catch(function(){ setWithdrawalsTxns([]); })
+      .finally(function(){ setWithdrawalsLoading(false); });
+  };
+
+  // Pending withdrawals need action regardless of which day they were requested on, so this
+  // is deliberately NOT date-scoped — a request from three days ago must stay visible until
+  // someone approves or rejects it, never silently drop off because "today" moved on.
+  const loadPendingWithdrawals = function() {
+    setWithdrawalsPendingLoading(true);
+    var qs = '/api/transactions?type=withdrawal&status=pending&limit=200';
+    if (currentUser && currentUser.role === 'Field Collector') qs += '&employee=' + (currentUser.employeeId || '');
+    apiCall(qs)
+      .then(function(res) { setWithdrawalsPending((res.data || []).map(mapTx)); })
+      .catch(function(){ setWithdrawalsPending([]); })
+      .finally(function(){ setWithdrawalsPendingLoading(false); });
+  };
+
+  // Authoritative headline stats (deposits/withdrawals sums + counts) straight from the
+  // server's aggregation, so dashboards never undercount once history exceeds the 200-record
+  // local cache — the exact gap that let real totals drift from what admins saw on screen.
+  const loadDashboardStats = function(period, customerId, employeeId) {
+    setDashboardStatsLoading(true);
+    var qs = '/api/transactions/stats?period=' + (period || 'all');
+    if (customerId) qs += '&customer=' + customerId;
+    if (employeeId) qs += '&employee=' + employeeId;
+    apiCall(qs)
+      .then(function(res) { if (res && res.data) setDashboardStats(res.data); })
+      .catch(function(){})
+      .finally(function(){ setDashboardStatsLoading(false); });
+  };
+
   const handleCreateCustomerLogin = function() {
     if (!customerLoginForm.username.trim() || !customerLoginForm.password.trim()) { addToast('Username and password required.', 'error'); return; }
     apiCall('/api/customers/' + showCustomerLoginModal.id + '/create-login', { method: 'POST', body: JSON.stringify(customerLoginForm) })
@@ -1865,7 +1986,7 @@ async function shareAsPDF(){
 
   // ADMIN DASHBOARD
   const renderAdminDashboard = () => {
-    const stats = getTransactionStats(timePeriodFilter);
+    const stats = dashboardStats;
     return (
       _react2.default.createElement('div', { className: "space-y-4",}
         , _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"     ,}
@@ -1938,7 +2059,7 @@ async function shareAsPDF(){
         , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}`,}
           , _react2.default.createElement('div', { className: "flex items-center justify-between mb-4"   ,}, _react2.default.createElement('h3', { className: `font-semibold ${textPrimary}`,}, "Recent Transactions" ), _react2.default.createElement('button', { onClick: () => setCurrentPage('transactions'), className: "text-blue-500 text-sm hover:underline"  ,}, "View All" ))
           , _react2.default.createElement('div', { className: "overflow-x-auto",}, _react2.default.createElement('table', { className: "w-full text-sm" ,}, _react2.default.createElement('thead', null, _react2.default.createElement('tr', { className: `${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`,}, _react2.default.createElement('th', { className: `px-3 py-2 text-left font-medium ${textSecondary}`,}, "Customer"), _react2.default.createElement('th', { className: `px-3 py-2 text-left font-medium ${textSecondary} hidden sm:table-cell`,}, "Employee"), _react2.default.createElement('th', { className: `px-3 py-2 text-left font-medium ${textSecondary}`,}, "Type"), _react2.default.createElement('th', { className: `px-3 py-2 text-left font-medium ${textSecondary}`,}, "Amount"), _react2.default.createElement('th', { className: `px-3 py-2 text-left font-medium ${textSecondary}`,}, "Status"))), _react2.default.createElement('tbody', null
-            , transactions.slice(0, 5).map((tx) => (_react2.default.createElement('tr', { key: tx.id, className: `border-t ${borderColor}`,}, _react2.default.createElement('td', { className: `px-3 py-2.5 ${textPrimary} font-medium`,}, tx.customer), _react2.default.createElement('td', { className: `px-3 py-2.5 ${textSecondary} hidden sm:table-cell`,}, tx.employee), _react2.default.createElement('td', { className: "px-3 py-2.5" ,}, _react2.default.createElement('span', { className: `inline-flex items-center gap-1 text-xs font-medium ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`,}, tx.type === 'deposit' ? _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 12,} ) : _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 12,} ), tx.type)), _react2.default.createElement('td', { className: `px-3 py-2.5 font-semibold ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`,}, tx.type === 'withdrawal' ? '-' : '+', formatCurrency(tx.amount)), _react2.default.createElement('td', { className: "px-3 py-2.5" ,}, _react2.default.createElement(StatusBadge, { status: tx.status,} )))))
+            , transactions.slice(0, 5).map((tx) => (_react2.default.createElement('tr', { key: tx.id, className: `border-t ${borderColor}`,}, _react2.default.createElement('td', { className: `px-3 py-2.5 ${textPrimary} font-medium`,}, tx.customer), _react2.default.createElement('td', { className: "px-3 py-2.5 hidden sm:table-cell" ,}, tx.employeeId ? _react2.default.createElement('button', { onClick: () => openEmployeeDetail(getEmployeeById(tx.employeeId) || { id: tx.employeeId, name: tx.employee, color: '#16a34a' }, tx.date), className: `${textSecondary} hover:text-green-600 hover:underline font-medium` ,}, tx.employee) : _react2.default.createElement('span', { className: textSecondary ,}, tx.employee)), _react2.default.createElement('td', { className: "px-3 py-2.5" ,}, _react2.default.createElement('span', { className: `inline-flex items-center gap-1 text-xs font-medium ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`,}, tx.type === 'deposit' ? _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 12,} ) : _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 12,} ), tx.type)), _react2.default.createElement('td', { className: `px-3 py-2.5 font-semibold ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`,}, tx.type === 'withdrawal' ? '-' : '+', formatCurrency(tx.amount)), _react2.default.createElement('td', { className: "px-3 py-2.5" ,}, _react2.default.createElement(StatusBadge, { status: tx.status,} )))))
           )))
         )
       )
@@ -1948,7 +2069,7 @@ async function shareAsPDF(){
   // EMPLOYEE DASHBOARD
   const renderEmployeeDashboard = () => {
     const myCustomers = getCustomersByEmployee(_optionalChain([currentUser, 'optionalAccess', _18 => _18.employeeId]) || 1);
-    const stats = getTransactionStats(timePeriodFilter, null, _optionalChain([currentUser, 'optionalAccess', _19 => _19.employeeId]) || 1);
+    const stats = dashboardStats;
     return (
       _react2.default.createElement('div', { className: "space-y-4",}
         , _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"     ,}
@@ -2117,7 +2238,7 @@ async function shareAsPDF(){
 
   // ACCOUNTANT DASHBOARD
   const renderAccountantDashboard = () => {
-    const stats = getTransactionStats(timePeriodFilter);
+    const stats = dashboardStats;
     return (
       _react2.default.createElement('div', { className: "space-y-4",}
         , _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"     ,}, _react2.default.createElement('div', { className: "flex items-center gap-3"  ,}, _react2.default.createElement(Avatar, { name: _optionalChain([currentUser, 'optionalAccess', _28 => _28.name]), color: _optionalChain([currentUser, 'optionalAccess', _29 => _29.color]), size: "lg", showOnline: true, photo: _optionalChain([currentUser, 'optionalAccess', _30 => _30.photo]),} ), _react2.default.createElement('div', null, _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}`,}, "Financial Overview" ), _react2.default.createElement('p', { className: `text-sm ${textSecondary}`,}, _optionalChain([currentUser, 'optionalAccess', _31 => _31.name])))), _react2.default.createElement(TimePeriodSelector, { value: timePeriodFilter, onChange: setTimePeriodFilter,} ))
@@ -2139,7 +2260,7 @@ async function shareAsPDF(){
     if (_optionalChain([currentUser, 'optionalAccess', _33 => _33.role]) === 'Customer') filteredTx = filteredTx.filter(t => t.customerId === (currentUser.customerId || 1));
     if (transactionTypeFilter !== 'all') filteredTx = filteredTx.filter(t => t.type === transactionTypeFilter);
     if (searchTerm) filteredTx = filteredTx.filter(t => t.customer.toLowerCase().includes(searchTerm.toLowerCase()) || t.employee.toLowerCase().includes(searchTerm.toLowerCase()));
-    const stats = getTransactionStats(timePeriodFilter, _optionalChain([currentUser, 'optionalAccess', _34 => _34.role]) === 'Customer' ? currentUser.customerId : null, _optionalChain([currentUser, 'optionalAccess', _35 => _35.role]) === 'Field Collector' ? currentUser.employeeId : null);
+    const stats = dashboardStats;
 
     const totalTxPages = Math.ceil(filteredTx.length / transactionItemsPerPage);
     const paginatedTx = filteredTx.slice((transactionPage - 1) * transactionItemsPerPage, transactionPage * transactionItemsPerPage);
@@ -2159,7 +2280,7 @@ async function shareAsPDF(){
         )
         , _react2.default.createElement('div', { className: `${cardBg} rounded-xl shadow-sm border ${borderColor} overflow-hidden`,}
           , _react2.default.createElement('div', { className: "overflow-x-auto",}, _react2.default.createElement('table', { className: "w-full text-sm" ,}, _react2.default.createElement('thead', null, _react2.default.createElement('tr', { className: `${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`,}, _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}`,}, "Customer"), _optionalChain([currentUser, 'optionalAccess', _36 => _36.role]) !== 'Customer' && _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary} hidden sm:table-cell`,}, "Employee"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}`,}, "Type"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}`,}, "Amount"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}`,}, "Status"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}`,}, "Action"))), _react2.default.createElement('tbody', null
-            , paginatedTx.map((tx) => (_react2.default.createElement('tr', { key: tx.id, className: `border-t ${borderColor}`,}, _react2.default.createElement('td', { className: `px-4 py-3 ${textPrimary} font-medium`,}, tx.customer), _optionalChain([currentUser, 'optionalAccess', _37 => _37.role]) !== 'Customer' && _react2.default.createElement('td', { className: `px-4 py-3 ${textSecondary} hidden sm:table-cell`,}, tx.employee), _react2.default.createElement('td', { className: "px-4 py-3" ,}, _react2.default.createElement('span', { className: `inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${tx.type === 'deposit' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`,}, tx.type === 'deposit' ? _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 10,} ) : _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 10,} ), tx.type)), _react2.default.createElement('td', { className: `px-4 py-3 font-bold ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`,}, tx.type === 'withdrawal' ? '-' : '+', formatCurrency(tx.amount)), _react2.default.createElement('td', { className: "px-4 py-3" ,}, _react2.default.createElement(StatusBadge, { status: tx.status,} )), _react2.default.createElement('td', { className: "px-4 py-3" ,}, tx.status === 'pending' && (_optionalChain([currentUser, 'optionalAccess', _tap => _tap.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _tap2 => _tap2.role]) === 'Admin' || _optionalChain([currentUser, 'optionalAccess', _tap3 => _tap3.role]) === 'Accountant' || (_optionalChain([currentUser, 'optionalAccess', _tap4 => _tap4.privileges]) || []).includes('approve_transactions')) ? _react2.default.createElement('button', { onClick: () => approveTransaction(tx.id), className: "px-2 py-1 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 flex items-center gap-1",}, _react2.default.createElement(_lucidereact.CheckCircle, { size: 11,} ), " Approve" ) : tx.status === 'approved' ? _react2.default.createElement('button', { onClick: () => openReceipt(tx), className: "px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 flex items-center gap-1",}, _react2.default.createElement(_lucidereact.Printer, { size: 11,} ), " Receipt" ) : null, _optionalChain([currentUser, 'optionalAccess', _dtx => _dtx.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'transaction', id: tx.id, name: (tx.customer || '') + ' — ' + formatCurrency(tx.amount) }), className: "p-1 text-red-400 hover:bg-red-50 rounded ml-1", title: "Delete transaction",}, _react2.default.createElement(_lucidereact.Trash2, { size: 12,}))))))
+            , paginatedTx.map((tx) => (_react2.default.createElement('tr', { key: tx.id, className: `border-t ${borderColor}`,}, _react2.default.createElement('td', { className: `px-4 py-3 ${textPrimary} font-medium`,}, tx.customer), _optionalChain([currentUser, 'optionalAccess', _37 => _37.role]) !== 'Customer' && _react2.default.createElement('td', { className: "px-4 py-3 hidden sm:table-cell" ,}, tx.employeeId ? _react2.default.createElement('button', { onClick: () => openEmployeeDetail(getEmployeeById(tx.employeeId) || { id: tx.employeeId, name: tx.employee, color: '#16a34a' }, tx.date), className: `${textSecondary} hover:text-green-600 hover:underline font-medium` ,}, tx.employee) : _react2.default.createElement('span', { className: textSecondary ,}, tx.employee)), _react2.default.createElement('td', { className: "px-4 py-3" ,}, _react2.default.createElement('span', { className: `inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${tx.type === 'deposit' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`,}, tx.type === 'deposit' ? _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 10,} ) : _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 10,} ), tx.type)), _react2.default.createElement('td', { className: `px-4 py-3 font-bold ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`,}, tx.type === 'withdrawal' ? '-' : '+', formatCurrency(tx.amount)), _react2.default.createElement('td', { className: "px-4 py-3" ,}, _react2.default.createElement(StatusBadge, { status: tx.status,} )), _react2.default.createElement('td', { className: "px-4 py-3" ,}, tx.status === 'pending' && (_optionalChain([currentUser, 'optionalAccess', _tap => _tap.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _tap2 => _tap2.role]) === 'Admin' || _optionalChain([currentUser, 'optionalAccess', _tap3 => _tap3.role]) === 'Accountant' || (_optionalChain([currentUser, 'optionalAccess', _tap4 => _tap4.privileges]) || []).includes('approve_transactions')) ? _react2.default.createElement('button', { onClick: () => approveTransaction(tx.id), className: "px-2 py-1 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 flex items-center gap-1",}, _react2.default.createElement(_lucidereact.CheckCircle, { size: 11,} ), " Approve" ) : tx.status === 'approved' ? _react2.default.createElement('button', { onClick: () => openReceipt(tx), className: "px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 flex items-center gap-1",}, _react2.default.createElement(_lucidereact.Printer, { size: 11,} ), " Receipt" ) : null, _optionalChain([currentUser, 'optionalAccess', _dtx => _dtx.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'transaction', id: tx.id, name: (tx.customer || '') + ' — ' + formatCurrency(tx.amount) }), className: "p-1 text-red-400 hover:bg-red-50 rounded ml-1", title: "Delete transaction",}, _react2.default.createElement(_lucidereact.Trash2, { size: 12,}))))))
 
           )))
           , _react2.default.createElement('div', { className: "px-4 pb-4" ,}
@@ -2171,35 +2292,149 @@ async function shareAsPDF(){
   };
 
   // WITHDRAWALS
-  const renderWithdrawals = () => {
-    let withdrawals = transactions.filter(t => t.type === 'withdrawal');
-    if (_optionalChain([currentUser, 'optionalAccess', _38 => _38.role]) === 'Field Collector') withdrawals = withdrawals.filter(t => t.employeeId === (currentUser.employeeId || 1));
-    return (
-      _react2.default.createElement('div', { className: "space-y-4",}
-        , _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"     ,}, _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}`,}, "Withdrawals"), _react2.default.createElement('div', { className: "flex gap-2" ,}, _react2.default.createElement(TimePeriodSelector, { value: timePeriodFilter, onChange: setTimePeriodFilter,} ), _optionalChain([currentUser, 'optionalAccess', _39 => _39.role]) !== 'Accountant' && _react2.default.createElement('button', { onClick: () => openTransaction('withdrawal'), className: "bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 flex items-center gap-2"          ,}, _react2.default.createElement(_lucidereact.Wallet, { size: 16,} ), " Withdraw" )))
-        , _react2.default.createElement('div', { className: "grid grid-cols-3 gap-3"  ,}
-          , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center`,}, _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 20, className: "text-red-500 mx-auto mb-1"  ,} ), _react2.default.createElement('p', { className: "text-xl font-bold text-red-600"  ,}, formatCurrency(withdrawals.filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0))), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Total Withdrawn" ))
-          , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center`,}, _react2.default.createElement(_lucidereact.Clock, { size: 20, className: "text-yellow-500 mx-auto mb-1"  ,} ), _react2.default.createElement('p', { className: "text-xl font-bold text-yellow-600"  ,}, withdrawals.filter(w => w.status === 'pending').length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Pending"))
-          , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center`,}, _react2.default.createElement(_lucidereact.CheckCircle, { size: 20, className: "text-green-500 mx-auto mb-1"  ,} ), _react2.default.createElement('p', { className: "text-xl font-bold text-green-600"  ,}, withdrawals.filter(w => w.status === 'approved').length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Completed"))
+  const renderWithdrawalRow = (tx) => (
+    _react2.default.createElement('div', { key: tx.id, className: `p-3 rounded-lg border ${borderColor} flex flex-col sm:flex-row sm:items-center gap-3` },
+      _react2.default.createElement('div', { className: "flex items-center gap-3 flex-1" },
+        _react2.default.createElement('div', { className: "p-2 bg-red-100 rounded-full" }, _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 16, className: "text-red-600" })),
+        _react2.default.createElement('div', null,
+          _react2.default.createElement('p', { className: `font-medium ${textPrimary}` }, tx.customer),
+          _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, tx.date, " • ", tx.time, " • by ", tx.employeeId ? _react2.default.createElement('button', { onClick: () => openEmployeeDetail(getEmployeeById(tx.employeeId) || { id: tx.employeeId, name: tx.employee, color: '#16a34a' }, tx.date), className: "hover:text-green-600 hover:underline font-medium" }, tx.employee) : tx.employee)
         )
-        , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}`,}, _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3`,}, "Withdrawal Records" ), _react2.default.createElement('div', { className: "space-y-2",}, withdrawals.map((tx) => (_react2.default.createElement('div', { key: tx.id, className: `p-3 rounded-lg border ${borderColor} flex flex-col sm:flex-row sm:items-center gap-3`,}, _react2.default.createElement('div', { className: "flex items-center gap-3 flex-1"   ,}, _react2.default.createElement('div', { className: "p-2 bg-red-100 rounded-full"  ,}, _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 16, className: "text-red-600",} )), _react2.default.createElement('div', null, _react2.default.createElement('p', { className: `font-medium ${textPrimary}`,}, tx.customer), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, tx.date, " • "  , tx.time, " • by "   , tx.employee))), _react2.default.createElement('div', { className: "flex items-center gap-3 ml-11 sm:ml-0 flex-wrap"    ,}, _react2.default.createElement('p', { className: "font-bold text-red-600 text-lg"  ,}, "-", formatCurrency(tx.amount)), _react2.default.createElement(StatusBadge, { status: tx.status,} ), tx.status === 'pending' && (_optionalChain([currentUser, 'optionalAccess', _wap => _wap.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _wap2 => _wap2.role]) === 'Admin' || _optionalChain([currentUser, 'optionalAccess', _wap3 => _wap3.role]) === 'Accountant' || (_optionalChain([currentUser, 'optionalAccess', _wap4 => _wap4.privileges]) || []).includes('approve_transactions')) && _react2.default.createElement('button', { onClick: () => approveTransaction(tx.id), className: "px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 flex items-center gap-1",}, _react2.default.createElement(_lucidereact.CheckCircle, { size: 12,} ), " Approve" ), tx.status === 'approved' && _react2.default.createElement('button', { onClick: () => openReceipt(tx), className: "px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 flex items-center gap-1",}, _react2.default.createElement(_lucidereact.Printer, { size: 12,} ), " Receipt" ), _optionalChain([currentUser, 'optionalAccess', _dwx => _dwx.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'transaction', id: tx.id, name: (tx.customer || '') + ' — ' + formatCurrency(tx.amount) }), className: "p-1.5 text-red-400 hover:bg-red-50 rounded-lg", title: "Delete",}, _react2.default.createElement(_lucidereact.Trash2, { size: 14,}))))))))
+      ),
+      _react2.default.createElement('div', { className: "flex items-center gap-3 ml-11 sm:ml-0 flex-wrap" },
+        _react2.default.createElement('p', { className: "font-bold text-red-600 text-lg" }, "-", formatCurrency(tx.amount)),
+        _react2.default.createElement(StatusBadge, { status: tx.status }),
+        tx.status === 'pending' && (_optionalChain([currentUser, 'optionalAccess', _wap => _wap.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _wap2 => _wap2.role]) === 'Admin' || _optionalChain([currentUser, 'optionalAccess', _wap3 => _wap3.role]) === 'Accountant' || (_optionalChain([currentUser, 'optionalAccess', _wap4 => _wap4.privileges]) || []).includes('approve_transactions')) && _react2.default.createElement('button', { onClick: () => approveTransaction(tx.id), className: "px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 flex items-center gap-1" }, _react2.default.createElement(_lucidereact.CheckCircle, { size: 12 }), " Approve"),
+        tx.status === 'approved' && _react2.default.createElement('button', { onClick: () => openReceipt(tx), className: "px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 flex items-center gap-1" }, _react2.default.createElement(_lucidereact.Printer, { size: 12 }), " Receipt"),
+        _optionalChain([currentUser, 'optionalAccess', _dwx => _dwx.role]) === 'Super Admin' && _react2.default.createElement('button', { onClick: () => setDeleteConfirm({ type: 'transaction', id: tx.id, name: (tx.customer || '') + ' — ' + formatCurrency(tx.amount) }), className: "p-1.5 text-red-400 hover:bg-red-50 rounded-lg", title: "Delete" }, _react2.default.createElement(_lucidereact.Trash2, { size: 14 }))
+      )
+    )
+  );
+
+  const renderWithdrawals = () => {
+    const isToday = withdrawalsDate === new Date().toISOString().substring(0, 10);
+    const totalWPages = Math.ceil(withdrawalsTxns.length / withdrawalsItemsPerPage) || 1;
+    const pagedWithdrawals = withdrawalsTxns.slice((withdrawalsPage - 1) * withdrawalsItemsPerPage, withdrawalsPage * withdrawalsItemsPerPage);
+    const changeWithdrawalsDate = (newDate) => { setWithdrawalsDate(newDate); setWithdrawalsPage(1); loadWithdrawalsForDate(newDate); };
+    return (
+      _react2.default.createElement('div', { className: "space-y-4" },
+        _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" },
+          _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}` }, "Withdrawals"),
+          _react2.default.createElement('div', { className: "flex items-center gap-2 flex-wrap" },
+            _react2.default.createElement('input', { type: "date", value: withdrawalsDate, max: new Date().toISOString().substring(0, 10), onChange: (e) => changeWithdrawalsDate(e.target.value), className: `text-sm rounded-lg px-3 py-2 border ${borderColor} ${cardBg} ${textPrimary}` }),
+            !isToday && _react2.default.createElement('button', { onClick: () => changeWithdrawalsDate(new Date().toISOString().substring(0, 10)), className: `px-3 py-2 rounded-lg text-xs font-medium ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'}` }, "Today"),
+            _react2.default.createElement('button', { onClick: () => { loadWithdrawalsForDate(withdrawalsDate); loadPendingWithdrawals(); }, title: "Refresh", className: `p-2 rounded-lg ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'}` }, _react2.default.createElement(_lucidereact.RefreshCw, { size: 16, className: (withdrawalsLoading || withdrawalsPendingLoading) ? 'animate-spin' : '' })),
+            _optionalChain([currentUser, 'optionalAccess', _39 => _39.role]) !== 'Accountant' && _react2.default.createElement('button', { onClick: () => openTransaction('withdrawal'), className: "bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 flex items-center gap-2" }, _react2.default.createElement(_lucidereact.Wallet, { size: 16 }), " Withdraw")
+          )
+        ),
+        _react2.default.createElement('div', { className: "grid grid-cols-3 gap-3" },
+          _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center` }, _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 20, className: "text-red-500 mx-auto mb-1" }), _react2.default.createElement('p', { className: "text-xl font-bold text-red-600" }, formatCurrency(dashboardStats.totalWithdrawals)), _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Total Withdrawn (", timePeriodFilter, ")")),
+          _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center` }, _react2.default.createElement(_lucidereact.Clock, { size: 20, className: "text-yellow-500 mx-auto mb-1" }), _react2.default.createElement('p', { className: "text-xl font-bold text-yellow-600" }, withdrawalsPending.length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Pending (all time)")),
+          _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center` }, _react2.default.createElement(_lucidereact.CheckCircle, { size: 20, className: "text-green-500 mx-auto mb-1" }), _react2.default.createElement('p', { className: "text-xl font-bold text-green-600" }, dashboardStats.withdrawalCount), _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Completed (", timePeriodFilter, ")"))
+        ),
+        withdrawalsPending.length > 0 && _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border-2 border-amber-400` },
+          _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3 flex items-center gap-2` }, _react2.default.createElement(_lucidereact.Clock, { size: 16, className: "text-amber-500" }), "Awaiting Approval (", withdrawalsPending.length, ")"),
+          _react2.default.createElement('div', { className: "space-y-2" }, withdrawalsPending.map(renderWithdrawalRow))
+        ),
+        _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}` },
+          _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3` }, "Withdrawal Records — ", withdrawalsDate),
+          withdrawalsLoading ? (
+            _react2.default.createElement('div', { className: "py-8 text-center" }, _react2.default.createElement(_lucidereact.RefreshCw, { size: 24, className: "animate-spin text-red-500 mx-auto" }))
+          ) : withdrawalsTxns.length === 0 ? (
+            _react2.default.createElement('p', { className: `text-sm ${textSecondary} text-center py-6` }, "No withdrawals recorded for ", withdrawalsDate)
+          ) : (
+            _react2.default.createElement(_react2.default.Fragment, null,
+              _react2.default.createElement('div', { className: "space-y-2" }, pagedWithdrawals.map(renderWithdrawalRow)),
+              totalWPages > 1 && _react2.default.createElement(Pagination, { currentPage: withdrawalsPage, totalPages: totalWPages, onPageChange: setWithdrawalsPage, totalItems: withdrawalsTxns.length, itemsPerPage: withdrawalsItemsPerPage, onItemsPerPageChange: (val) => { setWithdrawalsItemsPerPage(val); setWithdrawalsPage(1); } })
+            )
+          )
+        )
       )
     );
   };
 
   // COLLECTIONS
   const renderCollections = () => {
-    let deposits = transactions.filter(t => t.type === 'deposit');
-    if (_optionalChain([currentUser, 'optionalAccess', _40 => _40.role]) === 'Field Collector') deposits = deposits.filter(t => t.employeeId === (currentUser.employeeId || 1));
+    const deposits = collectionsTxns;
+    const isToday = collectionsDate === new Date().toISOString().substring(0, 10);
+    // Group the day's deposits by employee for the "who collected what" summary the
+    // admin/manager wants without having to open every individual employee's detail view.
+    const byEmployee = {};
+    deposits.forEach(function(d) {
+      const key = d.employeeId || d.employee || 'unknown';
+      if (!byEmployee[key]) byEmployee[key] = { employeeId: d.employeeId, employeeName: d.employee, total: 0, count: 0, customers: {} };
+      byEmployee[key].total += d.amount;
+      byEmployee[key].count += 1;
+      if (d.customerId) byEmployee[key].customers[d.customerId] = true;
+    });
+    const employeeRows = Object.keys(byEmployee).map(function(k) { return byEmployee[k]; }).sort(function(a, b) { return b.total - a.total; });
+    const totalEmpPages = Math.ceil(employeeRows.length / collectionsEmpItemsPerPage) || 1;
+    const pagedEmpRows = employeeRows.slice((collectionsEmpPage - 1) * collectionsEmpItemsPerPage, collectionsEmpPage * collectionsEmpItemsPerPage);
+    const totalDepPages = Math.ceil(deposits.length / collectionsItemsPerPage) || 1;
+    const pagedDeposits = deposits.slice((collectionsPage - 1) * collectionsItemsPerPage, collectionsPage * collectionsItemsPerPage);
+    const changeCollectionsDate = (newDate) => { setCollectionsDate(newDate); setCollectionsPage(1); setCollectionsEmpPage(1); loadCollectionsForDate(newDate); };
     return (
-      _react2.default.createElement('div', { className: "space-y-4",}
-        , _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"     ,}, _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}`,}, "Collections"), _react2.default.createElement('div', { className: "flex gap-2" ,}, _react2.default.createElement(TimePeriodSelector, { value: timePeriodFilter, onChange: setTimePeriodFilter,} ), _react2.default.createElement('button', { onClick: () => openTransaction('deposit'), className: "bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"         ,}, _react2.default.createElement(_lucidereact.Plus, { size: 16,} ), " Collect" )))
-        , _react2.default.createElement('div', { className: "grid grid-cols-3 gap-3"  ,}
-          , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center`,}, _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 20, className: "text-green-500 mx-auto mb-1"  ,} ), _react2.default.createElement('p', { className: "text-xl font-bold text-green-600"  ,}, formatCurrency(deposits.filter(d => d.status === 'approved').reduce((s, d) => s + d.amount, 0))), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Collected"))
-          , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center`,}, _react2.default.createElement(_lucidereact.Clock, { size: 20, className: "text-yellow-500 mx-auto mb-1"  ,} ), _react2.default.createElement('p', { className: "text-xl font-bold text-yellow-600"  ,}, deposits.filter(d => d.status === 'pending').length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Pending"))
-          , _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center`,}, _react2.default.createElement(_lucidereact.CheckCircle, { size: 20, className: "text-green-500 mx-auto mb-1"  ,} ), _react2.default.createElement('p', { className: "text-xl font-bold text-green-600"  ,}, deposits.filter(d => d.status === 'approved').length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, "Approved"))
+      _react2.default.createElement('div', { className: "space-y-4" },
+        _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" },
+          _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}` }, "Collections"),
+          _react2.default.createElement('div', { className: "flex items-center gap-2 flex-wrap" },
+            _react2.default.createElement('input', { type: "date", value: collectionsDate, max: new Date().toISOString().substring(0, 10), onChange: (e) => changeCollectionsDate(e.target.value), className: `text-sm rounded-lg px-3 py-2 border ${borderColor} ${cardBg} ${textPrimary}` }),
+            !isToday && _react2.default.createElement('button', { onClick: () => changeCollectionsDate(new Date().toISOString().substring(0, 10)), className: `px-3 py-2 rounded-lg text-xs font-medium ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'}` }, "Today"),
+            _react2.default.createElement('button', { onClick: () => loadCollectionsForDate(collectionsDate), title: "Refresh", className: `p-2 rounded-lg ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'}` }, _react2.default.createElement(_lucidereact.RefreshCw, { size: 16, className: collectionsLoading ? 'animate-spin' : '' })),
+            _react2.default.createElement('button', { onClick: () => openTransaction('deposit'), className: "bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" }, _react2.default.createElement(_lucidereact.Plus, { size: 16 }), " Collect")
+          )
+        ),
+        _react2.default.createElement('div', { className: "grid grid-cols-3 gap-3" },
+          _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center` }, _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 20, className: "text-green-500 mx-auto mb-1" }), _react2.default.createElement('p', { className: "text-xl font-bold text-green-600" }, formatCurrency(deposits.filter(d => d.status === 'approved').reduce((s, d) => s + d.amount, 0))), _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Collected")),
+          _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center` }, _react2.default.createElement(_lucidereact.Clock, { size: 20, className: "text-yellow-500 mx-auto mb-1" }), _react2.default.createElement('p', { className: "text-xl font-bold text-yellow-600" }, deposits.filter(d => d.status === 'pending').length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Pending")),
+          _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 border ${borderColor} text-center` }, _react2.default.createElement(_lucidereact.CheckCircle, { size: 20, className: "text-green-500 mx-auto mb-1" }), _react2.default.createElement('p', { className: "text-xl font-bold text-green-600" }, deposits.filter(d => d.status === 'approved').length), _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, "Approved"))
+        ),
+        employeeRows.length > 0 && _optionalChain([currentUser, 'optionalAccess', _cbe => _cbe.role]) !== 'Field Collector' && _react2.default.createElement('div', { className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}` },
+          _react2.default.createElement('h3', { className: `font-semibold ${textPrimary} mb-3` }, "By Employee — ", collectionsDate),
+          _react2.default.createElement('div', { className: "space-y-2" },
+            pagedEmpRows.map(function(row) {
+              const emp = getEmployeeById(row.employeeId);
+              return _react2.default.createElement('button', { key: row.employeeId || row.employeeName, onClick: () => openEmployeeDetail(emp || { id: row.employeeId, name: row.employeeName, color: '#16a34a' }, collectionsDate), className: `w-full flex items-center justify-between p-3 rounded-xl border ${borderColor} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors text-left` },
+                _react2.default.createElement('div', { className: "flex items-center gap-3" },
+                  _react2.default.createElement(Avatar, { name: row.employeeName, color: emp ? emp.color : '#16a34a', size: "sm", photo: emp ? emp.photo : null }),
+                  _react2.default.createElement('div', null,
+                    _react2.default.createElement('p', { className: `font-medium text-sm ${textPrimary}` }, row.employeeName || 'Unknown'),
+                    _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, Object.keys(row.customers).length, " customer", Object.keys(row.customers).length === 1 ? '' : 's', " • ", row.count, " deposit", row.count === 1 ? '' : 's')
+                  )
+                ),
+                _react2.default.createElement('p', { className: "font-bold text-green-600" }, formatCurrency(row.total))
+              );
+            })
+          ),
+          totalEmpPages > 1 && _react2.default.createElement(Pagination, { currentPage: collectionsEmpPage, totalPages: totalEmpPages, onPageChange: setCollectionsEmpPage, totalItems: employeeRows.length, itemsPerPage: collectionsEmpItemsPerPage, onItemsPerPageChange: (val) => { setCollectionsEmpItemsPerPage(val); setCollectionsEmpPage(1); } })
+        ),
+        _react2.default.createElement('div', { className: `${cardBg} rounded-xl shadow-sm border ${borderColor} overflow-hidden` },
+          collectionsLoading ? (
+            _react2.default.createElement('div', { className: "py-12 text-center" }, _react2.default.createElement(_lucidereact.RefreshCw, { size: 24, className: "animate-spin text-green-500 mx-auto mb-2" }), _react2.default.createElement('p', { className: `text-sm ${textSecondary}` }, "Loading..."))
+          ) : deposits.length === 0 ? (
+            _react2.default.createElement('div', { className: "py-12 text-center" }, _react2.default.createElement(_lucidereact.CreditCard, { size: 40, className: "text-gray-300 mx-auto mb-3" }), _react2.default.createElement('p', { className: `font-medium ${textSecondary}` }, "No deposits recorded for ", collectionsDate))
+          ) : (
+            _react2.default.createElement(_react2.default.Fragment, null,
+              _react2.default.createElement('div', { className: "overflow-x-auto" },
+                _react2.default.createElement('table', { className: "w-full text-sm" },
+                  _react2.default.createElement('thead', null, _react2.default.createElement('tr', { className: `${darkMode ? 'bg-gray-700' : 'bg-gray-50'}` }, _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}` }, "Customer"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary} hidden sm:table-cell` }, "Employee"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary} hidden sm:table-cell` }, "Time"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}` }, "Amount"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}` }, "Status"))),
+                  _react2.default.createElement('tbody', null, pagedDeposits.map((tx) => (
+                    _react2.default.createElement('tr', { key: tx.id, className: `border-t ${borderColor}` },
+                      _react2.default.createElement('td', { className: `px-4 py-3 ${textPrimary} font-medium` }, tx.customer),
+                      _react2.default.createElement('td', { className: "px-4 py-3 hidden sm:table-cell" }, tx.employeeId ? _react2.default.createElement('button', { onClick: () => openEmployeeDetail(getEmployeeById(tx.employeeId) || { id: tx.employeeId, name: tx.employee, color: '#16a34a' }, tx.date), className: `${textSecondary} hover:text-green-600 hover:underline font-medium` }, tx.employee) : _react2.default.createElement('span', { className: textSecondary }, tx.employee)),
+                      _react2.default.createElement('td', { className: `px-4 py-3 ${textSecondary} hidden sm:table-cell` }, tx.time),
+                      _react2.default.createElement('td', { className: "px-4 py-3 font-bold text-green-600" }, "+", formatCurrency(tx.amount)),
+                      _react2.default.createElement('td', { className: "px-4 py-3" }, _react2.default.createElement(StatusBadge, { status: tx.status }))
+                    )
+                  )))
+                )
+              ),
+              _react2.default.createElement('div', { className: "px-4 pb-4" },
+                _react2.default.createElement(Pagination, { currentPage: collectionsPage, totalPages: totalDepPages, onPageChange: setCollectionsPage, totalItems: deposits.length, itemsPerPage: collectionsItemsPerPage, onItemsPerPageChange: (val) => { setCollectionsItemsPerPage(val); setCollectionsPage(1); } })
+              )
+            )
+          )
         )
-        , _react2.default.createElement('div', { className: `${cardBg} rounded-xl shadow-sm border ${borderColor} overflow-hidden`,}, _react2.default.createElement('div', { className: "overflow-x-auto",}, _react2.default.createElement('table', { className: "w-full text-sm" ,}, _react2.default.createElement('thead', null, _react2.default.createElement('tr', { className: `${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`,}, _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}`,}, "Customer"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary} hidden sm:table-cell`,}, "Employee"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}`,}, "Amount"), _react2.default.createElement('th', { className: `px-4 py-3 text-left font-medium ${textSecondary}`,}, "Status"))), _react2.default.createElement('tbody', null, deposits.map((tx) => (_react2.default.createElement('tr', { key: tx.id, className: `border-t ${borderColor}`,}, _react2.default.createElement('td', { className: `px-4 py-3 ${textPrimary} font-medium`,}, tx.customer), _react2.default.createElement('td', { className: `px-4 py-3 ${textSecondary} hidden sm:table-cell`,}, tx.employee), _react2.default.createElement('td', { className: "px-4 py-3 font-bold text-green-600"   ,}, "+", formatCurrency(tx.amount)), _react2.default.createElement('td', { className: "px-4 py-3" ,}, _react2.default.createElement(StatusBadge, { status: tx.status,} )))))))))
       )
     );
   };
@@ -2208,6 +2443,8 @@ async function shareAsPDF(){
   const renderEmployees = () => {
     let filteredEmps = employees;
     if (searchTerm) filteredEmps = employees.filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()) || e.zone.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (employeeCollectionsSort === 'high') filteredEmps = [...filteredEmps].sort((a, b) => (b.collections || 0) - (a.collections || 0));
+    else if (employeeCollectionsSort === 'low') filteredEmps = [...filteredEmps].sort((a, b) => (a.collections || 0) - (b.collections || 0));
     const totalEmpPages = Math.ceil(filteredEmps.length / employeeItemsPerPage);
     const paginatedEmps = filteredEmps.slice((employeePage - 1) * employeeItemsPerPage, employeePage * employeeItemsPerPage);
 
@@ -2217,7 +2454,14 @@ async function shareAsPDF(){
           , _react2.default.createElement('h1', { className: `text-xl font-bold ${textPrimary}`,}, "Employees (" , filteredEmps.length, ")")
           , (_optionalChain([currentUser, 'optionalAccess', _ae1 => _ae1.role]) === 'Super Admin' || _optionalChain([currentUser, 'optionalAccess', _ae2 => _ae2.role]) === 'Branch Manager') && _react2.default.createElement('button', { onClick: () => setShowAddEmployee(true), className: "bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"         ,}, _react2.default.createElement(_lucidereact.Plus, { size: 16,} ), " Add Employee"  )
         )
-        , _react2.default.createElement('div', { className: "relative",}, _react2.default.createElement(_lucidereact.Search, { size: 16, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"    ,} ), _react2.default.createElement('input', { type: "text", value: searchTerm, onChange: (e) => { setSearchTerm(e.target.value); setEmployeePage(1); }, placeholder: "Search employees..." , className: `w-full pl-9 pr-4 py-2 rounded-lg border ${borderColor} ${cardBg} ${textPrimary} text-sm`,} ))
+        , _react2.default.createElement('div', { className: "flex flex-col sm:flex-row gap-3" ,}
+          , _react2.default.createElement('div', { className: "relative flex-1",}, _react2.default.createElement(_lucidereact.Search, { size: 16, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"    ,} ), _react2.default.createElement('input', { type: "text", value: searchTerm, onChange: (e) => { setSearchTerm(e.target.value); setEmployeePage(1); }, placeholder: "Search employees..." , className: `w-full pl-9 pr-4 py-2 rounded-lg border ${borderColor} ${cardBg} ${textPrimary} text-sm`,} ))
+          , _react2.default.createElement('select', { value: employeeCollectionsSort, onChange: (e) => { setEmployeeCollectionsSort(e.target.value); setEmployeePage(1); }, className: `text-sm rounded-lg px-3 py-2 border ${borderColor} ${cardBg} ${textPrimary}`,}
+            , _react2.default.createElement('option', { value: "none",}, "Sort: Default")
+            , _react2.default.createElement('option', { value: "high",}, "Collections: High to Low")
+            , _react2.default.createElement('option', { value: "low",}, "Collections: Low to High")
+          )
+        )
         , _react2.default.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"    ,}
           , paginatedEmps.map((emp) => {
             const empCustomers = getCustomersByEmployee(emp.id);
@@ -2225,7 +2469,7 @@ async function shareAsPDF(){
             return (
               _react2.default.createElement('div', { key: emp.id, className: `${cardBg} rounded-xl p-4 shadow-sm border ${borderColor}`,}
                 , _react2.default.createElement('div', { className: "flex items-start justify-between mb-3"   ,}
-                  , _react2.default.createElement('div', { className: "flex items-center gap-3"  ,}, _react2.default.createElement(Avatar, { name: emp.name, color: emp.color, size: "md", showOnline: emp.status === 'active', photo: emp.photo,} ), _react2.default.createElement('div', null, _react2.default.createElement('h4', { className: `font-semibold ${textPrimary}`,}, emp.name), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, emp.zone), roleInfo && _react2.default.createElement('span', { className: "text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block"      , style: { backgroundColor: roleInfo.color + '20', color: roleInfo.color },}, roleInfo.icon, " " , roleInfo.name)))
+                  , _react2.default.createElement('div', { className: "flex items-center gap-3"  ,}, _react2.default.createElement(Avatar, { name: emp.name, color: emp.color, size: "md", showOnline: emp.status === 'active', photo: emp.photo,} ), _react2.default.createElement('div', null, _react2.default.createElement('h4', { className: `font-semibold ${textPrimary} hover:text-green-600 hover:underline cursor-pointer`, onClick: () => openEmployeeDetail(emp), title: "View today's transactions" }, emp.name), _react2.default.createElement('p', { className: `text-xs ${textSecondary}`,}, emp.zone), roleInfo && _react2.default.createElement('span', { className: "text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block"      , style: { backgroundColor: roleInfo.color + '20', color: roleInfo.color },}, roleInfo.icon, " " , roleInfo.name)))
                   , _react2.default.createElement(StatusBadge, { status: emp.status,} )
                 )
                 , _react2.default.createElement('div', { className: "flex items-center justify-between mb-2" },
@@ -2256,6 +2500,8 @@ async function shareAsPDF(){
   const renderCustomers = () => {
     let displayCustomers = customers;
     if (searchTerm) displayCustomers = displayCustomers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.business.toLowerCase().includes(searchTerm.toLowerCase()) || c.location.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (customerBalanceSort === 'high') displayCustomers = [...displayCustomers].sort((a, b) => (b.balance || 0) - (a.balance || 0));
+    else if (customerBalanceSort === 'low') displayCustomers = [...displayCustomers].sort((a, b) => (a.balance || 0) - (b.balance || 0));
 
     const totalCustPages = Math.ceil(displayCustomers.length / customerItemsPerPage);
     const paginatedCustomers = displayCustomers.slice((customerPage - 1) * customerItemsPerPage, customerPage * customerItemsPerPage);
@@ -2285,7 +2531,14 @@ async function shareAsPDF(){
           )
           , (_optionalChain([currentUser, 'optionalAccess', _fcp => _fcp.role]) === 'Field Collector' && (_optionalChain([currentUser, 'optionalAccess', _fcp2 => _fcp2.privileges]) || []).includes('manage_customers')) && _react2.default.createElement('button', { onClick: () => { setAddCustomerForm({ name: '', phone: '', business: '', location: '' }); setAddCustomerError(''); setShowAddCustomer(true); }, className: "bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5",}, _react2.default.createElement(_lucidereact.Plus, { size: 15,}), " Register")
         )
-        , _react2.default.createElement('div', { className: "relative",}, _react2.default.createElement(_lucidereact.Search, { size: 16, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"    ,} ), _react2.default.createElement('input', { type: "text", value: searchTerm, onChange: (e) => { setSearchTerm(e.target.value); setCustomerPage(1); }, placeholder: "Search by name, business, or location..."     , className: `w-full pl-9 pr-4 py-2 rounded-lg border ${borderColor} ${cardBg} ${textPrimary} text-sm`,} ))
+        , _react2.default.createElement('div', { className: "flex flex-col sm:flex-row gap-3" ,}
+          , _react2.default.createElement('div', { className: "relative flex-1",}, _react2.default.createElement(_lucidereact.Search, { size: 16, className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"    ,} ), _react2.default.createElement('input', { type: "text", value: searchTerm, onChange: (e) => { setSearchTerm(e.target.value); setCustomerPage(1); }, placeholder: "Search by name, business, or location..."     , className: `w-full pl-9 pr-4 py-2 rounded-lg border ${borderColor} ${cardBg} ${textPrimary} text-sm`,} ))
+          , _react2.default.createElement('select', { value: customerBalanceSort, onChange: (e) => { setCustomerBalanceSort(e.target.value); setCustomerPage(1); }, className: `text-sm rounded-lg px-3 py-2 border ${borderColor} ${cardBg} ${textPrimary}`,}
+            , _react2.default.createElement('option', { value: "none",}, "Sort: Default")
+            , _react2.default.createElement('option', { value: "high",}, "Balance: High to Low")
+            , _react2.default.createElement('option', { value: "low",}, "Balance: Low to High")
+          )
+        )
         , _react2.default.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"    ,}
           , paginatedCustomers.map((cust) => {
             const assignedEmp = getEmployeeById(cust.assignedEmployee);
@@ -2848,7 +3101,10 @@ async function shareAsPDF(){
     return darkMode ? 'bg-gray-700' : 'bg-gray-100';
   };
 
-  const renderActivityLog = () => (
+  const renderActivityLog = () => {
+    const totalLogPages = Math.ceil(activityLogs.length / activityLogItemsPerPage) || 1;
+    const pagedLogs = activityLogs.slice((activityLogPage - 1) * activityLogItemsPerPage, activityLogPage * activityLogItemsPerPage);
+    return (
     _react2.default.createElement('div', { className: "space-y-4" },
       _react2.default.createElement('div', { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" },
         _react2.default.createElement('div', null,
@@ -2856,7 +3112,7 @@ async function shareAsPDF(){
           _react2.default.createElement('p', { className: `text-sm ${textSecondary}` }, "Complete audit trail — ", activityLogs.length, " records")
         ),
         _react2.default.createElement('div', { className: "flex gap-2",}
-          , _react2.default.createElement('button', { onClick: () => { setActivityLoading(true); apiCall('/api/activity?limit=200').then(function(r){ setActivityLogs(r.data||[]); }).finally(function(){ setActivityLoading(false); }); }, className: `px-3 py-2 rounded-lg text-sm font-medium border ${borderColor} ${textSecondary} flex items-center gap-1.5`,}, _react2.default.createElement(_lucidereact.RefreshCw, { size: 14, className: activityLoading ? 'animate-spin' : '',}), "Refresh")
+          , _react2.default.createElement('button', { onClick: () => { setActivityLoading(true); setActivityLogPage(1); apiCall('/api/activity?limit=200').then(function(r){ setActivityLogs(r.data||[]); }).finally(function(){ setActivityLoading(false); }); }, className: `px-3 py-2 rounded-lg text-sm font-medium border ${borderColor} ${textSecondary} flex items-center gap-1.5`,}, _react2.default.createElement(_lucidereact.RefreshCw, { size: 14, className: activityLoading ? 'animate-spin' : '',}), "Refresh")
           , _react2.default.createElement('button', { onClick: () => exportToCSV(activityLogs.map(function(l){ return { time: l.createdAt, actor: l.actor, role: l.actorRole, action: l.action, type: l.type }; }), 'activity-log.csv'), className: "bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5" }, _react2.default.createElement(_lucidereact.Download, { size: 14 }), "Export CSV")
         )
       ),
@@ -2876,27 +3132,33 @@ async function shareAsPDF(){
             _react2.default.createElement('p', { className: `text-xs ${textSecondary} mt-1` }, "Actions like logins, deposits, and deletions will appear here automatically")
           )
         ) : (
-          _react2.default.createElement('div', { className: "divide-y", style: { borderColor: darkMode ? '#374151' : '#e5e7eb' } },
-            activityLogs.map(function(log) {
-              var ts = new Date(log.createdAt);
-              var timeStr = ts.toLocaleString();
-              return _react2.default.createElement('div', { key: log._id, className: `flex items-start gap-3 px-4 py-3 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors` },
-                _react2.default.createElement('div', { className: `p-2 rounded-full flex-shrink-0 mt-0.5 ${getLogBg(log.type)}` }, getLogIcon(log.type)),
-                _react2.default.createElement('div', { className: "flex-1 min-w-0" },
-                  _react2.default.createElement('p', { className: `text-sm ${textPrimary}` }, log.action),
-                  _react2.default.createElement('div', { className: "flex flex-wrap items-center gap-2 mt-0.5" },
-                    _react2.default.createElement('span', { className: `text-xs font-semibold ${textSecondary}` }, log.actor),
-                    log.actorRole && _react2.default.createElement('span', { className: "text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600" }, log.actorRole),
-                    _react2.default.createElement('span', { className: `text-xs ${textSecondary}` }, "• ", timeStr)
+          _react2.default.createElement(_react2.default.Fragment, null,
+            _react2.default.createElement('div', { className: "divide-y", style: { borderColor: darkMode ? '#374151' : '#e5e7eb' } },
+              pagedLogs.map(function(log) {
+                var ts = new Date(log.createdAt);
+                var timeStr = ts.toLocaleString();
+                return _react2.default.createElement('div', { key: log._id, className: `flex items-start gap-3 px-4 py-3 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors` },
+                  _react2.default.createElement('div', { className: `p-2 rounded-full flex-shrink-0 mt-0.5 ${getLogBg(log.type)}` }, getLogIcon(log.type)),
+                  _react2.default.createElement('div', { className: "flex-1 min-w-0" },
+                    _react2.default.createElement('p', { className: `text-sm ${textPrimary}` }, log.action),
+                    _react2.default.createElement('div', { className: "flex flex-wrap items-center gap-2 mt-0.5" },
+                      _react2.default.createElement('span', { className: `text-xs font-semibold ${textSecondary}` }, log.actor),
+                      log.actorRole && _react2.default.createElement('span', { className: "text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600" }, log.actorRole),
+                      _react2.default.createElement('span', { className: `text-xs ${textSecondary}` }, "• ", timeStr)
+                    )
                   )
-                )
-              );
-            })
+                );
+              })
+            ),
+            _react2.default.createElement('div', { className: "px-4 pb-4" },
+              _react2.default.createElement(Pagination, { currentPage: activityLogPage, totalPages: totalLogPages, onPageChange: setActivityLogPage, totalItems: activityLogs.length, itemsPerPage: activityLogItemsPerPage, onItemsPerPageChange: (val) => { setActivityLogItemsPerPage(val); setActivityLogPage(1); } })
+            )
           )
         )
       )
     )
-  );
+    );
+  };
 
   const renderLeaderboard = () => {
     const ranked = [...employees].filter(e => e.status === 'active').sort((a, b) => b.performance - a.performance);
@@ -2918,7 +3180,7 @@ async function shareAsPDF(){
                 ),
                 _react2.default.createElement(Avatar, { name: emp.name, color: emp.color, size: "md", photo: emp.photo }),
                 _react2.default.createElement('div', { className: "flex-1 min-w-0" },
-                  _react2.default.createElement('p', { className: `font-semibold ${textPrimary}` }, emp.name),
+                  _react2.default.createElement('p', { className: `font-semibold ${textPrimary} hover:text-green-600 hover:underline cursor-pointer`, onClick: () => openEmployeeDetail(emp) }, emp.name),
                   _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, emp.zone, " • ", getCustomersByEmployee(emp.id).length, " clients"),
                   roleInfo && _react2.default.createElement('span', { className: "text-xs px-1.5 py-0.5 rounded-full mt-0.5 inline-block", style: { backgroundColor: roleInfo.color + '20', color: roleInfo.color } }, roleInfo.icon, " ", roleInfo.name)
                 ),
@@ -3827,6 +4089,99 @@ async function shareAsPDF(){
         )
       )
     )
+
+    /* ── EMPLOYEE DAILY DETAIL MODAL ── */
+    , showEmployeeDetail && (function() {
+        const emp = showEmployeeDetail;
+        const deps = employeeDetailTxns.filter(function(t) { return t.type === 'deposit'; });
+        const wits = employeeDetailTxns.filter(function(t) { return t.type === 'withdrawal'; });
+        const totalCollected = deps.filter(function(t) { return t.status === 'approved'; }).reduce(function(s, t) { return s + t.amount; }, 0);
+        const totalWithdrawn = wits.filter(function(t) { return t.status === 'approved'; }).reduce(function(s, t) { return s + t.amount; }, 0);
+        const byCustomer = {};
+        deps.forEach(function(t) {
+          const key = t.customerId || t.customer;
+          if (!byCustomer[key]) byCustomer[key] = { name: t.customer, total: 0, count: 0 };
+          byCustomer[key].total += t.amount;
+          byCustomer[key].count += 1;
+        });
+        const customerRows = Object.keys(byCustomer).map(function(k) { return byCustomer[k]; }).sort(function(a, b) { return b.total - a.total; });
+        const chronological = [...employeeDetailTxns].sort(function(a, b) { return (a.time || '').localeCompare(b.time || ''); });
+        const isToday = employeeDetailDate === new Date().toISOString().substring(0, 10);
+        const totalCustPages = Math.ceil(customerRows.length / employeeDetailCustItemsPerPage) || 1;
+        const pagedCustomerRows = customerRows.slice((employeeDetailCustPage - 1) * employeeDetailCustItemsPerPage, employeeDetailCustPage * employeeDetailCustItemsPerPage);
+        const totalTxPages = Math.ceil(chronological.length / employeeDetailItemsPerPage) || 1;
+        const pagedChronological = chronological.slice((employeeDetailPage - 1) * employeeDetailItemsPerPage, employeeDetailPage * employeeDetailItemsPerPage);
+        return _react2.default.createElement(_framermotion.motion.div, { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, className: "fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4", onClick: () => setShowEmployeeDetail(null) },
+          _react2.default.createElement(_framermotion.motion.div, { initial: { scale: 0.95 }, animate: { scale: 1 }, className: `${cardBg} rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col`, onClick: (e) => e.stopPropagation() },
+            _react2.default.createElement('div', { className: "bg-gradient-to-br from-green-600 to-emerald-700 p-5 rounded-t-2xl flex-shrink-0" },
+              _react2.default.createElement('div', { className: "flex items-center justify-between mb-3" },
+                _react2.default.createElement('div', { className: "flex items-center gap-3" },
+                  _react2.default.createElement(Avatar, { name: emp.name, color: emp.color, size: "md", photo: emp.photo }),
+                  _react2.default.createElement('div', null,
+                    _react2.default.createElement('h3', { className: "font-bold text-white text-lg" }, emp.name),
+                    _react2.default.createElement('p', { className: "text-green-100 text-xs" }, emp.zone || 'Daily collection history')
+                  )
+                ),
+                _react2.default.createElement('button', { onClick: () => setShowEmployeeDetail(null) }, _react2.default.createElement(_lucidereact.X, { size: 20, className: "text-white opacity-70 hover:opacity-100" }))
+              ),
+              _react2.default.createElement('div', { className: "flex items-center gap-2" },
+                _react2.default.createElement('input', { type: "date", value: employeeDetailDate, max: new Date().toISOString().substring(0, 10), onChange: (e) => changeEmployeeDetailDate(e.target.value), className: "text-sm rounded-lg px-3 py-1.5 border-0" }),
+                !isToday && _react2.default.createElement('button', { onClick: () => changeEmployeeDetailDate(new Date().toISOString().substring(0, 10)), className: "px-3 py-1.5 rounded-lg text-xs font-medium bg-white bg-opacity-20 text-white hover:bg-opacity-30" }, "Today")
+              )
+            ),
+            _react2.default.createElement('div', { className: "p-5 overflow-y-auto flex-1" },
+              employeeDetailLoading ? (
+                _react2.default.createElement('div', { className: "text-center py-8" }, _react2.default.createElement(_lucidereact.RefreshCw, { size: 20, className: "animate-spin text-green-500 mx-auto" }))
+              ) : (
+                _react2.default.createElement(_react2.default.Fragment, null,
+                  _react2.default.createElement('div', { className: "grid grid-cols-3 gap-3 mb-5" },
+                    _react2.default.createElement('div', { className: `rounded-xl p-3 text-center ${darkMode ? 'bg-gray-700' : 'bg-green-50'}` }, _react2.default.createElement('p', { className: "text-xs text-green-600 font-medium" }, "Collected"), _react2.default.createElement('p', { className: "font-bold text-green-700 text-lg" }, formatCurrency(totalCollected))),
+                    _react2.default.createElement('div', { className: `rounded-xl p-3 text-center ${darkMode ? 'bg-gray-700' : 'bg-red-50'}` }, _react2.default.createElement('p', { className: "text-xs text-red-500 font-medium" }, "Withdrawn"), _react2.default.createElement('p', { className: "font-bold text-red-700 text-lg" }, formatCurrency(totalWithdrawn))),
+                    _react2.default.createElement('div', { className: `rounded-xl p-3 text-center ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}` }, _react2.default.createElement('p', { className: "text-xs text-blue-500 font-medium" }, "Customers"), _react2.default.createElement('p', { className: "font-bold text-blue-700 text-lg" }, customerRows.length))
+                  ),
+                  customerRows.length > 0 && _react2.default.createElement('div', { className: "mb-5" },
+                    _react2.default.createElement('p', { className: `text-xs font-bold uppercase tracking-wide ${textSecondary} mb-2` }, "Deposits by Customer"),
+                    _react2.default.createElement('div', { className: "space-y-1.5" },
+                      pagedCustomerRows.map(function(row) {
+                        return _react2.default.createElement('div', { key: row.name, className: `flex items-center justify-between px-3 py-2 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}` },
+                          _react2.default.createElement('span', { className: `text-sm ${textPrimary}` }, row.name, row.count > 1 && _react2.default.createElement('span', { className: `text-xs ${textSecondary}` }, " (", row.count, "x)")),
+                          _react2.default.createElement('span', { className: "text-sm font-bold text-green-600" }, formatCurrency(row.total))
+                        );
+                      })
+                    ),
+                    totalCustPages > 1 && _react2.default.createElement(Pagination, { currentPage: employeeDetailCustPage, totalPages: totalCustPages, onPageChange: setEmployeeDetailCustPage, totalItems: customerRows.length, itemsPerPage: employeeDetailCustItemsPerPage, onItemsPerPageChange: (val) => { setEmployeeDetailCustItemsPerPage(val); setEmployeeDetailCustPage(1); } })
+                  ),
+                  _react2.default.createElement('p', { className: `text-xs font-bold uppercase tracking-wide ${textSecondary} mb-2` }, "Transactions — ", employeeDetailDate),
+                  chronological.length === 0 ? (
+                    _react2.default.createElement('p', { className: `text-sm ${textSecondary} text-center py-6` }, "No transactions recorded on this day.")
+                  ) : (
+                    _react2.default.createElement(_react2.default.Fragment, null,
+                      _react2.default.createElement('div', { className: "space-y-2" },
+                        pagedChronological.map(function(t) {
+                          return _react2.default.createElement('div', { key: t.id, className: `flex items-center justify-between p-3 rounded-xl border ${borderColor} ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}` },
+                            _react2.default.createElement('div', { className: "flex items-center gap-3" },
+                              _react2.default.createElement('div', { className: `p-2 rounded-full ${t.type === 'deposit' ? 'bg-green-100' : 'bg-red-100'}` }, t.type === 'deposit' ? _react2.default.createElement(_lucidereact.ArrowDownLeft, { size: 14, className: "text-green-600" }) : _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 14, className: "text-red-600" })),
+                              _react2.default.createElement('div', null,
+                                _react2.default.createElement('p', { className: `text-sm font-medium ${textPrimary}` }, t.customer),
+                                _react2.default.createElement('p', { className: `text-xs ${textSecondary}` }, t.time, ' • ', t.method)
+                              )
+                            ),
+                            _react2.default.createElement('div', { className: "text-right" },
+                              _react2.default.createElement('p', { className: `font-bold ${t.type === 'deposit' ? 'text-green-600' : 'text-red-600'}` }, t.type === 'deposit' ? '+' : '-', formatCurrency(t.amount)),
+                              _react2.default.createElement('span', { className: `text-xs px-1.5 py-0.5 rounded-full ${t.status === 'approved' ? 'bg-green-100 text-green-700' : t.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}` }, t.status)
+                            )
+                          );
+                        })
+                      ),
+                      totalTxPages > 1 && _react2.default.createElement(Pagination, { currentPage: employeeDetailPage, totalPages: totalTxPages, onPageChange: setEmployeeDetailPage, totalItems: chronological.length, itemsPerPage: employeeDetailItemsPerPage, onItemsPerPageChange: (val) => { setEmployeeDetailItemsPerPage(val); setEmployeeDetailPage(1); } })
+                    )
+                  )
+                )
+              )
+            )
+          )
+        );
+      })()
 
     /* ── CREATE CUSTOMER LOGIN MODAL ── */
     , showCustomerLoginModal && (

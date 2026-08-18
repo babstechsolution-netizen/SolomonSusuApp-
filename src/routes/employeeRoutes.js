@@ -3,6 +3,7 @@ const Employee = require('../models/Employee');
 const User = require('../models/User');
 const { protect, requireRole, requireRoleOrPriv } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
+const { createNotification } = require('../utils/notify');
 const { sync } = require('../socket');
 
 const router = express.Router();
@@ -145,7 +146,17 @@ router.patch('/:id/status', requireRoleOrPriv(['Super Admin', 'Branch Manager'],
 // DELETE /api/employees  — wipe all (Super Admin only)
 router.delete('/', requireRole('Super Admin'), async (req, res) => {
   try {
+    const count = await Employee.countDocuments({});
     await Employee.deleteMany({});
+    logActivity('employee_delete', req.user.name, req.user.role, `${req.user.name} wiped ALL ${count} employees from the system.`, { count });
+    ['Super Admin', 'Branch Manager'].forEach((role) => {
+      createNotification({
+        recipientRole: role,
+        type: 'employee_delete',
+        title: 'ALL Employees Wiped',
+        body: `${req.user.name} deleted all ${count} employee records from the system.`,
+      });
+    });
     res.json({ success: true, message: 'All employees deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

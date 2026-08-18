@@ -2,6 +2,8 @@ const express = require('express');
 const Loan = require('../models/Loan');
 const Customer = require('../models/Customer');
 const { protect, requireRole } = require('../middleware/auth');
+const { logActivity } = require('../utils/activityLog');
+const { createNotification } = require('../utils/notify');
 
 const router = express.Router();
 router.use(protect);
@@ -22,7 +24,17 @@ router.get('/', async (req, res) => {
 // DELETE /api/loans  — wipe all (Super Admin only)
 router.delete('/', requireRole('Super Admin'), async (req, res) => {
   try {
+    const count = await Loan.countDocuments({});
     await Loan.deleteMany({});
+    logActivity('loan_delete', req.user.name, req.user.role, `${req.user.name} wiped ALL ${count} loans from the system.`, { count });
+    ['Super Admin', 'Branch Manager'].forEach((role) => {
+      createNotification({
+        recipientRole: role,
+        type: 'loan_delete',
+        title: 'ALL Loans Wiped',
+        body: `${req.user.name} deleted all ${count} loan records from the system.`,
+      });
+    });
     res.json({ success: true, message: 'All loans deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

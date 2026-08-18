@@ -76,7 +76,6 @@ router.get('/', async (req, res) => {
     if (req.query.type) filter.type = req.query.type;
     if (req.query.status) filter.status = req.query.status;
     if (req.query.method) filter.method = req.query.method;
-    if (req.query.employee) filter.employee = req.query.employee;
     if (req.query.date) {
       filter.date = req.query.date;
     } else if (req.query.period || req.query.from || req.query.to) {
@@ -87,11 +86,17 @@ router.get('/', async (req, res) => {
         if (to) filter.date.$lte = to;
       }
     }
-    // Customers can only see their own transactions
+    // Role-based scoping is enforced here, server-side — a Customer or Field Collector must
+    // never be able to see another person's records just by sending a different ?employee=
+    // or ?customer= id. Only admin/manager/accountant roles may pass those filters freely.
     if (req.user.role === 'Customer') {
       filter.customer = req.user.customerId;
-    } else if (req.query.customer) {
-      filter.customer = req.query.customer;
+    } else if (req.user.role === 'Field Collector') {
+      const emp = await Employee.findOne({ userId: req.user._id }).select('_id');
+      filter.employee = emp ? emp._id : new mongoose.Types.ObjectId();
+    } else {
+      if (req.query.employee) filter.employee = req.query.employee;
+      if (req.query.customer) filter.customer = req.query.customer;
     }
 
     const page = parseInt(req.query.page) || 1;
@@ -237,16 +242,19 @@ router.post('/', async (req, res) => {
     sync('transactions', 'create', tx);
 
     const amountStr = Number(amount).toLocaleString();
-    // Notify admins/managers for oversight
-    createNotification({
-      recipientRole: 'Super Admin',
-      type: tx.type,
-      title: isCustomer ? 'Withdrawal Request' : `${type === 'deposit' ? 'Deposit' : 'Withdrawal'} Recorded`,
-      body: isCustomer
-        ? `${customer.name} requested withdrawal of GH₵${amountStr}`
-        : `${type === 'deposit' ? 'Deposit' : 'Withdrawal'} of GH₵${amountStr} recorded for ${customer.name} by ${req.user.name}`,
-      amount: Number(amount),
-      customer: customer.name,
+    // Notify admins AND managers for oversight — both roles carry approval/oversight
+    // responsibility in this app, so both must see every transaction as it happens.
+    ['Super Admin', 'Branch Manager'].forEach((role) => {
+      createNotification({
+        recipientRole: role,
+        type: tx.type,
+        title: isCustomer ? 'Withdrawal Request' : `${type === 'deposit' ? 'Deposit' : 'Withdrawal'} Recorded`,
+        body: isCustomer
+          ? `${customer.name} requested withdrawal of GH₵${amountStr}`
+          : `${type === 'deposit' ? 'Deposit' : 'Withdrawal'} of GH₵${amountStr} recorded for ${customer.name} by ${req.user.name}`,
+        amount: Number(amount),
+        customer: customer.name,
+      });
     });
     // Notify the customer (if they have a login) so it shows on their own device
     const custUser = await User.findOne({ customerId: customer._id }).select('_id');
@@ -336,6 +344,19 @@ router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
     if (!tx) return res.status(404).json({ success: false, message: 'Transaction not found.' });
     logActivity('transaction_delete', req.user.name, req.user.role, `${req.user.name} deleted transaction for ${tx.customerName || ''} — GH₵${tx.amount}`, { amount: tx.amount, customer: tx.customerName });
     sync('transactions', 'delete', { _id: tx._id });
+    // Fraud safeguard: deleting a transaction erases evidence, so this can never be a quiet
+    // action — every admin/manager account is notified in real time, not just logged for
+    // someone to notice later in the activity log.
+    ['Super Admin', 'Branch Manager'].forEach((role) => {
+      createNotification({
+        recipientRole: role,
+        type: 'transaction_delete',
+        title: 'Transaction Deleted',
+        body: `${req.user.name} deleted a ${tx.type} of GH₵${Number(tx.amount).toLocaleString()} for ${tx.customerName || 'a customer'}.`,
+        amount: tx.amount,
+        customer: tx.customerName,
+      });
+    });
     res.json({ success: true, message: 'Transaction deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -345,7 +366,17 @@ router.delete('/:id', requireRole('Super Admin'), async (req, res) => {
 // DELETE /api/transactions  — wipe all (Super Admin only)
 router.delete('/', requireRole('Super Admin'), async (req, res) => {
   try {
+    const count = await Transaction.countDocuments({});
     await Transaction.deleteMany({});
+    logActivity('transaction_delete', req.user.name, req.user.role, `${req.user.name} wiped ALL ${count} transactions from the system.`, { count });
+    ['Super Admin', 'Branch Manager'].forEach((role) => {
+      createNotification({
+        recipientRole: role,
+        type: 'transaction_delete',
+        title: 'ALL Transactions Wiped',
+        body: `${req.user.name} deleted all ${count} transaction records from the system.`,
+      });
+    });
     res.json({ success: true, message: 'All transactions deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -371,6 +402,62 @@ router.get('/summary', async (req, res) => {
         totalDeposits: (allDeposits[0] || {}).total || 0,
         totalWithdrawals: (allWithdrawals[0] || {}).total || 0,
         byMethod,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/transactions/stats — authoritative deposit/withdrawal totals for dashboards,
+// computed by aggregation over the full collection. The client-side dashboard used to derive
+// these numbers from a capped, 200-record local cache, which silently undercounted totals
+// (and could make discrepancies caused by fraud harder to spot) once a shop had more history
+// than that. Supports the same ?period=|?from=&to=|?date= and ?employee=/?customer= filters
+// as GET /, with the same server-side role scoping.
+router.get('/stats', async (req, res) => {
+  try {
+    const filter = { status: 'approved' };
+    if (req.query.date) {
+      filter.date = req.query.date;
+    } else if (req.query.period || req.query.from || req.query.to) {
+      const { from, to } = resolveDateRange(req.query);
+      if (from || to) {
+        filter.date = {};
+        if (from) filter.date.$gte = from;
+        if (to) filter.date.$lte = to;
+      }
+    }
+    if (req.user.role === 'Customer') {
+      filter.customer = req.user.customerId;
+    } else if (req.user.role === 'Field Collector') {
+      const emp = await Employee.findOne({ userId: req.user._id }).select('_id');
+      filter.employee = emp ? emp._id : new mongoose.Types.ObjectId();
+    } else {
+      if (req.query.employee) filter.employee = req.query.employee;
+      if (req.query.customer) filter.customer = req.query.customer;
+    }
+
+    const matchStage = {
+      ...filter,
+      ...(filter.employee && mongoose.Types.ObjectId.isValid(filter.employee) ? { employee: new mongoose.Types.ObjectId(filter.employee) } : {}),
+      ...(filter.customer && mongoose.Types.ObjectId.isValid(filter.customer) ? { customer: new mongoose.Types.ObjectId(filter.customer) } : {}),
+    };
+
+    const agg = await Transaction.aggregate([
+      { $match: matchStage },
+      { $group: { _id: '$type', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+    ]);
+    const deposit = agg.find((a) => a._id === 'deposit') || { total: 0, count: 0 };
+    const withdrawal = agg.find((a) => a._id === 'withdrawal') || { total: 0, count: 0 };
+
+    res.json({
+      success: true,
+      data: {
+        totalDeposits: deposit.total || 0,
+        depositCount: deposit.count || 0,
+        totalWithdrawals: withdrawal.total || 0,
+        withdrawalCount: withdrawal.count || 0,
       },
     });
   } catch (err) {
