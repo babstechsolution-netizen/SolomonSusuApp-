@@ -2764,7 +2764,8 @@ async function shareAsPDF(){
             notifications.map((n) => (
               _react2.default.createElement('div', { key: n.id, className: `${cardBg} rounded-xl p-4 shadow-sm border ${!n.read ? 'border-l-4 border-l-blue-500' : ''} ${borderColor}` },
                 _react2.default.createElement('div', { className: "flex items-start gap-3" },
-                  _react2.default.createElement('div', { className: `p-2 rounded-full ${n.type === 'withdrawal' ? 'bg-red-100' : n.type === 'alert' ? 'bg-yellow-100' : 'bg-blue-100'}` },
+                  _react2.default.createElement('div', { className: `p-2 rounded-full ${(n.type || '').indexOf('delete') !== -1 ? 'bg-red-100' : n.type === 'withdrawal' ? 'bg-red-100' : n.type === 'alert' ? 'bg-yellow-100' : 'bg-blue-100'}` },
+                    (n.type || '').indexOf('delete') !== -1 ? _react2.default.createElement(_lucidereact.Trash2, { size: 16, className: "text-red-600" }) :
                     n.type === 'withdrawal' ? _react2.default.createElement(_lucidereact.ArrowUpRight, { size: 16, className: "text-red-600" }) :
                     n.type === 'alert' ? _react2.default.createElement(_lucidereact.AlertTriangle, { size: 16, className: "text-yellow-600" }) :
                     _react2.default.createElement(_lucidereact.Bell, { size: 16, className: "text-blue-600" })
