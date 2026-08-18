@@ -483,7 +483,14 @@ a{color:inherit;text-decoration:none;}
     return '<div class="appr" id="ap-'+esc(t._id)+'"><div class="appr-head"><div><div class="appr-cust">'+esc(name)+'</div><div class="appr-meta">'+esc(t.employeeName||'')+'</div><div class="appr-meta">🕐 '+esc(t.date||'')+' '+esc(t.time||'')+'</div></div><div class="appr-amt">'+money(t.amount)+'</div></div>'+
       '<div class="appr-body"><div class="r"><span style="color:var(--t3)">Method</span><span style="font-weight:700">'+esc(t.method||'Cash')+'</span></div>'+(t.feeAmount?('<div class="r"><span style="color:var(--t3)">Fee</span><span style="font-weight:700">'+money(t.feeAmount)+'</span></div>'):'')+'</div>'+
       '<div class="appr-acts"><button class="btn btn-danger btn-full btn-sm" data-rej="'+esc(t._id)+'">✕ Reject</button><button class="btn btn-p btn-sm" style="flex:1.4" data-app="'+esc(t._id)+'">✓ Approve</button></div></div>';}
-  function wireAppr(list){all('[data-app]').forEach(function(el){el.onclick=function(){decide(el.getAttribute('data-app'),'approved');};});all('[data-rej]').forEach(function(el){el.onclick=function(){decide(el.getAttribute('data-rej'),'rejected');};});}
+  function wireAppr(list){all('[data-app]').forEach(function(el){el.onclick=function(){var t=(list||[]).filter(function(x){return x._id===el.getAttribute('data-app');})[0];confirmDecision(t,'approved');};});all('[data-rej]').forEach(function(el){el.onclick=function(){var t=(list||[]).filter(function(x){return x._id===el.getAttribute('data-rej');})[0];confirmDecision(t,'rejected');};});}
+  // Approving/rejecting moves real money — never fire on a single tap, ask first.
+  function confirmDecision(t,status){if(!t)return;var name=t.customerName||(t.customer&&t.customer.name)||'—';var verb=status==='approved'?'Approve':'Reject';
+    modal('<h3>'+verb+' Withdrawal?</h3><div style="font-size:13px;color:var(--t2);margin-bottom:16px">'+verb+' the '+money(t.amount)+' withdrawal for <b>'+esc(name)+'</b>?</div>'+
+      '<button class="btn btn-full btn-lg" style="background:'+(status==='approved'?'var(--g-600)':'var(--wit)')+';color:#fff" id="dcy">Yes, '+verb+'</button>'+
+      '<button class="btn btn-ghost btn-full" style="margin-top:8px" id="dcn">Cancel</button>');
+    q('#dcn').onclick=closeModal;
+    q('#dcy').onclick=function(){closeModal();decide(t._id,status);};}
   function decide(id,status){var card=q('#ap-'+id);if(card)card.style.opacity='.5';
     api('/api/transactions/'+id+'/status',{method:'PATCH',body:JSON.stringify({status:status})}).then(function(){toast('Withdrawal '+status,'ok');if(card)card.remove();}).catch(function(e){toast(e.message,'err');if(card)card.style.opacity='1';});}
 
@@ -532,12 +539,40 @@ a{color:inherit;text-decoration:none;}
       '<div class="set-sec-title">Appearance</div><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)">'+
       '<div class="set-item"><div class="set-ic">🌙</div><span class="set-lbl">Dark Mode</span><div class="tgl'+(p.darkMode?' on':'')+'" id="dm"><b></b></div></div></div>'+
       ((role()==='Super Admin'||role()==='Branch Manager')?('<div class="set-sec-title">Business</div><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)"><div class="set-item" id="wset"><div class="set-ic">💸</div><span class="set-lbl">Withdrawal Fee & Min Balance</span><span class="set-val">'+(S.ws.feePercent||0)+'% · '+money(S.ws.minBalance||0)+' ›</span></div></div>'):'')+
+      (role()==='Super Admin'?('<div class="set-sec-title">Data Recovery</div><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)"><div class="set-item" id="recov"><div class="set-ic">🗄️</div><span class="set-lbl">Recover Deleted Customers</span><span class="set-val">›</span></div></div>'):'')+
       '<div class="set-sec-title">About</div><div style="border-radius:var(--r14);overflow:hidden;box-shadow:var(--sh-xs)">'+
       '<div class="set-item"><div class="set-ic">ℹ️</div><span class="set-lbl">Version</span><span class="set-val">Awinbire · new UI</span></div>'+
       '<div class="set-item" id="lo"><div class="set-ic">🚪</div><span class="set-lbl" style="color:var(--wit)">Sign Out</span><span class="set-val" style="color:var(--wit)">›</span></div></div>'+
       '</div></div>'+bnav('settings'));
     q('#dm').onclick=function(){var on=!(S.user.preferences&&S.user.preferences.darkMode);S.user.preferences=Object.assign({},S.user.preferences,{darkMode:on});applyTheme();q('#dm').classList.toggle('on',on);api('/api/auth/preferences',{method:'PATCH',body:JSON.stringify({darkMode:on})}).catch(function(){});};
-    q('#lo').onclick=logout;q('#chpw').onclick=changePw;var ws=q('#wset');if(ws)ws.onclick=withdrawalSettingsModal;wireNav();}
+    q('#lo').onclick=logout;q('#chpw').onclick=changePw;var ws=q('#wset');if(ws)ws.onclick=withdrawalSettingsModal;var rc=q('#recov');if(rc)rc.onclick=recoverScreen;wireNav();}
+
+  // ---------- RECOVER DELETED CUSTOMERS ----------
+  // A deleted customer's transaction history survives the delete, so their name and running
+  // balance can be rebuilt from it — this lists every such "orphaned" trail and lets a Super
+  // Admin restore the account under its original id (so old receipts/history stay linked).
+  function recoverScreen(){S.screen='recover';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Recover Deleted Customers</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+    api('/api/customers/orphaned').then(function(r){S.orphans=r.data||[];drawRecover();}).catch(function(e){toast(e.message,'err');});}
+  function drawRecover(){var list=S.orphans||[];
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Recover Deleted Customers</div></div><div class="sc"><div class="body-pad">'+
+      (list.length?('<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Rebuilt from their transaction history — balance shown is a computed estimate; double-check it before restoring.</div>'+list.map(function(o){return '<div class="card" style="padding:14px;margin-bottom:10px" data-orph="'+esc(o.id)+'"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="font-weight:800">'+esc(o.name)+'</div><div style="font-size:11px;color:var(--t3)">'+o.transactionCount+' transactions · last '+esc(o.lastActivity||'—')+'</div></div><div style="text-align:right"><div style="font-weight:900;color:var(--g-600)">'+money(o.balance)+'</div><div style="font-size:10px;color:var(--t3)">est. balance</div></div></div><button class="btn btn-p btn-full" data-restore="'+esc(o.id)+'">Restore</button></div>';}).join('')):'<div class="empty"><div class="ei">✅</div>No deleted customers with recoverable history.</div>')+
+      '</div></div>'+bnav('settings'));
+    q('[data-back]').onclick=settingsScreen;
+    all('[data-restore]').forEach(function(el){el.onclick=function(){var id=el.getAttribute('data-restore');var o=(S.orphans||[]).filter(function(x){return x.id===id;})[0];if(o)restoreCustomerModal(o);};});
+    wireNav();}
+  function restoreCustomerModal(o){modal('<h3>Restore '+esc(o.name)+'?</h3>'+
+    '<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Computed from '+o.transactionCount+' transactions — balance '+money(o.balance)+', deposits '+money(o.totalDeposits)+', withdrawals '+money(o.totalWithdrawals)+'. Their old receipts and history will link back up automatically.</div>'+
+    '<div class="inp-wrap"><label class="inp-lbl">Name</label><input class="inp" id="rname" value="'+esc(o.name)+'"></div>'+
+    '<div class="inp-wrap"><label class="inp-lbl">Phone *</label><input class="inp" id="rphone" placeholder="Required — not recoverable from history"></div>'+
+    '<div class="inp-wrap"><label class="inp-lbl">Business</label><input class="inp" id="rbiz"></div>'+
+    '<div class="inp-wrap"><label class="inp-lbl">Location</label><input class="inp" id="rloc"></div>'+
+    '<button class="btn btn-p btn-full btn-lg" id="ry">Yes, Restore</button><button class="btn btn-ghost btn-full" style="margin-top:8px" id="rn">Cancel</button>');
+    q('#rn').onclick=closeModal;
+    q('#ry').onclick=function(){var phone=q('#rphone').value.trim();if(!phone){toast('Phone number is required','err');return;}
+      var b=q('#ry');b.innerHTML='<span class="spin"></span>';b.disabled=true;
+      api('/api/customers/'+o.id+'/restore',{method:'POST',body:JSON.stringify({phone:phone,name:q('#rname').value.trim(),business:q('#rbiz').value.trim(),location:q('#rloc').value.trim()})})
+        .then(function(){closeModal();toast(o.name+' restored','ok');recoverScreen();})
+        .catch(function(e){toast(e.message,'err');b.innerHTML='Yes, Restore';b.disabled=false;});};}
   function withdrawalSettingsModal(){modal('<h3>Withdrawal Settings</h3><div class="inp-wrap"><label class="inp-lbl">Fee (%)</label><input class="inp" id="wf" type="number" inputmode="decimal" value="'+(S.ws.feePercent||0)+'"></div><div class="inp-wrap"><label class="inp-lbl">Minimum Balance (GH₵)</label><input class="inp" id="wm" type="number" inputmode="decimal" value="'+(S.ws.minBalance||0)+'"></div><button class="btn btn-p btn-full btn-lg" id="ws2">Save</button><button class="btn btn-ghost btn-full" style="margin-top:8px" id="wc">Cancel</button>');
     q('#wc').onclick=closeModal;q('#ws2').onclick=function(){var fee=Number(q('#wf').value)||0,mb=Number(q('#wm').value)||0;var b=q('#ws2');b.innerHTML='<span class="spin"></span>';b.disabled=true;api('/api/admin/settings',{method:'PATCH',body:JSON.stringify({withdrawalSettings:{feePercent:fee,minBalance:mb}})}).then(function(){S.ws={feePercent:fee,minBalance:mb};closeModal();toast('Withdrawal settings saved','ok');settingsScreen();}).catch(function(e){toast(e.message,'err');b.innerHTML='Save';b.disabled=false;});};}
   function changePw(){modal('<h3>Change Password</h3><div class="inp-wrap"><label class="inp-lbl">Current Password</label><input class="inp" id="cp" type="password"></div><div class="inp-wrap"><label class="inp-lbl">New Password (min 6)</label><input class="inp" id="np" type="password"></div><button class="btn btn-p btn-full btn-lg" id="sv">Update</button><button class="btn btn-ghost btn-full" style="margin-top:8px" id="cc">Cancel</button>');
@@ -579,12 +614,16 @@ a{color:inherit;text-decoration:none;}
     q('[data-back]').onclick=home;all('[data-go]').forEach(function(el){el.onclick=function(){nav(el.getAttribute('data-go'));};});q('#lo').onclick=logout;wireNav();}
 
   // ---------- ADMIN: CUSTOMERS ----------
-  function adminCustomers(){S.screen='customers';S.custPage=1;S.custQ='';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
+  function adminCustomers(){S.screen='customers';S.custPage=1;S.custQ='';if(!S.custSort)S.custSort='none';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
     api('/api/customers').then(function(d){S.allCustomers=d.data||[];
-      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers ('+(S.allCustomers.length)+')</div>'+(canRegisterCustomer()?'<div class="ab-back" id="addcust" style="width:auto;padding:0 12px;font-size:22px" title="Register customer">＋</div>':'')+'</div><div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="q" placeholder="Search name, business, ID…"></div><div id="listwrap"></div></div></div>'+bnav('customers'));
-      q('[data-back]').onclick=home;var ac=q('#addcust');if(ac)ac.onclick=function(){registerCustomerModal(adminCustomers);};var box=q('#q');box.oninput=function(){S.custQ=box.value;S.custPage=1;updateAcList();};wireNav();updateAcList();}).catch(function(e){toast(e.message,'err');});}
+      set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Customers ('+(S.allCustomers.length)+')</div>'+(canRegisterCustomer()?'<div class="ab-back" id="addcust" style="width:auto;padding:0 12px;font-size:22px" title="Register customer">＋</div>':'')+'</div><div class="sc"><div class="body-pad"><div class="search-bar">🔎<input id="q" placeholder="Search name, business, ID…"></div>'+
+        '<div class="inp-wrap" style="margin-bottom:12px"><select class="inp" id="custsort"><option value="none"'+(S.custSort==='none'?' selected':'')+'>Sort: Default</option><option value="high"'+(S.custSort==='high'?' selected':'')+'>Balance: High to Low</option><option value="low"'+(S.custSort==='low'?' selected':'')+'>Balance: Low to High</option></select></div>'+
+        '<div id="listwrap"></div></div></div>'+bnav('customers'));
+      q('[data-back]').onclick=home;var ac=q('#addcust');if(ac)ac.onclick=function(){registerCustomerModal(adminCustomers);};var box=q('#q');box.oninput=function(){S.custQ=box.value;S.custPage=1;updateAcList();};var so=q('#custsort');so.onchange=function(){S.custSort=so.value;S.custPage=1;updateAcList();};wireNav();updateAcList();}).catch(function(e){toast(e.message,'err');});}
   function updateAcList(){var qv=(S.custQ||'').toLowerCase();
     var full=(S.allCustomers||[]).filter(function(c){return !qv||(c.name||'').toLowerCase().indexOf(qv)>=0||(c.business||'').toLowerCase().indexOf(qv)>=0||acctNo(c).toLowerCase().indexOf(qv)>=0;});
+    if(S.custSort==='high')full=full.slice().sort(function(a,b){return (b.balance||0)-(a.balance||0);});
+    else if(S.custSort==='low')full=full.slice().sort(function(a,b){return (a.balance||0)-(b.balance||0);});
     var size=25,pages=Math.max(1,Math.ceil(full.length/size));if(S.custPage>pages)S.custPage=pages;if(S.custPage<1)S.custPage=1;var start=(S.custPage-1)*size,slice=full.slice(start,start+size);
     q('#listwrap').innerHTML=(slice.length?slice.map(function(c,i){return acRow(c,start+i+1);}).join(''):'<div class="empty"><div class="ei">🔍</div>No matches.</div>')+(pages>1?pager(S.custPage,pages,full.length):'');
     var pp=q('#pp');if(pp)pp.onclick=function(){S.custPage--;updateAcList();};var pn=q('#pn');if(pn)pn.onclick=function(){S.custPage++;updateAcList();};wireAdminCust();}

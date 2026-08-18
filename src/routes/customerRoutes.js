@@ -4,6 +4,7 @@ const xlsx = require('xlsx');
 const Customer = require('../models/Customer');
 const User = require('../models/User');
 const Employee = require('../models/Employee');
+const Transaction = require('../models/Transaction');
 const { protect, requireRole } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLog');
 const { createNotification } = require('../utils/notify');
@@ -60,6 +61,112 @@ router.get('/export', requireRole('Super Admin', 'Branch Manager'), async (req, 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="customers_${Date.now()}.xlsx"`);
     res.send(buf);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/customers/orphaned — a deleted Customer leaves its Transaction history behind
+// untouched, so a mistaken delete is recoverable: find every customer id referenced by a
+// transaction that no longer has a matching Customer document, and rebuild a preview of
+// what that account looked like (name + running balance) from the transaction trail alone.
+router.get('/orphaned', requireRole('Super Admin'), async (req, res) => {
+  try {
+    const custIds = (await Transaction.distinct('customer')).filter(Boolean);
+    if (!custIds.length) return res.json({ success: true, data: [] });
+    const existing = await Customer.find({ _id: { $in: custIds } }).select('_id').lean();
+    const existingSet = new Set(existing.map((c) => String(c._id)));
+    const orphanIds = custIds.filter((id) => !existingSet.has(String(id)));
+
+    const results = [];
+    for (const id of orphanIds) {
+      const txns = await Transaction.find({ customer: id }).sort({ createdAt: 1 }).lean();
+      if (!txns.length) continue;
+      let balance = 0;
+      let totalDeposits = 0;
+      let totalWithdrawals = 0;
+      let assignedEmployee = null;
+      txns.forEach((t) => {
+        if (t.employee) assignedEmployee = t.employee;
+        if (t.status !== 'approved') return;
+        if (t.type === 'deposit') {
+          totalDeposits += t.amount;
+          if (!t.isCommission) balance += t.amount;
+        } else if (t.type === 'withdrawal') {
+          totalWithdrawals += t.amount;
+          balance -= t.amount + (t.feeAmount || 0);
+        }
+      });
+      const last = txns[txns.length - 1];
+      results.push({
+        id: String(id),
+        name: last.customerName || txns[0].customerName || 'Unknown',
+        balance,
+        totalDeposits,
+        totalWithdrawals,
+        assignedEmployee,
+        transactionCount: txns.length,
+        lastActivity: last.date,
+      });
+    }
+    res.json({ success: true, data: results });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/customers/:id/restore — recreate a deleted customer using the ORIGINAL id (the
+// same one still referenced on their historic transactions), so nothing needs re-linking.
+// Only fields that can't be recovered from transaction history (phone, business, location)
+// come from the request body — phone is required since the schema requires it.
+router.post('/:id/restore', requireRole('Super Admin'), async (req, res) => {
+  try {
+    const existing = await Customer.findById(req.params.id);
+    if (existing) return res.status(400).json({ success: false, message: 'A customer with this id already exists — nothing to restore.' });
+
+    const txns = await Transaction.find({ customer: req.params.id }).sort({ createdAt: 1 }).lean();
+    if (!txns.length) return res.status(404).json({ success: false, message: 'No transaction history found for this id — nothing to restore.' });
+
+    const { phone, name, business, location } = req.body;
+    if (!phone) return res.status(400).json({ success: false, message: 'Phone number is required to restore this customer.' });
+
+    let balance = 0;
+    let totalDeposits = 0;
+    let totalWithdrawals = 0;
+    let lastCommissionMonth = '';
+    let assignedEmployee = null;
+    txns.forEach((t) => {
+      if (t.employee) assignedEmployee = t.employee;
+      if (t.status !== 'approved') return;
+      if (t.type === 'deposit') {
+        totalDeposits += t.amount;
+        if (t.isCommission) lastCommissionMonth = (t.date || '').slice(0, 7);
+        else balance += t.amount;
+      } else if (t.type === 'withdrawal') {
+        totalWithdrawals += t.amount;
+        balance -= t.amount + (t.feeAmount || 0);
+      }
+    });
+    const last = txns[txns.length - 1];
+
+    const cust = new Customer({
+      _id: req.params.id,
+      name: name || last.customerName || txns[0].customerName || 'Unknown',
+      phone,
+      business: business || '',
+      location: location || '',
+      status: 'active',
+      balance,
+      totalDeposits,
+      totalWithdrawals,
+      lastCommissionMonth,
+      assignedEmployee,
+    });
+    await cust.save();
+
+    logActivity('customer_restore', req.user.name, req.user.role, `${req.user.name} restored deleted customer ${cust.name}`, { customer: cust.name });
+    sync('customers', 'create', cust);
+    res.status(201).json({ success: true, data: cust });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
