@@ -76,7 +76,7 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, '../public/app.html'));
 });
 
-// Global error handler
+// Global error handler — catches anything thrown/rejected in route handlers above
 app.use((err, req, res, _next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({ success: false, message: err.message || 'Internal server error.' });
