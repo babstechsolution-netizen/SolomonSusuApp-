@@ -203,6 +203,12 @@ router.post('/', async (req, res) => {
     const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
     const isCommission = (type === 'deposit' && txStatus === 'approved' && customer.lastCommissionMonth !== currentMonth);
 
+    // Cash handover reconciliation: a field collector's Cash deposit is physical money they're
+    // still holding until they hand it to a manager, so it stays out of company-wide totals
+    // (dashboard, reports) until that cash is counted and matched. The customer's own balance
+    // still updates immediately below — only the company-level rollups wait.
+    const needsCashAudit = txStatus === 'approved' && type === 'deposit' && (method || 'Cash') === 'Cash' && !!employee;
+
     const tx = await Transaction.create({
       customer: customer._id,
       customerName: customer.name,
@@ -216,6 +222,7 @@ router.post('/', async (req, res) => {
       feePercent: type === 'withdrawal' ? ws.feePercent : 0,
       feeAmount: fee,
       isCommission,
+      reconciled: !needsCashAudit,
       ...(idempotencyKey ? { idempotencyKey } : {}),
     });
 

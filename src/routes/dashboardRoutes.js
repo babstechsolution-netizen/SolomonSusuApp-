@@ -24,14 +24,17 @@ router.get('/', async (req, res) => {
       Customer.countDocuments({ status: 'active' }),
       Employee.countDocuments(),
       Employee.countDocuments({ status: 'active' }),
-      Transaction.aggregate([{ $match: { type: 'deposit', status: 'approved', date: today } }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
-      Transaction.aggregate([{ $match: { type: 'withdrawal', status: 'approved', date: today } }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
+      // reconciled:true excludes cash collections still awaiting the manager's cash-handover
+      // audit (see CashHandover) — everything else defaults reconciled:true, so this is a
+      // no-op for withdrawals/non-cash deposits and only holds back unaudited cash.
+      Transaction.aggregate([{ $match: { type: 'deposit', status: 'approved', reconciled: true, date: today } }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
+      Transaction.aggregate([{ $match: { type: 'withdrawal', status: 'approved', reconciled: true, date: today } }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
       Customer.aggregate([{ $group: { _id: null, total: { $sum: '$balance' } } }]),
       Loan.countDocuments({ status: 'active' }),
       Loan.countDocuments({ status: 'overdue' }),
       // Company net profit = susu commissions (first deposit each month) + withdrawal fees
       Transaction.aggregate([
-        { $match: { status: 'approved' } },
+        { $match: { status: 'approved', reconciled: true } },
         { $group: { _id: null, commissions: { $sum: { $cond: ['$isCommission', '$amount', 0] } }, fees: { $sum: '$feeAmount' } } },
       ]),
     ]);
@@ -65,7 +68,7 @@ router.get('/timeseries', async (req, res) => {
     const startStr = start.toISOString().split('T')[0];
 
     const agg = await Transaction.aggregate([
-      { $match: { status: 'approved', date: { $gte: startStr } } },
+      { $match: { status: 'approved', reconciled: true, date: { $gte: startStr } } },
       { $group: { _id: { date: '$date', type: '$type' }, total: { $sum: '$amount' } } },
     ]);
 
@@ -96,7 +99,7 @@ router.get('/period-summary', async (req, res) => {
     const period = (req.query.period || 'today').toLowerCase();
     const { from } = resolveDateRange({ period });
 
-    const match = { status: 'approved' };
+    const match = { status: 'approved', reconciled: true };
     if (from) match.date = { $gte: from };
     const agg = await Transaction.aggregate([
       { $match: match },
@@ -126,7 +129,7 @@ router.get('/reports', requireRoleOrPriv(['Super Admin', 'Branch Manager', 'Acco
   try {
     const { from, to } = resolveDateRange(req.query);
 
-    const match = { status: 'approved' };
+    const match = { status: 'approved', reconciled: true };
     if (from || to) {
       match.date = {};
       if (from) match.date.$gte = from;

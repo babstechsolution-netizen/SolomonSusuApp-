@@ -20,11 +20,17 @@ const transactionSchema = new mongoose.Schema({
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   date: { type: String },
   time: { type: String },
+  // Cash handover reconciliation: true unless this is a field collector's Cash deposit still
+  // awaiting the manager's physical cash count (see CashHandover). Defaults true so every
+  // existing transaction type/flow is unaffected — only cash collections are ever held back.
+  reconciled: { type: Boolean, default: true },
+  cashHandover: { type: mongoose.Schema.Types.ObjectId, ref: 'CashHandover', default: null },
 }, { timestamps: true });
 
 // Indexes for dashboards, approvals, collector summaries and history queries
 transactionSchema.index({ type: 1, status: 1, date: 1 });
 transactionSchema.index({ employee: 1, date: 1 });
+transactionSchema.index({ employee: 1, date: 1, reconciled: 1 });
 transactionSchema.index({ customer: 1, createdAt: -1 });
 transactionSchema.index({ status: 1, createdAt: -1 });
 

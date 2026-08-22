@@ -582,7 +582,7 @@ a{color:inherit;text-decoration:none;}
   // ---------- SHARED REFERENCE DATA ----------
   var ROLES=[{key:'field_collector',name:'Field Collector'},{key:'branch_manager',name:'Branch Manager'},{key:'accountant',name:'Accountant'},{key:'team_lead',name:'Team Lead'},{key:'cashier',name:'Cashier'},{key:'supervisor',name:'Supervisor'}];
   function roleLabel(k){var r=ROLES.filter(function(x){return x.key===k;})[0];return r?r.name:(k||'Staff');}
-  var PRIVS=[{id:'collect_money',n:'Collect Money',c:'Transactions'},{id:'process_withdrawal',n:'Process Withdrawals',c:'Transactions'},{id:'approve_transactions',n:'Approve Transactions (incl. withdrawals)',c:'Transactions'},{id:'enroll_customers',n:'Enroll New Customers',c:'Customers'},{id:'manage_customers',n:'Manage Customers',c:'Customers'},{id:'set_daily_amount',n:'Set Daily Susu Amount',c:'Customers'},{id:'assign_customers',n:'Assign Customers',c:'Customers'},{id:'view_reports',n:'View Reports',c:'Data & Reports'},{id:'export_data',n:'Export Data',c:'Data & Reports'},{id:'manage_employees',n:'Edit / Manage Users',c:'Management'},{id:'view_all_transactions',n:'View All Transactions',c:'Access'},{id:'view_own_transactions',n:'View Own Transactions',c:'Access'},{id:'generate_receipts',n:'Generate Receipts',c:'Operations'},{id:'system_settings',n:'System Settings',c:'Administration'}];
+  var PRIVS=[{id:'collect_money',n:'Collect Money',c:'Transactions'},{id:'process_withdrawal',n:'Process Withdrawals',c:'Transactions'},{id:'approve_transactions',n:'Approve Transactions & Cash Handovers',c:'Transactions'},{id:'enroll_customers',n:'Enroll New Customers',c:'Customers'},{id:'manage_customers',n:'Manage Customers',c:'Customers'},{id:'set_daily_amount',n:'Set Daily Susu Amount',c:'Customers'},{id:'assign_customers',n:'Assign Customers',c:'Customers'},{id:'view_reports',n:'View Reports',c:'Data & Reports'},{id:'export_data',n:'Export Data',c:'Data & Reports'},{id:'manage_employees',n:'Edit / Manage Users',c:'Management'},{id:'view_all_transactions',n:'View All Transactions',c:'Access'},{id:'view_own_transactions',n:'View Own Transactions',c:'Access'},{id:'generate_receipts',n:'Generate Receipts',c:'Operations'},{id:'system_settings',n:'System Settings',c:'Administration'}];
   var DEFAULT_PRIVS={field_collector:['collect_money','process_withdrawal','view_own_transactions','generate_receipts'],branch_manager:['collect_money','process_withdrawal','approve_transactions','view_reports','export_data','manage_customers','assign_customers','manage_employees','view_all_transactions','generate_receipts'],accountant:['view_reports','export_data','view_all_transactions','approve_transactions'],team_lead:['collect_money','process_withdrawal','view_reports','assign_customers','view_all_transactions','generate_receipts'],cashier:['collect_money','process_withdrawal','generate_receipts','view_own_transactions'],supervisor:['collect_money','process_withdrawal','approve_transactions','view_reports','assign_customers','view_all_transactions','generate_receipts']};
   function defaultPrivs(role){return DEFAULT_PRIVS[role]||[];}
 
@@ -729,6 +729,9 @@ a{color:inherit;text-decoration:none;}
   // are never silently capped — same list engine also powers the per-employee drill-down
   // opened from Reports (see employeeReportDrill below).
   function canFilterTxnList(){var r=role();return r==='Super Admin'||r==='Branch Manager'||r==='Accountant'||(S.user.privileges||[]).indexOf('view_reports')>=0;}
+  // Same gate the backend uses for approving withdrawals — a manager (Super Admin/Branch
+  // Manager/Accountant, or anyone delegated approve_transactions) can also audit cash handovers.
+  function canApproveCashHandover(){var r=role();return r==='Super Admin'||r==='Branch Manager'||r==='Accountant'||(S.user.privileges||[]).indexOf('approve_transactions')>=0;}
   function txnList(type,title){S.screen=(type==='deposit'?'collections':'withdrawals');S.tlType=type;S.tlTitle=title;S.tlBack=moreScreen;S.tlLockEmp=false;
     if(!S.tlPeriod)S.tlPeriod='all';if(S.tlEmp===undefined)S.tlEmp='';
     S.tlPage=1;S.tlAccum=[];S.tlStats=null;
@@ -740,17 +743,25 @@ a{color:inherit;text-decoration:none;}
   // (a plain sum would otherwise net deposits against withdrawals, which is meaningless).
   function employeeReportDrill(emp){S.screen='empreport';S.tlType='all';S.tlTitle=emp.name;S.tlEmp=emp._id;S.tlLockEmp=true;S.tlBack=reportsScreen;
     S.tlPeriod=S.repPeriod;S.tlFrom=S.repFrom;S.tlTo=S.repTo;S.tlPage=1;S.tlAccum=[];S.tlStats=null;
+    S.chDate=new Date().toISOString().substring(0,10);S.chSummary=null;S.chAmount='';
     set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+esc(emp.name)+'</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
     if(S.tlEmps)loadTxnList(true);else api('/api/employees').then(function(r){S.tlEmps=r.data||[];loadTxnList(true);}).catch(function(){S.tlEmps=[];loadTxnList(true);});}
+  // Cash handover: the manager's physical cash count for this collector's Cash deposits on
+  // S.chDate, checked against what the system recorded. Only fetched for the locked single-
+  // employee drill-down (i.e. tapped in from Reports), and only for someone who can audit it.
+  function loadCashHandoverSummary(){
+    if(!(S.tlLockEmp&&canApproveCashHandover())){S.chSummary=null;return Promise.resolve();}
+    return api('/api/cash-handovers/summary?employee='+S.tlEmp+'&date='+S.chDate).then(function(r){S.chSummary=r.data;}).catch(function(){S.chSummary=null;});}
   function txnListQS(page){var qs='limit=50&page='+(page||1)+'&';if(S.tlType&&S.tlType!=='all')qs+='type='+S.tlType+'&';if(S.tlPeriod==='custom'){qs+=(S.tlFrom?'from='+S.tlFrom:'')+(S.tlTo?(S.tlFrom?'&':'')+'to='+S.tlTo:'');if(!/from=|to=/.test(qs))qs+='period=all';}else qs+='period='+S.tlPeriod;if(S.tlEmp)qs+='&employee='+S.tlEmp;return qs;}
   function tlStatsQS(){var qs;if(S.tlPeriod==='custom'){qs=(S.tlFrom?'from='+S.tlFrom:'')+(S.tlTo?(S.tlFrom?'&':'')+'to='+S.tlTo:'');if(!qs)qs='period=all';}else qs='period='+S.tlPeriod;if(S.tlEmp)qs+='&employee='+S.tlEmp;return qs;}
   function loadTxnList(reset){if(reset){S.tlPage=1;S.tlAccum=[];}var page=S.tlPage||1;
     api('/api/transactions?'+txnListQS(page)).then(function(d){
       S.tlAccum=(page===1)?(d.data||[]):(S.tlAccum||[]).concat(d.data||[]);
       S.tlMeta={total:d.total||0,pages:d.pages||1,sum:d.sum||0};
-      if(!S.tlType||S.tlType==='all'){
-        api('/api/transactions/stats?'+tlStatsQS()).then(function(sr){S.tlStats=sr.data||null;drawTxnList();}).catch(function(){S.tlStats=null;drawTxnList();});
-      } else { S.tlStats=null; drawTxnList(); }
+      var statsP=(!S.tlType||S.tlType==='all')
+        ?api('/api/transactions/stats?'+tlStatsQS()).then(function(sr){S.tlStats=sr.data||null;}).catch(function(){S.tlStats=null;})
+        :Promise.resolve();
+      Promise.all([statsP, loadCashHandoverSummary()]).then(drawTxnList);
     }).catch(function(e){toast(e.message,'err');});}
   function drawTxnList(){var list=S.tlAccum||[];var title=S.tlTitle;var canFilter=canFilterTxnList();var meta=S.tlMeta||{total:list.length,pages:1,sum:0};
     var filterHtml='';
@@ -763,8 +774,9 @@ a{color:inherit;text-decoration:none;}
           ('<div class="card"><div style="display:flex;gap:12px;text-align:center"><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--dep)">'+money(S.tlStats.totalDeposits)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">COLLECTED</div></div><div style="width:1px;background:var(--border-l)"></div><div style="flex:1"><div style="font-size:20px;font-weight:900;color:var(--wit)">'+money(S.tlStats.totalWithdrawals)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">WITHDRAWN</div></div></div></div>')
           :('<div class="card" style="text-align:center"><div style="font-size:20px;font-weight:900;color:'+(S.tlType==='deposit'?'var(--dep)':'var(--wit)')+'">'+money(meta.sum)+'</div><div style="font-size:10px;color:var(--t3);font-weight:600">TOTAL '+title.toUpperCase()+'</div></div>'));
     }
+    var chHtml=(S.tlLockEmp&&canApproveCashHandover())?renderCashHandoverCard():'';
     var loadMore=((S.tlPage||1)<meta.pages)?'<button class="btn btn-ghost btn-full" id="tlmore" style="margin-top:10px">Load more ('+list.length+' of '+meta.total+')</button>':'';
-    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+esc(title)+' ('+meta.total+')</div></div><div class="sc"><div class="body-pad">'+filterHtml+(list.length?list.map(txnRow).join(''):'<div class="empty"><div class="ei">🧾</div>No '+esc(title.toLowerCase())+' yet.</div>')+loadMore+'</div></div>'+bnav('more'));
+    set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">'+esc(title)+' ('+meta.total+')</div></div><div class="sc"><div class="body-pad">'+filterHtml+chHtml+(list.length?list.map(txnRow).join(''):'<div class="empty"><div class="ei">🧾</div>No '+esc(title.toLowerCase())+' yet.</div>')+loadMore+'</div></div>'+bnav('more'));
     q('[data-back]').onclick=S.tlBack||moreScreen;
     var lm=q('#tlmore');if(lm)lm.onclick=function(){lm.innerHTML='<span class="spin"></span>';S.tlPage=(S.tlPage||1)+1;loadTxnList(false);};
     if(canFilter){
@@ -773,7 +785,47 @@ a{color:inherit;text-decoration:none;}
       var tt=q('#tlto');if(tt)tt.onchange=function(){S.tlTo=tt.value;loadTxnList(true);};
       var se=q('#tlemp');if(se)se.onchange=function(){S.tlEmp=se.value;loadTxnList(true);};
     }
+    if(S.tlLockEmp&&canApproveCashHandover())wireCashHandoverCard();
     wireNav();}
+
+  // ---------- CASH HANDOVER (manager reconciles a collector's physical cash) ----------
+  function renderCashHandoverCard(){
+    var ch=S.chSummary;
+    return '<div class="card" style="border:1.5px solid var(--border-l)">'+
+      '<div class="s-div" style="margin:0 0 10px;display:flex;align-items:center;justify-content:space-between"><span class="s-div-title">💰 Cash Handover</span>'+
+      '<input type="date" id="chdate" value="'+esc(S.chDate||'')+'" max="'+new Date().toISOString().substring(0,10)+'" style="font-size:12px;border:1px solid var(--border-l);border-radius:8px;padding:4px 8px;background:transparent;color:inherit"></div>'+
+      (ch?renderCashHandoverBody(ch):'<div class="center-load" style="padding:14px 0"><div class="spin"></div></div>')+
+      '</div>';}
+  function renderCashHandoverBody(ch){
+    if(ch.handover){
+      var h=ch.handover,ok=h.status==='reconciled';
+      return '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--t3)">System total</span><span style="font-weight:700">'+money(h.systemTotal)+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--t3)">Cash received</span><span style="font-weight:700">'+money(h.cashReceived)+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px"><span style="color:var(--t3)">Variance</span><span style="font-weight:700;color:'+(h.variance===0?'var(--dep)':'var(--wit)')+'">'+(h.variance>0?'+':'')+money(h.variance)+'</span></div>'+
+        '<div style="font-size:11px;font-weight:800;padding:6px 10px;border-radius:8px;display:inline-block;background:'+(ok?'rgba(16,185,129,.15)':'rgba(239,68,68,.15)')+';color:'+(ok?'var(--dep)':'var(--wit)')+'">'+(ok?'✅ Reconciled':'⚠️ Flagged — not yet counted in totals')+'</div>'+
+        (ok?'':'<button class="btn btn-p btn-full" id="chapprove" style="margin-top:10px" data-id="'+esc(h._id)+'">Approve Despite Variance</button>');
+    }
+    if(!ch.systemTotal){
+      return '<div style="font-size:12px;color:var(--t3)">No cash collections recorded for '+esc(ch.date)+' yet.</div>';
+    }
+    return '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px"><span style="color:var(--t3)">System total ('+ch.pendingCount+' collection'+(ch.pendingCount===1?'':'s')+')</span><span style="font-weight:700">'+money(ch.systemTotal)+'</span></div>'+
+      '<div class="inp-wrap" style="margin-bottom:10px"><label class="inp-lbl">Cash physically received</label><input class="inp" type="number" inputmode="decimal" id="chamount" placeholder="0.00" value="'+esc(S.chAmount||'')+'"></div>'+
+      '<button class="btn btn-p btn-full" id="chsubmit">Confirm Cash Count</button>';}
+  function wireCashHandoverCard(){
+    var cd=q('#chdate');if(cd)cd.onchange=function(){S.chDate=cd.value;S.chAmount='';S.chSummary=null;drawTxnList();loadCashHandoverSummary().then(drawTxnList);};
+    var camt=q('#chamount');if(camt)camt.oninput=function(){S.chAmount=camt.value;};
+    var csub=q('#chsubmit');if(csub)csub.onclick=function(){
+      var v=Number(S.chAmount);
+      if(S.chAmount===''||S.chAmount===undefined||isNaN(v)||v<0){toast('Enter the cash amount received','err');return;}
+      csub.innerHTML='<span class="spin"></span>';csub.disabled=true;
+      api('/api/cash-handovers',{method:'POST',body:JSON.stringify({employeeId:S.tlEmp,date:S.chDate,cashReceived:v})})
+        .then(function(r){toast(r.data.status==='reconciled'?'Cash matches — reconciled ✅':'Mismatch recorded — needs approval','ok');S.chAmount='';loadCashHandoverSummary().then(drawTxnList);})
+        .catch(function(e){toast(e.message,'err');csub.innerHTML='Confirm Cash Count';csub.disabled=false;});};
+    var capp=q('#chapprove');if(capp)capp.onclick=function(){
+      capp.innerHTML='<span class="spin"></span>';capp.disabled=true;
+      api('/api/cash-handovers/'+capp.getAttribute('data-id')+'/approve',{method:'PATCH',body:JSON.stringify({})})
+        .then(function(){toast('Approved — now counted in totals','ok');loadCashHandoverSummary().then(drawTxnList);})
+        .catch(function(e){toast(e.message,'err');capp.innerHTML='Approve Despite Variance';capp.disabled=false;});};}
 
   // ---------- ACTIVITY LOG (Super Admin) ----------
   function activityScreen(){S.screen='activity';set('<div class="app-bar"><div class="ab-back" data-back>←</div><div class="ab-title">Activity Log</div></div><div class="center-load"><div class="spin"></div>Loading…</div>');
