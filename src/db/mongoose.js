@@ -7,6 +7,7 @@ const connectDB = async () => {
     console.log('MongoDB connected successfully');
     await fixEmailIndex();
     await ensureDefaultAdmin();
+    await backfillReconciledFlag();
   } catch (err) {
     console.error('MongoDB connection error:', err.message);
     process.exit(1);
@@ -54,6 +55,26 @@ async function ensureDefaultAdmin() {
     }
   } catch (err) {
     console.error('Admin init error:', err.message);
+  }
+}
+
+// Transactions recorded before the cash-handover feature existed have no `reconciled` field
+// stored at all — and a raw aggregation $match on reconciled:true excludes documents where the
+// field is simply absent, not just false. That silently dropped every pre-existing transaction
+// out of the dashboard/report totals. They predate the feature, so they were never meant to be
+// held back — mark them reconciled once, here, so old data counts again immediately on boot.
+async function backfillReconciledFlag() {
+  try {
+    const Transaction = require('../models/Transaction');
+    const result = await Transaction.updateMany(
+      { reconciled: { $exists: false } },
+      { $set: { reconciled: true } },
+    );
+    if (result.modifiedCount) {
+      console.log(`Backfilled reconciled:true on ${result.modifiedCount} pre-existing transaction(s)`);
+    }
+  } catch (err) {
+    console.error('Reconciled backfill error:', err.message);
   }
 }
 
